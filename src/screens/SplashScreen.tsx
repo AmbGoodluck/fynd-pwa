@@ -13,20 +13,22 @@ export default function SplashScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!isLoading) {
-      setTimeout(async () => {
-        if (isAuthenticated) {
-          navigation.replace('MainTabs');
+    if (isLoading) return;
+
+    const timer = setTimeout(async () => {
+      if (isAuthenticated) {
+        navigation.replace('MainTabs');
+      } else {
+        const onboardingComplete = await AsyncStorage.getItem('onboardingComplete');
+        if (onboardingComplete === 'true') {
+          navigation.replace('Login');
         } else {
-          const onboardingComplete = await AsyncStorage.getItem('onboardingComplete');
-          if (onboardingComplete === 'true') {
-            navigation.replace('Login');
-          } else {
-            navigation.replace('Onboarding1');
-          }
+          navigation.replace('Onboarding1');
         }
-      }, 2000);
-    }
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, [isLoading, isAuthenticated]);
 
   return (
