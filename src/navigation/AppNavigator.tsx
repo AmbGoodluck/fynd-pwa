@@ -17,6 +17,9 @@ import ServiceHubScreen from '../screens/ServiceHubScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ItineraryScreen from '../screens/ItineraryScreen';
 import ProcessingScreen from '../screens/ProcessingScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import AccountSettingsScreen from '../screens/AccountSettingsScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
 
 const Stack = createStackNavigator();
@@ -74,6 +77,9 @@ export default function AppNavigator() {
         <Stack.Screen name="Processing" component={ProcessingScreen} />
         <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
         <Stack.Screen name="Itinerary" component={ItineraryScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+        <Stack.Screen name="Subscription" component={SubscriptionScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
