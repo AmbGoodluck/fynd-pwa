@@ -62,7 +62,7 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   const handleContinue = () => {
     if (step < 5) setStep(step + 1);
-    else navigation.navigate('Home');
+    else navigation.navigate('Processing');
   };
 
   const handleBack = () => {

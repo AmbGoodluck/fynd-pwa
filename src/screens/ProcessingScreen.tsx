@@ -27,7 +27,7 @@ export default function ProcessingScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' },
   animation: { width: 280, height: 280 },
   title: { fontSize: 20, fontWeight: '600', color: '#111827', marginTop: 24, textAlign: 'center', paddingHorizontal: 32 },
   subtitle: { fontSize: 15, color: '#8E8E93', marginTop: 8, textAlign: 'center' },
