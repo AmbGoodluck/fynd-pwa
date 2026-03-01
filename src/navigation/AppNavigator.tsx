@@ -20,6 +20,7 @@ import ProcessingScreen from '../screens/ProcessingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
+import TravelPreferenceScreen from '../screens/TravelPreferenceScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
 
@@ -82,6 +83,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         <Stack.Screen name="Subscription" component={SubscriptionScreen} />
         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+        <Stack.Screen name="TravelPreference" component={TravelPreferenceScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
