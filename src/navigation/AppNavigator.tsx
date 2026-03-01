@@ -19,6 +19,7 @@ import ItineraryScreen from '../screens/ItineraryScreen';
 import ProcessingScreen from '../screens/ProcessingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
+import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
 
@@ -80,6 +81,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+        <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
