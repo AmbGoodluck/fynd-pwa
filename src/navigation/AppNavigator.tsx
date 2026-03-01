@@ -10,6 +10,7 @@ import Onboarding2Screen from '../screens/Onboarding2Screen';
 import Onboarding3Screen from '../screens/Onboarding3Screen';
 import Onboarding4Screen from '../screens/Onboarding4Screen';
 import RegisterScreen from '../screens/RegisterScreen';
+import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import MapScreen from '../screens/MapScreen';
@@ -57,6 +58,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Onboarding3" component={Onboarding3Screen} />
         <Stack.Screen name="Onboarding4" component={Onboarding4Screen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>
