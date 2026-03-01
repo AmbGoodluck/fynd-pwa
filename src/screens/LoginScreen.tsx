@@ -4,11 +4,8 @@ import {
   TouchableOpacity, TextInput, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { GOOGLE_WEB_CLIENT_ID } from '../constants/config';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 const { width, height } = Dimensions.get('window');
 type Props = { navigation: any };
@@ -51,26 +48,7 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const handleGoogleSignIn = async () => {
-    try {
-      GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
-      await GoogleSignin.hasPlayServices();
-      const signInResult = await GoogleSignin.signIn();
-      const idToken = signInResult.data?.idToken;
-      const credential = GoogleAuthProvider.credential(idToken);
-      const { user } = await signInWithCredential(auth, credential);
-      await setDoc(doc(db, 'users', user.uid), {
-        id: user.uid,
-        fullName: user.displayName || '',
-        email: user.email || '',
-        photoURL: user.photoURL || null,
-        subscriptionTier: 'free',
-        createdAt: serverTimestamp(),
-        travelPreferences: [],
-      }, { merge: true });
-      navigation.replace('MainTabs');
-    } catch (e: any) {
-      setError(e.message);
-    }
+    setError('Google Sign-In will be available in the full build. Please use email/password for now.');
   };
 
   return (
@@ -78,34 +56,18 @@ export default function LoginScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
         <Text style={styles.title}>Welcome to Fynd</Text>
-        <Text style={styles.subtitle}>Let's make every travel counts</Text>
+        <Text style={styles.subtitle}>Let s make every travel counts</Text>
       </View>
 
       <View style={styles.form}>
         <View style={styles.inputContainer}>
           <Ionicons name="mail-outline" size={18} color="#8E8E93" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#8E8E93"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#8E8E93" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
         </View>
 
         <View style={styles.inputContainer}>
           <Ionicons name="lock-closed-outline" size={18} color="#8E8E93" style={styles.icon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#8E8E93"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-            autoCapitalize="none"
-          />
+          <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8E8E93" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoCapitalize="none" />
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={18} color="#8E8E93" />
           </TouchableOpacity>
@@ -117,11 +79,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Text style={styles.forgot}>Forgot Password ?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
+        <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Log In'}</Text>
         </TouchableOpacity>
 
@@ -133,7 +91,7 @@ export default function LoginScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <View style={styles.bottomRow}>
-          <Text style={styles.bottomText}>Don't have an account? </Text>
+          <Text style={styles.bottomText}>Don t have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={styles.link}>Sign Up</Text>
           </TouchableOpacity>

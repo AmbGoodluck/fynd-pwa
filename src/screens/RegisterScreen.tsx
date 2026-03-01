@@ -4,11 +4,9 @@ import {
   TouchableOpacity, TextInput, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { GOOGLE_WEB_CLIENT_ID } from '../constants/config';
 
 const { width, height } = Dimensions.get('window');
 type Props = { navigation: any };
@@ -54,26 +52,7 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   const handleGoogleSignIn = async () => {
-    try {
-      GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
-      await GoogleSignin.hasPlayServices();
-      const signInResult = await GoogleSignin.signIn();
-      const idToken = signInResult.data?.idToken;
-      const credential = GoogleAuthProvider.credential(idToken);
-      const { user } = await signInWithCredential(auth, credential);
-      await setDoc(doc(db, 'users', user.uid), {
-        id: user.uid,
-        fullName: user.displayName || '',
-        email: user.email || '',
-        photoURL: user.photoURL || null,
-        subscriptionTier: 'free',
-        createdAt: serverTimestamp(),
-        travelPreferences: [],
-      }, { merge: true });
-      navigation.replace('MainTabs');
-    } catch (e: any) {
-      setError(e.message);
-    }
+    setError('Google Sign-In will be available in the full build. Please use email/password for now.');
   };
 
   return (
@@ -81,7 +60,7 @@ export default function RegisterScreen({ navigation }: Props) {
       <View style={styles.header}>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
         <Text style={styles.title}>Welcome to Fynd</Text>
-        <Text style={styles.subtitle}>Let's make every travel counts</Text>
+        <Text style={styles.subtitle}>Let s make every travel counts</Text>
       </View>
 
       <View style={styles.form}>
