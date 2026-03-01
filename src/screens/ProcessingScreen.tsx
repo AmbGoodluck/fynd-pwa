@@ -7,7 +7,7 @@ type Props = { navigation: any };
 export default function ProcessingScreen({ navigation }: Props) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.replace('Home');
+      navigation.navigate('SuggestedPlaces');
     }, 4000);
     return () => clearTimeout(timer);
   }, []);

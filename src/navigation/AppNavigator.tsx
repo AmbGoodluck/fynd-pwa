@@ -17,6 +17,7 @@ import MapScreen from '../screens/MapScreen';
 import ServiceHubScreen from '../screens/ServiceHubScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProcessingScreen from '../screens/ProcessingScreen';
+import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -79,6 +80,7 @@ export default function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="Processing" component={ProcessingScreen} />
+        <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

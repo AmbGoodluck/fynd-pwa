@@ -1,35 +1,26 @@
 import React, { useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuthStore } from '../store/useAuthStore';
 
 type Props = { navigation: any };
 
 export default function SplashScreen({ navigation }: Props) {
-  const { initialize, isAuthenticated, isLoading } = useAuthStore();
-
   useEffect(() => {
-    initialize();
-  }, []);
-
-  useEffect(() => {
-    if (isLoading) return;
-
     const timer = setTimeout(async () => {
-      if (isAuthenticated) {
-        navigation.replace('MainTabs');
-      } else {
+      try {
         const onboardingComplete = await AsyncStorage.getItem('onboardingComplete');
         if (onboardingComplete === 'true') {
           navigation.replace('Login');
         } else {
           navigation.replace('Onboarding1');
         }
+      } catch {
+        navigation.replace('Onboarding1');
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [isLoading, isAuthenticated]);
+  }, []);
 
   return (
     <View style={styles.container}>
