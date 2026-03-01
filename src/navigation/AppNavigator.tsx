@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-
 import SplashScreen from '../screens/SplashScreen';
 import Onboarding1Screen from '../screens/Onboarding1Screen';
 import Onboarding2Screen from '../screens/Onboarding2Screen';
@@ -16,6 +15,7 @@ import CreateTripScreen from '../screens/CreateTripScreen';
 import MapScreen from '../screens/MapScreen';
 import ServiceHubScreen from '../screens/ServiceHubScreen';
 import SavedScreen from '../screens/SavedScreen';
+import ItineraryScreen from '../screens/ItineraryScreen';
 import ProcessingScreen from '../screens/ProcessingScreen';
 import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
 
@@ -45,16 +45,8 @@ function MainTabs() {
         },
         tabBarActiveTintColor: '#22C55E',
         tabBarInactiveTintColor: '#8E8E93',
-        tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: '#F2F2F7',
-          paddingBottom: 4,
-          height: 60,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-        },
+        tabBarStyle: { borderTopWidth: 1, borderTopColor: '#F2F2F7', paddingBottom: 4, height: 60 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
         headerShown: false,
       })}
     >
@@ -81,6 +73,7 @@ export default function AppNavigator() {
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="Processing" component={ProcessingScreen} />
         <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
+        <Stack.Screen name="Itinerary" component={ItineraryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

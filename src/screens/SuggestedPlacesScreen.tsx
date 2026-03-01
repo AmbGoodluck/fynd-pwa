@@ -113,7 +113,7 @@ export default function SuggestedPlacesScreen({ navigation }: Props) {
 
       {addedToItinerary.length > 0 && (
         <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.generateBtn} onPress={() => navigation.navigate('Home')}>
+          <TouchableOpacity style={styles.generateBtn} onPress={() => navigation.navigate('Itinerary')}>
             <Text style={styles.generateBtnText}>Generate Itinerary ({addedToItinerary.length})</Text>
           </TouchableOpacity>
         </View>
