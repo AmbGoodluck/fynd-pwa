@@ -33,7 +33,8 @@
           "merchantIdentifier": "merchant.com.fynd",
           "enableGooglePay": false
         }
-      ]
+      ],
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

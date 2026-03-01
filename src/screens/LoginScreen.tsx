@@ -4,8 +4,11 @@ import {
   TouchableOpacity, TextInput, Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GOOGLE_WEB_CLIENT_ID } from '../constants/config';
 
 const { width, height } = Dimensions.get('window');
 type Props = { navigation: any };
@@ -42,6 +45,29 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       await sendPasswordResetEmail(auth, email);
       setError('Password reset email sent!');
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      GoogleSignin.configure({ webClientId: GOOGLE_WEB_CLIENT_ID });
+      await GoogleSignin.hasPlayServices();
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult.data?.idToken;
+      const credential = GoogleAuthProvider.credential(idToken);
+      const { user } = await signInWithCredential(auth, credential);
+      await setDoc(doc(db, 'users', user.uid), {
+        id: user.uid,
+        fullName: user.displayName || '',
+        email: user.email || '',
+        photoURL: user.photoURL || null,
+        subscriptionTier: 'free',
+        createdAt: serverTimestamp(),
+        travelPreferences: [],
+      }, { merge: true });
+      navigation.replace('MainTabs');
     } catch (e: any) {
       setError(e.message);
     }
@@ -101,7 +127,7 @@ export default function LoginScreen({ navigation }: Props) {
 
         <Text style={styles.or}>or</Text>
 
-        <TouchableOpacity style={styles.googleBtn}>
+        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn}>
           <Ionicons name="logo-google" size={20} color="#111827" style={{ marginRight: 10 }} />
           <Text style={styles.googleText}>Continue with Google</Text>
         </TouchableOpacity>

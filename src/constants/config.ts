@@ -7,6 +7,7 @@ export const FIREBASE_CONFIG = {
   appId: "1:52406028380:web:ac4669fdb019ff9581be99"
 };
 
+export const GOOGLE_WEB_CLIENT_ID = "52406028380-pgsg4sdr94qd1773e7js6ofuqhtb53i9.apps.googleusercontent.com";
 export const GOOGLE_MAPS_API_KEY = '';
 export const OPENAI_API_KEY = '';
 export const STRIPE_PUBLISHABLE_KEY = '';
