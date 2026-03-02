@@ -1,49 +1,37 @@
 import { create } from 'zustand';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { signOut } from 'firebase/auth';
+import { auth } from '../services/firebase';
 
 interface User {
   id: string;
   fullName: string;
   email: string;
-  photoURL: string | null;
-  subscriptionTier: 'free' | 'plus';
+  photoURL?: string | null;
+  isPremium: boolean;
+  travelPreferences?: string[];
 }
 
 interface AuthStore {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  login: (user: User) => void;
   setUser: (user: User | null) => void;
   logout: () => Promise<void>;
-  initialize: () => void;
+  setIsPremium: (val: boolean) => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   isAuthenticated: false,
-  isLoading: true,
-
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
-
+  isLoading: false,
+  login: (user) => set({ user, isAuthenticated: true, isLoading: false }),
+  setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
   logout: async () => {
     await signOut(auth);
     set({ user: null, isAuthenticated: false });
   },
-
-  initialize: () => {
-    onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (docSnap.exists()) {
-          set({ user: docSnap.data() as User, isAuthenticated: true, isLoading: false });
-        } else {
-          set({ user: null, isAuthenticated: false, isLoading: false });
-        }
-      } else {
-        set({ user: null, isAuthenticated: false, isLoading: false });
-      }
-    });
-  },
+  setIsPremium: (val) => set((state) => ({
+    user: state.user ? { ...state.user, isPremium: val } : null,
+  })),
 }));

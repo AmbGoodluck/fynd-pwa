@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import {
-  View, Text, Image, StyleSheet, ScrollView,
-  TouchableOpacity, TextInput, Dimensions
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
+import { useAuthStore } from '../store/useAuthStore';
+import { signInWithGoogle } from '../services/authService';
 
-const { width, height } = Dimensions.get('window');
 type Props = { navigation: any };
 
 export default function RegisterScreen({ navigation }: Props) {
+  const { login } = useAuthStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,121 +21,170 @@ export default function RegisterScreen({ navigation }: Props) {
   const [error, setError] = useState('');
 
   const handleRegister = async () => {
-    if (!fullName || !email || !password || !confirmPassword) {
-      setError('All fields are required');
-      return;
+    if (!fullName.trim() || !email.trim() || !password.trim()) {
+      setError('Please fill in all fields.'); return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+      setError('Passwords do not match.'); return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.'); return;
     }
     setLoading(true);
     setError('');
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, 'users', user.uid), {
-        id: user.uid,
-        fullName,
-        email,
-        photoURL: null,
-        subscriptionTier: 'free',
+      // Step 1: Create Firebase Auth user
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const uid = cred.user.uid;
+
+      // Step 2: Create user doc in Firestore
+      await setDoc(doc(db, 'users', uid), {
+        id: uid,
+        email: email.trim(),
+        fullName: fullName.trim(),
+        profilePhoto: null,
         createdAt: serverTimestamp(),
+        homeCity: '',
+        travelStyle: [],
+        isPremium: false,
+      });
+
+      // Step 3: Create subscription doc
+      await setDoc(doc(db, 'subscriptions', uid), {
+        userId: uid,
+        isPremium: false,
+        plan: 'free',
+        status: 'active',
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        currentPeriodEnd: null,
+        tripsUsedThisMonth: 0,
+        itinerariesGenerated: 0,
+        savedPlacesCount: 0,
+        tripLimit: 3,
+        itineraryLimit: 1,
+        savedPlacesLimit: 5,
+        placesPerTripLimit: 5,
+      });
+
+      // Step 4: Update auth store and navigate
+      login({
+        id: uid,
+        email: email.trim(),
+        fullName: fullName.trim(),
+        isPremium: false,
         travelPreferences: [],
       });
+
       navigation.replace('MainTabs');
+
     } catch (e: any) {
-      setError(e.message);
+      console.log('Register error:', e.code, e.message);
+      const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered.' :
+                  e.code === 'auth/invalid-email' ? 'Please enter a valid email.' :
+                  e.code === 'auth/weak-password' ? 'Password must be at least 6 characters.' :
+                  e.code === 'permission-denied' ? 'Database permission error. Check Firestore rules.' :
+                  (e.code || e.message || 'Registration failed. Please try again.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setError('Google Sign-In will be available in the full build. Please use email/password for now.');
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.header}>
-        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        <Text style={styles.title}>Welcome to Fynd</Text>
-        <Text style={styles.subtitle}>Let s make every travel counts</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
+      <Text style={styles.title}>Welcome to Fynd</Text>
+      <Text style={styles.subtitle}>Let us make every travel count</Text>
+
+      {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
+
+      <View style={styles.inputWrap}>
+        <Ionicons name="person-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+        <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor="#8E8E93"
+          value={fullName} onChangeText={setFullName} />
       </View>
 
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={18} color="#8E8E93" style={styles.icon} />
-          <TextInput style={styles.input} placeholder="Full Name" placeholderTextColor="#8E8E93" value={fullName} onChangeText={setFullName} autoCapitalize="words" />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={18} color="#8E8E93" style={styles.icon} />
-          <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#8E8E93" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={18} color="#8E8E93" style={styles.icon} />
-          <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8E8E93" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoCapitalize="none" />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={18} color="#8E8E93" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={18} color="#8E8E93" style={styles.icon} />
-          <TextInput style={styles.input} placeholder="Confirm Password" placeholderTextColor="#8E8E93" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry={!showConfirm} autoCapitalize="none" />
-          <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-            <Ionicons name={showConfirm ? 'eye-outline' : 'eye-off-outline'} size={18} color="#8E8E93" />
-          </TouchableOpacity>
-        </View>
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.forgot}>Forgot Password ?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Log In'}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.or}>or</Text>
-
-        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleSignIn}>
-          <Ionicons name="logo-google" size={20} color="#111827" style={{ marginRight: 10 }} />
-          <Text style={styles.googleText}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        <View style={styles.bottomRow}>
-          <Text style={styles.bottomText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.link}>Log in</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.inputWrap}>
+        <Ionicons name="mail-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+        <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#8E8E93"
+          keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
       </View>
+
+      <View style={styles.inputWrap}>
+        <Ionicons name="lock-closed-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+        <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#8E8E93"
+          secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#8E8E93" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.inputWrap}>
+        <Ionicons name="lock-closed-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+        <TextInput style={styles.input} placeholder="Confirm Password" placeholderTextColor="#8E8E93"
+          secureTextEntry={!showConfirm} value={confirmPassword} onChangeText={setConfirmPassword} />
+        <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+          <Ionicons name={showConfirm ? 'eye-off-outline' : 'eye-outline'} size={18} color="#8E8E93" />
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerBtnText}>Create Account</Text>}
+      </TouchableOpacity>
+
+      <Text style={styles.orText}>or</Text>
+
+      <TouchableOpacity
+        style={styles.googleBtn}
+        onPress={async () => {
+          setLoading(true);
+          setError('');
+          try {
+            const { uid, doc: userDoc } = await signInWithGoogle();
+            login({
+              id: uid,
+              email: userDoc?.email || '',
+              fullName: userDoc?.fullName || '',
+              isPremium: userDoc?.isPremium || false,
+              travelPreferences: userDoc?.travelPreferences || [],
+            });
+            navigation.replace('MainTabs');
+          } catch (e: any) {
+            console.log('Google sign-up error', e);
+            setError('Google sign-in failed.');
+          } finally {
+            setLoading(false);
+          }
+        }}
+      >
+        <Text style={styles.googleBtnText}>G  Continue with Google</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginWrap}>
+        <Text style={styles.loginText}>Already have an account? <Text style={styles.loginLink}>Log in</Text></Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: '#fff' },
-  header: { width, height: height * 0.34, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingTop: 30 },
-  logo: { width: 188, height: 106, resizeMode: 'contain', marginBottom: 16 },
-  title: { fontSize: 24, fontWeight: '500', color: '#111827', textAlign: 'center', marginBottom: 6 },
-  subtitle: { fontSize: 16, color: '#3C3C43', textAlign: 'center' },
-  form: { alignItems: 'center', paddingBottom: 32 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', width: 320, backgroundColor: '#F2F2F7', borderRadius: 14, borderWidth: 1, borderColor: '#E5E5EA', paddingHorizontal: 14, marginVertical: 8, height: 50 },
-  icon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: '#111827', height: 50 },
-  error: { color: '#EF4444', fontSize: 13, marginBottom: 4, width: 320 },
-  forgot: { color: '#3C3C43', fontSize: 14, textAlign: 'right', width: 320, marginBottom: 8, marginTop: 2 },
-  button: { width: 320, height: 50, backgroundColor: '#22C55E', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginVertical: 8 },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  or: { color: '#3C3C43', fontSize: 14, marginVertical: 8 },
-  googleBtn: { flexDirection: 'row', alignItems: 'center', width: 320, height: 50, backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 14, marginVertical: 8 },
-  googleText: { color: '#8E8E93', fontSize: 15 },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  bottomText: { color: '#3C3C43', fontSize: 14 },
-  link: { color: '#22C55E', fontSize: 14, fontWeight: '600' },
+  container: { flex: 1, backgroundColor: '#fff' },
+  content: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 80, paddingBottom: 40 },
+  logo: { width: 80, height: 80, resizeMode: 'contain', marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: '700', color: '#111827', marginBottom: 6 },
+  subtitle: { fontSize: 15, color: '#57636C', marginBottom: 28 },
+  errorBox: { width: '100%', backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12 },
+  errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center' },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 14, height: 50, marginBottom: 12 },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 15, color: '#111827' },
+  registerBtn: { width: '100%', backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: 8 },
+  registerBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  orText: { color: '#8E8E93', marginBottom: 16, fontSize: 14 },
+  googleBtn: { width: '100%', backgroundColor: '#F2F2F7', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  googleBtnText: { fontSize: 15, color: '#111827', fontWeight: '500' },
+  loginWrap: { marginTop: 8 },
+  loginText: { fontSize: 14, color: '#57636C' },
+  loginLink: { color: '#22C55E', fontWeight: '600' },
 });

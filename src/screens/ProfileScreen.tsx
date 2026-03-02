@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, ScrollView } from 'react-native';
+import AppHeader from '../components/AppHeader';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -8,9 +10,9 @@ type Props = { navigation: any };
 const MENU_ITEMS = [
   { id: 'subscription', label: 'Fynd Plus', icon: 'star', screen: 'Subscription' },
   { id: 'account', label: 'Account & Setting', icon: 'settings', screen: 'AccountSettings' },
-  { id: 'legal', label: 'Legal & Privacy', icon: 'trending-up', screen: null },
-  { id: 'travel', label: 'Travel Preference', icon: 'heart-outline', screen: 'VibeSelection' },
-  { id: 'support', label: 'Support & Feedback', icon: 'person-outline', screen: null },
+  { id: 'legal', label: 'Legal & Privacy', icon: 'trending-up', screen: 'Legal' },
+  { id: 'travel', label: 'Travel Preference', icon: 'heart-outline', screen: 'TravelPreference' },
+  { id: 'support', label: 'Support & Feedback', icon: 'person-outline', screen: 'SupportFeedback' },
 ];
 
 export default function ProfileScreen({ navigation }: Props) {
@@ -19,8 +21,17 @@ export default function ProfileScreen({ navigation }: Props) {
   const email = user?.email || 'wvdiv@anika.com';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll}>
+
+        {/* Back button */}
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={28} color="#111827" style={{ opacity: 0.6 }} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Avatar */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
@@ -29,6 +40,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <Text style={styles.email}>{email}</Text>
         </View>
 
+        {/* Menu */}
         <View style={styles.menuSection}>
           {MENU_ITEMS.map((item) => (
             <TouchableOpacity
@@ -46,6 +58,7 @@ export default function ProfileScreen({ navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -53,8 +66,9 @@ export default function ProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scroll: { paddingTop: 40, paddingBottom: 40 },
-  avatarSection: { alignItems: 'center', paddingBottom: 20 },
+  scroll: { paddingBottom: 40 },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 0, paddingBottom: 8 },
+  avatarSection: { alignItems: 'center', paddingBottom: 24, paddingTop: 0 },
   avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 32 },
   name: { fontSize: 16, fontWeight: '500', color: '#111827', marginBottom: 4 },
@@ -65,3 +79,5 @@ const styles = StyleSheet.create({
   iconWrap: { opacity: 0.6, marginRight: 10 },
   menuLabel: { fontSize: 16, color: '#111827', opacity: 0.6 },
 });
+
+

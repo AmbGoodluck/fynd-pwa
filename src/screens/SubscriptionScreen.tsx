@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 type Props = { navigation: any };
@@ -14,7 +15,7 @@ const FEATURES = [
 
 export default function SubscriptionScreen({ navigation }: Props) {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
           <Ionicons name="chevron-back" size={44} color="#111827" style={{ opacity: 0.6 }} />
@@ -39,7 +40,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
           <View style={styles.trialBadge}>
             <Text style={styles.trialBadgeText}>7-Day Free Trial</Text>
           </View>
-          <Text style={styles.price}>Then $7.99/Month</Text>
+          <Text style={styles.price}>Then $9.99/Month</Text>
           <Text style={styles.cancelText}>Cancel anytime</Text>
 
           <TouchableOpacity style={styles.trialBtn}>
@@ -47,14 +48,14 @@ export default function SubscriptionScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <Text style={styles.termsNote}>
-            No charges until February 8. Renew for $7.99/month afterwards. Terms apply
+            No charges until February 8. Renew for $9.99/month afterwards. Terms apply
           </Text>
         </View>
 
         <View style={styles.termsRow}>
           <Text style={styles.termsText}>By continuing, you agree to the </Text>
           <TouchableOpacity>
-            <Text style={styles.termsLink}>Terms of Service</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('LegalDetail', { pageId: 'subscription', title: 'Subscription Terms' })}><TouchableOpacity onPress={() => navigation.navigate('LegalDetail', { pageId: 'subscription', title: 'Subscription Terms' })}><TouchableOpacity onPress={() => navigation.navigate('LegalDetail', { pageId: 'subscription', title: 'Subscription Terms' })}><Text style={styles.termsLink}>Terms of Service</Text></TouchableOpacity></TouchableOpacity></TouchableOpacity>
           </TouchableOpacity>
         </View>
 
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 40, alignItems: 'center' },
   back: { alignSelf: 'flex-start', paddingLeft: 10, paddingTop: 10 },
   header: { alignItems: 'center', paddingVertical: 20, width: '100%' },
-  logo: { width: 119, height: 70, marginBottom: 10 },
+  logo: { width: 180, height: 120, marginBottom: 10 },
   title: { fontSize: 20, fontWeight: '500', color: '#111827', opacity: 0.8, marginBottom: 6 },
   subtitle: { fontSize: 14, color: '#57636C', textAlign: 'center' },
   featuresCard: { width: '85%', borderRadius: 16, borderWidth: 0.5, borderColor: '#E5E5E7', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 1, shadowOffset: { width: 0, height: 2 }, elevation: 2, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 16 },

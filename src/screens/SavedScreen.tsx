@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Image, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -42,7 +43,7 @@ export default function SavedScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={32} color="#111827" />
@@ -139,7 +140,7 @@ export default function SavedScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 4 },
   topBarTitle: { fontSize: 25, fontWeight: '500', color: '#111827' },
   avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
@@ -165,6 +166,7 @@ const styles = StyleSheet.create({
   addBtn: { backgroundColor: '#22C55E', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
   addBtnText: { color: '#fff', fontSize: 12, fontWeight: '500' },
   deleteBtn: { padding: 4 },
-  viewBtn: { backgroundColor: '#22C55E', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  viewBtn: { backgroundColor: '#22C55E', borderRadius: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 },
   viewBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });
+

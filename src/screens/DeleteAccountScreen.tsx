@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 
@@ -43,13 +44,17 @@ export default function DeleteAccountScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-        <Ionicons name="chevron-back" size={28} color="#111827" style={{ opacity: 0.6 }} />
-      </TouchableOpacity>
-
-      <Text style={styles.name}>{name}</Text>
-      <Text style={styles.email}>{email}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={28} color="#111827" style={{ opacity: 0.6 }} />
+        </TouchableOpacity>
+        <View style={styles.userInfo}>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.email}>{email}</Text>
+        </View>
+        <View style={{ width: 28 }} />
+      </View>
 
       <View style={styles.card}>
         <TouchableOpacity style={styles.menuRow} onPress={() => navigation.goBack()}>
@@ -102,10 +107,11 @@ export default function DeleteAccountScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  back: { padding: 10 },
-  name: { fontSize: 16, fontWeight: '500', color: '#111827', textAlign: 'center', marginBottom: 4 },
-  email: { fontSize: 12, fontWeight: '300', color: '#57636C', textAlign: 'center', marginBottom: 20 },
-  card: { marginHorizontal: 14, borderRadius: 14, borderWidth: 0.5, borderColor: '#E5E5EA', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 1, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 16, paddingTop: 36 },
+  userInfo: { alignItems: 'center' },
+  name: { fontSize: 16, fontWeight: '500', color: '#111827' },
+  email: { fontSize: 12, fontWeight: '300', color: '#57636C' },
+  card: { marginHorizontal: 14, marginTop: 10, borderRadius: 14, borderWidth: 0.5, borderColor: '#E5E5EA', backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 1, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   menuRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 50 },
   menuLeft: { flexDirection: 'row', alignItems: 'center' },
   menuIcon: { opacity: 0.6, marginRight: 8 },

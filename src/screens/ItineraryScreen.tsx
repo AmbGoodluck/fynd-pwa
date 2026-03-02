@@ -1,32 +1,41 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 
 const MOCK_STOPS = [
-  { id: '1', name: 'Metropolitan Museum of Art', description: 'Famous for world-class arts and history', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1581367687051-9b5dc9ad0c02?w=400' },
-  { id: '2', name: 'Apollo Theater', description: 'Iconic for its Amateur Night and Landmark hiphop and Jazz performance', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400' },
-  { id: '3', name: 'International Center for Photogr..', description: 'Showcase cutting-edge exhibitions on contemporaty and documentary photos.', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=400' },
-  { id: '4', name: 'Summit One Vanderbilt', description: 'Provides 360-degree view including the nearby Chrysler and Empire State Buildings', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?w=400' },
+  { id: '1', name: 'Metropolitan Museum of Art', description: 'Famous for world-class arts and history', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1581367687051-9b5dc9ad0c02?w=400', coordinate: { latitude: 40.7794, longitude: -73.9632 } },
+  { id: '2', name: 'Apollo Theater', description: 'Iconic for its Amateur Night and Landmark hiphop and Jazz performance', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400', coordinate: { latitude: 40.8099, longitude: -73.9502 } },
+  { id: '3', name: 'International Center for Photography', description: 'Showcase cutting-edge exhibitions on contemporary and documentary photos.', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=400', coordinate: { latitude: 40.7614, longitude: -73.9776 } },
+  { id: '4', name: 'Summit One Vanderbilt', description: 'Provides 360-degree view including the nearby Chrysler and Empire State Buildings', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?w=400', coordinate: { latitude: 40.7527, longitude: -73.9772 } },
 ];
 
-type Props = { navigation: any };
+type Stop = typeof MOCK_STOPS[number];
 
-export default function ItineraryScreen({ navigation }: Props) {
+type Props = { navigation: any; route?: any };
+
+export default function ItineraryScreen({ navigation, route }: Props) {
   const { user } = useAuthStore();
-  const [stops, setStops] = useState(MOCK_STOPS);
+  const initialStops = route?.params?.stops ?? MOCK_STOPS;
+  const destination = route?.params?.destination || 'Your Destination';
+  const tripData = route?.params || {};
+  const [stops, setStops] = useState(initialStops);
   const [savedPlaces, setSavedPlaces] = useState<string[]>([]);
   const firstName = user?.fullName?.split(' ')[0] || 'U';
+  
+  console.log('ItineraryScreen - route.params:', JSON.stringify(route?.params));
+  console.log('ItineraryScreen - initialStops:', JSON.stringify(initialStops?.length), 'stops');
+  console.log('ItineraryScreen - destination:', destination);
 
-  const removePlace = (id: string) => {
-    setStops(prev => prev.filter(s => s.id !== id));
+  const removePlace = (id: string) => setStops((prev: Stop[]) => prev.filter((s: Stop) => s.id !== id));
+  const toggleSave = (id: string) => setSavedPlaces(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
+  const openInMap = () => {
+    navigation.navigate('Map', { stops });
   };
 
-  const toggleSave = (id: string) => {
-    setSavedPlaces(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
-
-  const renderStop = ({ item }: { item: typeof MOCK_STOPS[0] }) => (
+  const renderStop = ({ item }: { item: Stop }) => (
     <View style={styles.card}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: item.image }} style={styles.placeImage} />
@@ -60,8 +69,7 @@ export default function ItineraryScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Top App Bar */}
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={32} color="#111827" />
@@ -72,11 +80,10 @@ export default function ItineraryScreen({ navigation }: Props) {
         </View>
       </View>
 
-      {/* Header Info */}
       <View style={styles.headerSection}>
-        <Text style={styles.title}>Itinerary for London</Text>
+        <Text style={styles.title}>Itinerary for {destination}</Text>
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{stops.length} Stops, 3 hrs, 43min</Text>
+          <Text style={styles.metaText}>{stops.length} Stops{tripData.explorationHours ? ', ' + tripData.explorationHours + ' hrs' : ''}</Text>
           <TouchableOpacity style={styles.ignoreBtn}>
             <Text style={styles.ignoreBtnText}>Ignore Itinerary</Text>
             <Ionicons name="trash-outline" size={16} color="#111827" />
@@ -85,7 +92,6 @@ export default function ItineraryScreen({ navigation }: Props) {
         <Text style={styles.reviewLabel}>Review Itinerary</Text>
       </View>
 
-      {/* Stops List */}
       <FlatList
         data={stops}
         keyExtractor={item => item.id}
@@ -94,9 +100,8 @@ export default function ItineraryScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Open in Map */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.mapBtn} onPress={() => navigation.navigate('Map')}>
+        <TouchableOpacity style={styles.mapBtn} onPress={openInMap}>
           <Text style={styles.mapBtnText}>Open in Map</Text>
         </TouchableOpacity>
       </View>

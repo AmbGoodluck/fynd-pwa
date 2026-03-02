@@ -1,5 +1,7 @@
+import SuccessToast from '../components/SuccessToast';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, FlatList, Image, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, Animated } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
@@ -14,6 +16,12 @@ const VIBES = [
   { id: 'food_drinks', label: 'Food & Drinks', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400' },
   { id: 'nightlife', label: 'Nightlife', image: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=400' },
   { id: 'shopping', label: 'Shopping', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400' },
+  { id: 'wellness', label: 'Wellness & Spa', image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+  { id: 'adventure', label: 'Adventure', image: 'https://images.unsplash.com/photo-1533130061792-64b345e4a833?w=400' },
+  { id: 'beaches', label: 'Beaches', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400' },
+  { id: 'history', label: 'History & Heritage', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400' },
+  { id: 'music', label: 'Music & Events', image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400' },
+  { id: 'family', label: 'Family Friendly', image: 'https://images.unsplash.com/photo-1476703993599-0035a21b17a9?w=400' },
 ];
 
 type Props = { navigation: any };
@@ -26,18 +34,13 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
   const [showToast, setShowToast] = useState(false);
   const toastAnim = React.useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    loadPreferences();
-  }, []);
+  useEffect(() => { loadPreferences(); }, []);
 
   const loadPreferences = async () => {
     try {
       if (!user?.id) return;
       const docSnap = await getDoc(doc(db, 'users', user.id));
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setSelected(data.travelPreferences || []);
-      }
+      if (docSnap.exists()) setSelected(docSnap.data().travelPreferences || []);
     } catch (e) {
       console.error('Load preferences error:', e);
     } finally {
@@ -46,9 +49,7 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
   };
 
   const toggleVibe = (id: string) => {
-    setSelected(prev =>
-      prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
-    );
+    setSelected(prev => prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]);
   };
 
   const showSuccessToast = () => {
@@ -57,19 +58,14 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
       Animated.timing(toastAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.delay(1800),
       Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start(() => {
-      setShowToast(false);
-      navigation.goBack();
-    });
+    ]).start(() => { setShowToast(false); setShowToast(true); });
   };
 
   const savePreferences = async () => {
     if (!user?.id || saving) return;
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.id), {
-        travelPreferences: selected,
-      });
+      await updateDoc(doc(db, 'users', user.id), { travelPreferences: selected });
       if (setUser) setUser({ ...user, travelPreferences: selected });
       showSuccessToast();
     } catch (e) {
@@ -98,14 +94,16 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <ActivityIndicator size="large" color="#22C55E" style={{ flex: 1 }} />
-      </SafeAreaView>
+        <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
+      <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
+    </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={32} color="#111827" />
@@ -133,16 +131,8 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
       />
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-          onPress={savePreferences}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveBtnText}>Save Preferences</Text>
-          )}
+        <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={savePreferences} disabled={saving}>
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Preferences</Text>}
         </TouchableOpacity>
       </View>
 
@@ -156,13 +146,15 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
           </View>
         </Animated.View>
       )}
+      <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
+      <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, paddingTop: 0 },
   topBarTitle: { fontSize: 18, fontWeight: '600', color: '#111827' },
   header: { paddingHorizontal: 20, paddingBottom: 10 },
   subtitle: { fontSize: 14, color: '#57636C', lineHeight: 20 },
@@ -185,3 +177,8 @@ const styles = StyleSheet.create({
   toastIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '500' },
 });
+
+
+
+
+
