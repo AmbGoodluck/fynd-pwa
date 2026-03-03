@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import AppHeader from '../components/AppHeader';
 
 type Props = { navigation: any; route: any };
 
@@ -89,13 +90,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Suggested Places</Text>
-        <View style={{ width: 28 }} />
-      </View>
+      <AppHeader title="Suggested Places" onBack={() => navigation.goBack()} />
 
       {destination ? <Text style={styles.destinationTag}>{'\uD83D\uDCCD'} {destination}</Text> : null}
 
@@ -145,8 +140,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 8 },
-  topBarTitle: { fontSize: 17, fontWeight: '600', color: '#111827' },
   destinationTag: { fontSize: 13, color: '#57636C', paddingHorizontal: 14, marginBottom: 6 },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 14, marginHorizontal: 14, paddingHorizontal: 12, height: 44, marginBottom: 8 },
   searchInput: { flex: 1, fontSize: 15, color: '#111827' },

@@ -1,4 +1,4 @@
-const API_KEY = "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c";
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c";
 const BASE = 'https://maps.googleapis.com/maps/api/place';
 
 export interface PlaceResult {

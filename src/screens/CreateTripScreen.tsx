@@ -1,14 +1,14 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, ActivityIndicator, Modal, TextInput, Alert,
+  StatusBar, Modal, TextInput, Alert,
   PanResponder, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { searchPlacesByVibe } from '../services/googlePlacesService';
 import { F } from '../theme/fonts';
+import AppHeader from '../components/AppHeader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -121,7 +121,6 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   // Step 2 state
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
 
   const canGoToStep2 = destination.trim().length > 0 && timeOfDay !== '';
   const canFindPlaces = selectedVibes.length > 0;
@@ -164,59 +163,25 @@ export default function CreateTripScreen({ navigation }: Props) {
     );
   };
 
-  const handleFindPlaces = async () => {
-    setSearchLoading(true);
-    try {
-      const vibeKeywords = selectedVibes.map(id => {
-        const vibe = VIBES.find(v => v.id === id);
-        return vibe?.keyword || vibe?.label || id;
-      });
-      const places = await searchPlacesByVibe(destination, vibeKeywords, latitude || 0, longitude || 0);
-      navigation.navigate('Processing', {
-        places, destination, vibes: selectedVibes,
-        explorationHours, distanceMiles, timeOfDay, latitude, longitude,
-      });
-    } catch {
-      navigation.navigate('Processing', {
-        places: [], destination, vibes: selectedVibes,
-        explorationHours, distanceMiles, timeOfDay,
-      });
-    } finally {
-      setSearchLoading(false);
-    }
+  const handleFindPlaces = () => {
+    const vibeKeywords = selectedVibes.map(id => {
+      const vibe = VIBES.find(v => v.id === id);
+      return vibe?.keyword || vibe?.label || id;
+    });
+    navigation.navigate('Processing', {
+      vibeKeywords, destination, vibes: selectedVibes,
+      explorationHours, distanceMiles, timeOfDay, latitude, longitude,
+    });
   };
-
-  if (searchLoading) {
-    return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <View style={styles.loadingContent}>
-          <View style={styles.loadingIconCircle}>
-            <Ionicons name="search-outline" size={40} color="#22C55E" />
-          </View>
-          <Text style={styles.loadingTitle}>Finding Places...</Text>
-          <Text style={styles.loadingSubtitle}>Discovering the best spots in {destination}</Text>
-          <ActivityIndicator color="#22C55E" size="large" style={{ marginTop: 24 }} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.topBar}>
-        {step === 2 ? (
-          <TouchableOpacity onPress={() => setStep(1)} style={{ padding: 4, opacity: 0.6 }}>
-            <Ionicons name="chevron-back" size={32} color="#111827" />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 40 }} />
-        )}
-        <Text style={styles.topBarTitle}>Create Trip</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <AppHeader
+        title="Create Trip"
+        onBack={step === 2 ? () => setStep(1) : undefined}
+      />
 
       {/* Progress */}
       <View style={styles.progressWrapper}>
@@ -417,14 +382,6 @@ export default function CreateTripScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loadingContainer: { flex: 1, backgroundColor: '#F9FAFB' },
-  loadingContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  loadingIconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  loadingTitle: { fontSize: 24, fontFamily: F.bold, color: '#111827', marginBottom: 8 },
-  loadingSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', textAlign: 'center', lineHeight: 22 },
-
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: '#F9FAFB' },
-  topBarTitle: { fontSize: 25, fontFamily: F.medium, color: '#111827' },
 
   progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },

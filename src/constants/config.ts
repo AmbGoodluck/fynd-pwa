@@ -8,6 +8,6 @@ export const FIREBASE_CONFIG = {
 };
 
 export const GOOGLE_WEB_CLIENT_ID = "52406028380-pgsg4sdr94qd1773e7js6ofuqhtb53i9.apps.googleusercontent.com";
-export const GOOGLE_MAPS_API_KEY = '';
-export const OPENAI_API_KEY = '';
-export const STRIPE_PUBLISHABLE_KEY = '';
+export const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c";
+export const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || "";
+export const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";

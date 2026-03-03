@@ -23,8 +23,8 @@ function MainTabs() {
         tabBarIcon: ({ color, size }) => {
           const icons: Record<string, string> = {
             'Create Trip': 'airplane-outline',
-            Map: 'map-outline',
-            Feedback: 'chatbubble-outline',
+            'Map': 'map-outline',
+            'Feedback': 'chatbubble-outline',
           };
           return <Ionicons name={icons[route.name] as any} size={size} color={color} />;
         },

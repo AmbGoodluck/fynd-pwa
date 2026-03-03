@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Linking, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Linking, Alert, Modal, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import AppHeader from '../components/AppHeader';
 
 // Maps a PlaceResult (from SuggestedPlaces) to the stop shape used in this screen
 function mapPlaceToStop(p: any, index: number) {
@@ -106,13 +107,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={32} color="#111827" />
-        </TouchableOpacity>
-        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        <View style={{ width: 32 }} />
-      </View>
+      <AppHeader title="Itinerary" onBack={() => navigation.goBack()} />
 
       <View style={styles.headerSection}>
         <Text style={styles.title}>Itinerary for {destination}</Text>
@@ -206,8 +201,6 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
-  logo: { width: 80, height: 40, resizeMode: 'contain' },
   headerSection: { paddingHorizontal: 20, paddingVertical: 10, borderTopWidth: 0.5, borderBottomWidth: 0.5, borderColor: '#E5E5EA' },
   title: { fontSize: 22, fontWeight: '500', color: '#111827', marginBottom: 4 },
   metaText: { fontSize: 15, color: '#57636C' },

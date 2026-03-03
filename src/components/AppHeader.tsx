@@ -1,43 +1,46 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../store/useAuthStore';
+import { F } from '../theme/fonts';
 
 type Props = {
-  navigation: any;
-  title?: string;
-  showBack?: boolean;
-  showLogo?: boolean;
-  showAvatar?: boolean;
+  title: string;
+  onBack?: () => void;
 };
 
-export default function AppHeader({ navigation, title, showBack = false, showLogo = false, showAvatar = false }: Props) {
-  const insets = useSafeAreaInsets();
-  const { user } = useAuthStore();
-  const firstName = user?.fullName?.split(' ')[0] || 'U';
-
+/**
+ * Unified Fynd app header.
+ * - Left:   back chevron (if onBack) OR empty spacer
+ * - Center: green accent bar + title
+ * - Right:  Fynd logo-icon (always, opposite the back arrow)
+ */
+export default function AppHeader({ title, onBack }: Props) {
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.side}>
-        {showBack && (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-            <Ionicons name="chevron-back" size={26} color="#111827" style={{ opacity: 0.7 }} />
+    <View style={styles.container}>
+      {/* Left slot — back arrow or spacer */}
+      <View style={styles.left}>
+        {onBack ? (
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={26} color="#111827" />
           </TouchableOpacity>
-        )}
-        {showLogo && (
-          <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        )}
+        ) : null}
       </View>
-      <View style={styles.center}>
-        {title ? <Text style={styles.title}>{title}</Text> : null}
+
+      {/* Center — title */}
+      <View style={styles.titleRow}>
+        <Text style={styles.title} numberOfLines={1}>{title}</Text>
       </View>
-      <View style={[styles.side, { alignItems: 'flex-end' }]}>
-        {showAvatar && (
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
-          </TouchableOpacity>
-        )}
+
+      {/* Right slot — Fynd logo, always */}
+      <View style={styles.right}>
+        <Image
+          source={require('../../assets/logo-icon.png')}
+          style={styles.logoIcon}
+        />
       </View>
     </View>
   );
@@ -47,16 +50,38 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+    minHeight: 56,
   },
-  side: { width: 50, justifyContent: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 17, fontWeight: '600', color: '#111827' },
-  iconBtn: { padding: 2 },
-  logo: { width: 55, height: 50, resizeMode: 'contain' },
-  avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  left: {
+    width: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  right: {
+    width: 54,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  backBtn: { padding: 2 },
+  logoIcon: {
+    width: 54,
+    height: 54,
+    resizeMode: 'contain',
+  },
+  titleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 20,
+    fontFamily: F.bold,
+    color: '#111827',
+    flex: 1,
+  },
 });
