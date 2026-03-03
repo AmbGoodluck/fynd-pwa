@@ -1,69 +1,105 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, Linking, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../store/useAuthStore';
+import { F } from '../theme/fonts';
 
-const MOCK_STOPS = [
-  { id: '1', name: 'Metropolitan Museum of Art', description: 'Famous for world-class arts and history', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1581367687051-9b5dc9ad0c02?w=400', coordinate: { latitude: 40.7794, longitude: -73.9632 } },
-  { id: '2', name: 'Apollo Theater', description: 'Iconic for its Amateur Night and Landmark hiphop and Jazz performance', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?w=400', coordinate: { latitude: 40.8099, longitude: -73.9502 } },
-  { id: '3', name: 'International Center for Photography', description: 'Showcase cutting-edge exhibitions on contemporary and documentary photos.', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=400', coordinate: { latitude: 40.7614, longitude: -73.9776 } },
-  { id: '4', name: 'Summit One Vanderbilt', description: 'Provides 360-degree view including the nearby Chrysler and Empire State Buildings', distance: '14 km', time: '16 min', rating: '4.7', image: 'https://images.unsplash.com/photo-1499092346589-b9b6be3e94b2?w=400', coordinate: { latitude: 40.7527, longitude: -73.9772 } },
-];
+// Maps a PlaceResult (from SuggestedPlaces) to the stop shape used in this screen
+function mapPlaceToStop(p: any, index: number) {
+  return {
+    id: p.placeId || String(index),
+    name: p.name || 'Unknown Place',
+    description: p.description || p.category || '',
+    distance: p.distanceKm ? `${p.distanceKm} km` : '',
+    time: p.walkMinutes ? `${p.walkMinutes} min` : '',
+    rating: p.rating ? String(p.rating.toFixed(1)) : '4.0',
+    image: p.photoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+    coordinate: {
+      latitude: p.coordinates?.lat ?? 0,
+      longitude: p.coordinates?.lng ?? 0,
+    },
+  };
+}
 
-type Stop = typeof MOCK_STOPS[number];
-
+type Stop = ReturnType<typeof mapPlaceToStop>;
 type Props = { navigation: any; route?: any };
 
 export default function ItineraryScreen({ navigation, route }: Props) {
-  const { user } = useAuthStore();
-  const initialStops = route?.params?.stops ?? MOCK_STOPS;
+  // Support both 'places' (from SuggestedPlaces) and legacy 'stops' key
+  const rawPlaces = route?.params?.places ?? route?.params?.stops ?? [];
   const destination = route?.params?.destination || 'Your Destination';
   const tripData = route?.params || {};
-  const [stops, setStops] = useState(initialStops);
-  const [savedPlaces, setSavedPlaces] = useState<string[]>([]);
-  const firstName = user?.fullName?.split(' ')[0] || 'U';
-  
-  console.log('ItineraryScreen - route.params:', JSON.stringify(route?.params));
-  console.log('ItineraryScreen - initialStops:', JSON.stringify(initialStops?.length), 'stops');
-  console.log('ItineraryScreen - destination:', destination);
 
-  const removePlace = (id: string) => setStops((prev: Stop[]) => prev.filter((s: Stop) => s.id !== id));
-  const toggleSave = (id: string) => setSavedPlaces(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const initialStops: Stop[] = rawPlaces.map(mapPlaceToStop);
+  const [stops, setStops] = useState<Stop[]>(initialStops);
+  const [showMapModal, setShowMapModal] = useState(false);
 
-  const openInMap = () => {
-    navigation.navigate('Map', { stops });
+  const removePlace = (id: string) =>
+    setStops(prev => prev.filter(s => s.id !== id));
+
+  const openGoogleMaps = () => {
+    if (stops.length === 0) return;
+
+    if (stops.length === 1) {
+      const { latitude, longitude } = stops[0].coordinate;
+      const url = `https://maps.google.com/maps?q=${latitude},${longitude}`;
+      Linking.openURL(url).catch(() =>
+        Alert.alert('Error', 'Could not open Google Maps.')
+      );
+      return;
+    }
+
+    const origin = stops[0].coordinate;
+    const dest = stops[stops.length - 1].coordinate;
+    const waypoints = stops
+      .slice(1, -1)
+      .map(s => `${s.coordinate.latitude},${s.coordinate.longitude}`)
+      .join('|');
+
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${dest.latitude},${dest.longitude}`;
+    if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
+
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Error', 'Could not open Google Maps.')
+    );
   };
 
-  const renderStop = ({ item }: { item: Stop }) => (
+  const openInAppMap = () => {
+    setShowMapModal(false);
+    navigation.navigate('TripMap', { stops });
+  };
+
+  const renderStop = ({ item, index }: { item: Stop; index: number }) => (
     <View style={styles.card}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: item.image }} style={styles.placeImage} />
-        <TouchableOpacity style={styles.heartBtn} onPress={() => toggleSave(item.id)}>
-          <Ionicons name={savedPlaces.includes(item.id) ? 'heart' : 'heart-outline'} size={16} color={savedPlaces.includes(item.id) ? '#22C55E' : '#fff'} />
-        </TouchableOpacity>
+        <View style={styles.indexBadge}>
+          <Text style={styles.indexBadgeText}>{index + 1}</Text>
+        </View>
       </View>
       <View style={styles.cardContent}>
         <Text style={styles.placeName} numberOfLines={1}>{item.name}</Text>
         <Text style={styles.placeDesc} numberOfLines={2}>{item.description}</Text>
         <View style={styles.statsRow}>
-          <Ionicons name="walk-outline" size={14} color="#57636C" />
-          <Text style={styles.statText}>{item.distance}</Text>
-          <Ionicons name="time-outline" size={14} color="#57636C" style={{ marginLeft: 10 }} />
-          <Text style={styles.statText}>{item.time}</Text>
-          <Ionicons name="star-half" size={14} color="#F59E0B" style={{ marginLeft: 10 }} />
+          {item.distance ? (
+            <>
+              <Ionicons name="walk-outline" size={14} color="#57636C" />
+              <Text style={styles.statText}>{item.distance}</Text>
+            </>
+          ) : null}
+          {item.time ? (
+            <>
+              <Ionicons name="time-outline" size={14} color="#57636C" style={{ marginLeft: 8 }} />
+              <Text style={styles.statText}>{item.time}</Text>
+            </>
+          ) : null}
+          <Ionicons name="star-half" size={14} color="#F59E0B" style={{ marginLeft: 8 }} />
           <Text style={styles.statText}>{item.rating}</Text>
         </View>
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.outlineBtn}>
-            <Text style={styles.outlineBtnText}>Book Now</Text>
-            <Ionicons name="chevron-forward" size={13} color="#111827" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.outlineBtn} onPress={() => removePlace(item.id)}>
-            <Text style={styles.outlineBtnText}>Remove Place</Text>
-            <Ionicons name="trash-outline" size={13} color="#111827" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.removeBtn} onPress={() => removePlace(item.id)}>
+          <Ionicons name="trash-outline" size={13} color="#57636C" />
+          <Text style={styles.removeBtnText}>Remove</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -75,36 +111,95 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           <Ionicons name="chevron-back" size={32} color="#111827" />
         </TouchableOpacity>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{firstName[0].toUpperCase()}</Text>
-        </View>
+        <View style={{ width: 32 }} />
       </View>
 
       <View style={styles.headerSection}>
         <Text style={styles.title}>Itinerary for {destination}</Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{stops.length} Stops{tripData.explorationHours ? ', ' + tripData.explorationHours + ' hrs' : ''}</Text>
-          <TouchableOpacity style={styles.ignoreBtn}>
-            <Text style={styles.ignoreBtnText}>Ignore Itinerary</Text>
-            <Ionicons name="trash-outline" size={16} color="#111827" />
+        <Text style={styles.metaText}>
+          {stops.length} Stop{stops.length !== 1 ? 's' : ''}
+          {tripData.explorationHours ? `, ${tripData.explorationHours} hrs` : ''}
+        </Text>
+      </View>
+
+      {stops.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="map-outline" size={60} color="#E5E5EA" />
+          <Text style={styles.emptyTitle}>No stops left</Text>
+          <Text style={styles.emptySubtitle}>Go back and add places to your itinerary</Text>
+          <TouchableOpacity style={styles.goBackBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.goBackBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.reviewLabel}>Review Itinerary</Text>
-      </View>
-
-      <FlatList
-        data={stops}
-        keyExtractor={item => item.id}
-        renderItem={renderStop}
-        contentContainerStyle={{ paddingVertical: 5, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      />
+      ) : (
+        <FlatList
+          data={stops}
+          keyExtractor={item => item.id}
+          renderItem={renderStop}
+          contentContainerStyle={{ paddingVertical: 5, paddingBottom: 110 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.mapBtn} onPress={openInMap}>
-          <Text style={styles.mapBtnText}>Open in Map</Text>
+        <TouchableOpacity
+          style={[styles.mapBtn, stops.length === 0 && { opacity: 0.4 }]}
+          onPress={() => stops.length > 0 && setShowMapModal(true)}
+          disabled={stops.length === 0}
+        >
+          <Ionicons name="navigate-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.mapBtnText}>Open in Maps</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Map choice modal */}
+      <Modal
+        visible={showMapModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMapModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMapModal(false)}
+        >
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Open in Maps</Text>
+            <Text style={styles.modalSubtitle}>Choose how you want to navigate your trip</Text>
+
+            <TouchableOpacity style={styles.modalOption} onPress={openInAppMap}>
+              <View style={styles.modalOptionIcon}>
+                <Ionicons name="map-outline" size={24} color="#22C55E" />
+              </View>
+              <View style={styles.modalOptionText}>
+                <Text style={styles.modalOptionLabel}>In-App Map</Text>
+                <Text style={styles.modalOptionDesc}>View all your stops pinned on the map</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => { setShowMapModal(false); openGoogleMaps(); }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="navigate-outline" size={24} color="#3B82F6" />
+              </View>
+              <View style={styles.modalOptionText}>
+                <Text style={styles.modalOptionLabel}>Google Maps</Text>
+                <Text style={styles.modalOptionDesc}>Get turn-by-turn directions externally</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowMapModal(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -113,28 +208,41 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8 },
   logo: { width: 80, height: 40, resizeMode: 'contain' },
-  avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   headerSection: { paddingHorizontal: 20, paddingVertical: 10, borderTopWidth: 0.5, borderBottomWidth: 0.5, borderColor: '#E5E5EA' },
-  title: { fontSize: 22, fontWeight: '500', color: '#111827', marginBottom: 8 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  metaText: { fontSize: 16, color: '#111827', opacity: 0.8 },
-  ignoreBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E5E7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, gap: 4 },
-  ignoreBtnText: { fontSize: 14, color: '#111827' },
-  reviewLabel: { fontSize: 14, fontWeight: '500', color: '#111827', opacity: 0.8 },
-  card: { flexDirection: 'row', marginHorizontal: 14, marginVertical: 6, borderRadius: 16, borderWidth: 0.5, borderColor: '#E5E5E7', backgroundColor: '#fff', overflow: 'hidden', height: 144 },
-  imageContainer: { width: 116 },
-  placeImage: { width: 116, height: 144, resizeMode: 'cover' },
-  heartBtn: { position: 'absolute', top: 6, right: 6, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 22, fontWeight: '500', color: '#111827', marginBottom: 4 },
+  metaText: { fontSize: 15, color: '#57636C' },
+  card: { flexDirection: 'row', marginHorizontal: 14, marginVertical: 6, borderRadius: 16, borderWidth: 0.5, borderColor: '#E5E5E7', backgroundColor: '#fff', overflow: 'hidden', height: 130 },
+  imageContainer: { width: 110 },
+  placeImage: { width: 110, height: 130, resizeMode: 'cover' },
+  indexBadge: { position: 'absolute', top: 6, left: 6, width: 24, height: 24, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  indexBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   cardContent: { flex: 1, padding: 10, justifyContent: 'space-between' },
-  placeName: { fontSize: 15, fontWeight: '500', color: '#111827' },
-  placeDesc: { fontSize: 12, color: '#57636C', lineHeight: 16 },
-  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  placeName: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  placeDesc: { fontSize: 12, color: '#57636C', lineHeight: 16, flex: 1, marginVertical: 4 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   statText: { fontSize: 12, color: '#57636C', marginLeft: 2 },
-  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  outlineBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E5E7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, gap: 4 },
-  outlineBtnText: { fontSize: 12, color: '#111827' },
-  bottomBar: { padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7', alignItems: 'center' },
-  mapBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 44, width: 220, alignItems: 'center', justifyContent: 'center' },
+  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start' },
+  removeBtnText: { fontSize: 12, color: '#57636C' },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  goBackBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
+  goBackBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, paddingBottom: 28, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  mapBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   mapBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E5EA', alignSelf: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  modalSubtitle: { fontSize: 14, color: '#57636C', marginBottom: 20 },
+  modalOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  modalOptionIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  modalOptionText: { flex: 1 },
+  modalOptionLabel: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 2 },
+  modalOptionDesc: { fontSize: 13, color: '#57636C' },
+  modalCancel: { marginTop: 16, height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E5E5EA', alignItems: 'center', justifyContent: 'center' },
+  modalCancelText: { fontSize: 15, color: '#57636C', fontWeight: '500' },
 });

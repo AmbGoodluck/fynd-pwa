@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  TextInput, ScrollView, Dimensions, StatusBar, ActivityIndicator
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  StatusBar, ActivityIndicator, Modal, TextInput, Alert,
+  PanResponder, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '../store/useAuthStore';
-import { checkTripLimit, saveTrip } from '../services/database';
+import * as Location from 'expo-location';
 import { searchPlacesByVibe } from '../services/googlePlacesService';
-import UpgradeGate from '../components/UpgradeGate';
+import { F } from '../theme/fonts';
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// ── Vibes (current step 5, design unchanged) ───────────────────────────
 const VIBES = [
   { id: 'arts_culture', label: 'Arts & Culture', icon: 'color-palette-outline', color: '#E91E63', keyword: 'art gallery museum culture' },
   { id: 'music', label: 'Music', icon: 'musical-notes-outline', color: '#9C27B0', keyword: 'music venue live music concert' },
@@ -27,112 +28,134 @@ const VIBES = [
   { id: 'photography', label: 'Photography', icon: 'camera-outline', color: '#FF9800', keyword: 'scenic viewpoint photography landmark' },
 ];
 
-const TIME_OPTIONS = [1, 3, 5, 7, 9, 11, 12];
-const DISTANCE_OPTIONS = [1, 11, 21, 31, 41];
 const TIME_OF_DAY = [
-  { id: 'morning', label: 'Morning', icon: 'sunny-outline', color: '#FF9800' },
-  { id: 'afternoon', label: 'Afternoon', icon: 'partly-sunny-outline', color: '#FFC107' },
-  { id: 'evening', label: 'Evening', icon: 'cloudy-night-outline', color: '#FF5722' },
-  { id: 'night', label: 'Night', icon: 'moon-outline', color: '#3F51B5' },
+  { id: 'morning', label: 'Morning', icon: 'sunny-outline' },
+  { id: 'afternoon', label: 'Afternoon', icon: 'partly-sunny-outline' },
+  { id: 'evening', label: 'Evening', icon: 'cloudy-night-outline' },
+  { id: 'night', label: 'Night', icon: 'moon-outline' },
 ];
-const STEP_ICONS = ['location-outline', 'business-outline', 'time-outline', 'navigate-outline', 'sparkles-outline'];
 
+// ── Slider component ───────────────────────────────────────────────────
+function FyndSlider({ min, max, value, step = 1, onChange }: {
+  min: number; max: number; value: number; step?: number; onChange: (v: number) => void;
+}) {
+  const containerRef = useRef<View>(null);
+  const metricsRef = useRef({ x: 0, width: SCREEN_WIDTH - 56 });
+  const cbRef = useRef(onChange);
+  cbRef.current = onChange;
+  const [renderW, setRenderW] = useState(SCREEN_WIDTH - 56);
+
+  const THUMB = 22;
+  const HPAD = 16;
+  const trackW = renderW - HPAD * 2;
+  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
+
+  function applyPageX(pageX: number) {
+    const tw = metricsRef.current.width - HPAD * 2;
+    const r = Math.max(0, Math.min(1, (pageX - metricsRef.current.x - HPAD) / tw));
+    const snapped = Math.round((min + r * (max - min)) / step) * step;
+    cbRef.current(Math.max(min, Math.min(max, snapped)));
+  }
+
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        const pageX = e.nativeEvent.pageX;
+        containerRef.current?.measure((_, __, w, ___, ox) => {
+          metricsRef.current = { x: ox, width: w };
+          setRenderW(w);
+          applyPageX(pageX);
+        });
+      },
+      onPanResponderMove: (e) => applyPageX(e.nativeEvent.pageX),
+    })
+  ).current;
+
+  return (
+    <View
+      ref={containerRef}
+      style={{ paddingHorizontal: HPAD, paddingVertical: 14 }}
+      onLayout={() =>
+        containerRef.current?.measure((_, __, w, ___, ox) => {
+          metricsRef.current = { x: ox, width: w };
+          setRenderW(w);
+        })
+      }
+      {...pan.panHandlers}
+    >
+      <View style={{ height: 4, backgroundColor: '#E5E5EA', borderRadius: 2 }}>
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: '#22C55E', borderRadius: 2 }} />
+      </View>
+      <View
+        style={{
+          position: 'absolute',
+          top: 5,
+          left: HPAD + ratio * trackW - THUMB / 2,
+          width: THUMB, height: THUMB, borderRadius: THUMB / 2,
+          backgroundColor: '#22C55E',
+          shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4,
+        }}
+      />
+    </View>
+  );
+}
+
+// ── Main Screen ────────────────────────────────────────────────────────
 type Props = { navigation: any };
 
 export default function CreateTripScreen({ navigation }: Props) {
-  const { user } = useAuthStore();
   const [step, setStep] = useState(1);
+
+  // Step 1 state
   const [destination, setDestination] = useState('');
-  const [accommodation, setAccommodation] = useState('');
-  const [explorationHours, setExplorationHours] = useState(3);
-  const [distanceKm, setDistanceKm] = useState(10);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [explorationHours, setExplorationHours] = useState(4);
+  const [distanceMiles, setDistanceMiles] = useState(6);
   const [timeOfDay, setTimeOfDay] = useState('');
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
+
+  // Step 2 state
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showGate, setShowGate] = useState(false);
-  const [gateMessage, setGateMessage] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
 
-  const canContinue = () => {
-    if (step === 1) return destination.trim().length > 0;
-    if (step === 2) return accommodation.trim().length > 0;
-    if (step === 3) return true;
-    if (step === 4) return timeOfDay !== '';
-    if (step === 5) return selectedVibes.length > 0;
-    return false;
-  };
+  const canGoToStep2 = destination.trim().length > 0 && timeOfDay !== '';
+  const canFindPlaces = selectedVibes.length > 0;
 
-  const handleContinue = async () => {
-    console.log('handleContinue called, step:', step, 'canContinue:', canContinue(), 'vibes:', selectedVibes);
-    if (step < 5) { setStep(step + 1); return; }
-
-    console.log('Step 5 fired'); // Step 5 - Find Places
-    if (!user?.id) return;
-
-    setLoading(true);
+  const handleUseLocation = async () => {
+    setLocationLoading(true);
     try {
-      // Check trip limit
-      console.log('checking trip limit for:', user.id);
-      const limitCheck = await checkTripLimit(user.id);
-      console.log('limit check result:', JSON.stringify(limitCheck));
-      if (!limitCheck.allowed) {
-        setGateMessage(limitCheck.reason || '');
-        setShowGate(true);
-        setLoading(false);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Location Access', 'Enable location access in your device settings to use this feature.');
         return;
       }
-
-      // Save trip to Firestore
-      const tripId = await saveTrip(user.id, {
-        destination,
-        accommodation,
-        explorationHours,
-        distanceKm,
-        timeOfDay,
-        vibesSelected: selectedVibes,
-        tripName: `Trip to ${destination}`,
-      });
-
-      // Get vibe keywords for Google Places search
-      const vibeKeywords = selectedVibes.map(id => {
-        const vibe = VIBES.find(v => v.id === id);
-        return vibe?.keyword || vibe?.label || id;
-      });
-
-      // Call Google Places API
-      console.log('calling places API...');
-      const places = await searchPlacesByVibe(destination, vibeKeywords);
-
-      // Navigate to Suggested Places with results
-      console.log('navigating to Processing with places:', places?.length);
-      navigation.navigate('Processing', {
-        places,
-        tripId,
-        destination,
-        vibes: selectedVibes,
-        explorationHours,
-        timeOfDay,
-      });
-
-    } catch (e: any) {
-      console.log('Create trip error:', e);
-      // Navigate with empty places if API fails
-      console.log('navigating to Processing with empty places due to error');
-      navigation.navigate('Processing', {
-        places: [],
-        tripId: null,
-        destination,
-        vibes: selectedVibes,
-        explorationHours,
-        timeOfDay,
-      });
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude: lat, longitude: lng } = loc.coords;
+      setLatitude(lat);
+      setLongitude(lng);
+      const [address] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+      const name = address?.city || address?.district || address?.region || 'My Location';
+      setDestination(name);
+    } catch {
+      Alert.alert('Error', 'Could not get your location. Please enter it manually.');
     } finally {
-      setLoading(false);
+      setLocationLoading(false);
     }
   };
 
-  const handleBack = () => {
-    if (step > 1) setStep(step - 1);
-    else navigation.goBack();
+  const handleConfirmLocation = () => {
+    if (locationInput.trim()) {
+      setDestination(locationInput.trim());
+      setLatitude(null);
+      setLongitude(null);
+    }
+    setShowLocationModal(false);
+    setLocationInput('');
   };
 
   const toggleVibe = (id: string) => {
@@ -141,7 +164,29 @@ export default function CreateTripScreen({ navigation }: Props) {
     );
   };
 
-  if (loading) {
+  const handleFindPlaces = async () => {
+    setSearchLoading(true);
+    try {
+      const vibeKeywords = selectedVibes.map(id => {
+        const vibe = VIBES.find(v => v.id === id);
+        return vibe?.keyword || vibe?.label || id;
+      });
+      const places = await searchPlacesByVibe(destination, vibeKeywords, latitude || 0, longitude || 0);
+      navigation.navigate('Processing', {
+        places, destination, vibes: selectedVibes,
+        explorationHours, distanceMiles, timeOfDay, latitude, longitude,
+      });
+    } catch {
+      navigation.navigate('Processing', {
+        places: [], destination, vibes: selectedVibes,
+        explorationHours, distanceMiles, timeOfDay,
+      });
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  if (searchLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <View style={styles.loadingContent}>
@@ -149,7 +194,7 @@ export default function CreateTripScreen({ navigation }: Props) {
             <Ionicons name="search-outline" size={40} color="#22C55E" />
           </View>
           <Text style={styles.loadingTitle}>Finding Places...</Text>
-          <Text style={styles.loadingSubtitle}>Discovering the best spots in {destination} for you</Text>
+          <Text style={styles.loadingSubtitle}>Discovering the best spots in {destination}</Text>
           <ActivityIndicator color="#22C55E" size="large" style={{ marginTop: 24 }} />
         </View>
       </SafeAreaView>
@@ -160,142 +205,146 @@ export default function CreateTripScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Header */}
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={handleBack} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={28} color="#111827" />
-        </TouchableOpacity>
+        {step === 2 ? (
+          <TouchableOpacity onPress={() => setStep(1)} style={{ padding: 4, opacity: 0.6 }}>
+            <Ionicons name="chevron-back" size={32} color="#111827" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
         <Text style={styles.topBarTitle}>Create Trip</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ width: 40 }} />
       </View>
 
+      {/* Progress */}
       <View style={styles.progressWrapper}>
         <View style={styles.progressContainer}>
-          {[1, 2, 3, 4, 5].map(i => (
+          {[1, 2].map(i => (
             <View key={i} style={[styles.progressSegment, i <= step && styles.progressActive]} />
           ))}
         </View>
-        <Text style={styles.stepLabel}>Step {step} of 5</Text>
+        <Text style={styles.stepLabel}>Step {step} of 2</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.iconCircle}>
-          <Ionicons name={STEP_ICONS[step - 1] as any} size={30} color="#fff" />
-        </View>
+      {/* ── STEP 1: Preferences summary ── */}
+      {step === 1 && (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.sectionTitle}>Select your preference</Text>
 
-        {/* Step 1 - Destination */}
-        {step === 1 && (
-          <View>
-            <Text style={styles.title}>Where do you want to go?</Text>
-            <Text style={styles.subtitle}>Enter your dream destination to get started</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., New York City, Paris, Tokyo"
-              placeholderTextColor="#8E8E93"
-              value={destination}
-              onChangeText={setDestination}
-              autoFocus
-            />
-          </View>
-        )}
-
-        {/* Step 2 - Accommodation */}
-        {step === 2 && (
-          <View>
-            <Text style={styles.title}>Where are you staying?</Text>
-            <Text style={styles.subtitle}>Enter your hotel or accommodation name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Grand Hotel, Airbnb Location"
-              placeholderTextColor="#8E8E93"
-              value={accommodation}
-              onChangeText={setAccommodation}
-              autoFocus
-            />
-          </View>
-        )}
-
-        {/* Step 3 - Time & Distance */}
-        {step === 3 && (
-          <View>
-            <Text style={styles.title}>Exploration Preferences</Text>
-            <Text style={styles.subtitle}>Set your time and distance preferences</Text>
-            <View style={styles.prefCard}>
-              <View style={styles.prefHeader}>
-                <Text style={styles.prefTitle}>Exploration Time</Text>
-                <Text style={styles.prefValue}>{explorationHours} hrs</Text>
-              </View>
-              <View style={styles.sliderTrack}>
-                <View style={[styles.sliderFill, { width: `${((explorationHours - 1) / 11) * 100}%` }]} />
-              </View>
-              <View style={styles.chipRow}>
-                {TIME_OPTIONS.map(h => (
-                  <TouchableOpacity key={h} style={[styles.chip, explorationHours === h && styles.chipActive]} onPress={() => setExplorationHours(h)}>
-                    <Text style={[styles.chipText, explorationHours === h && styles.chipTextActive]}>{h}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.rangeLabels}>
-                <Text style={styles.rangeText}>1 hr</Text>
-                <Text style={styles.rangeText}>12 hrs</Text>
-              </View>
+          {/* Location card */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Where are you exploring from?</Text>
+            <View style={styles.locationBtnRow}>
+              <TouchableOpacity
+                style={[styles.locationBtn, styles.locationBtnOutline]}
+                onPress={() => setShowLocationModal(true)}
+              >
+                <Ionicons name="pencil-outline" size={14} color="#57636C" style={{ marginRight: 5 }} />
+                <Text style={styles.locationBtnOutlineText} numberOfLines={1}>Input location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.locationBtn, styles.locationBtnFilled]}
+                onPress={handleUseLocation}
+                disabled={locationLoading}
+              >
+                {locationLoading
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <>
+                      <Ionicons name="locate-outline" size={14} color="#fff" style={{ marginRight: 5 }} />
+                      <Text style={styles.locationBtnFilledText} numberOfLines={1}>Use my location</Text>
+                    </>
+                }
+              </TouchableOpacity>
             </View>
+            {destination ? (
+              <View style={styles.destinationBadge}>
+                <Ionicons name="location" size={13} color="#22C55E" />
+                <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
+              </View>
+            ) : null}
+          </View>
 
-            <View style={styles.prefCard}>
-              <View style={styles.prefHeader}>
-                <Text style={styles.prefTitle}>Distance Radius</Text>
-                <Text style={styles.prefValue}>{distanceKm} km</Text>
-              </View>
-              <View style={styles.sliderTrack}>
-                <View style={[styles.sliderFill, { width: `${((distanceKm - 1) / 49) * 100}%` }]} />
-              </View>
-              <View style={styles.chipRow}>
-                {DISTANCE_OPTIONS.map(d => (
-                  <TouchableOpacity key={d} style={[styles.chip, distanceKm === d && styles.chipActive]} onPress={() => setDistanceKm(d)}>
-                    <Text style={[styles.chipText, distanceKm === d && styles.chipTextActive]}>{d}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.rangeLabels}>
-                <Text style={styles.rangeText}>1 km</Text>
-                <Text style={styles.rangeText}>50 km</Text>
-              </View>
+          {/* Time card */}
+          <View style={styles.card}>
+            <View style={styles.cardLabelRow}>
+              <Text style={styles.cardLabel}>How long do you wish to explore for?</Text>
+              <Text style={styles.cardValue}>{explorationHours} hr</Text>
+            </View>
+            <FyndSlider min={1} max={8} value={explorationHours} step={1} onChange={setExplorationHours} />
+            <View style={styles.sliderLabels}>
+              <Text style={styles.sliderLabelText}>1 hr</Text>
+              <Text style={styles.sliderLabelText}>4 hr</Text>
+              <Text style={styles.sliderLabelText}>8 hr</Text>
             </View>
           </View>
-        )}
 
-        {/* Step 4 - Time of Day */}
-        {step === 4 && (
-          <View>
-            <Text style={styles.title}>Time of Day</Text>
-            <Text style={styles.subtitle}>When do you prefer to explore?</Text>
-            <View style={styles.timeGrid}>
+          {/* Distance card */}
+          <View style={styles.card}>
+            <View style={styles.cardLabelRow}>
+              <Text style={styles.cardLabel}>How far do you wish to go?</Text>
+              <Text style={styles.cardValue}>{distanceMiles} mi</Text>
+            </View>
+            <FyndSlider min={1} max={21} value={distanceMiles} step={1} onChange={setDistanceMiles} />
+            <View style={styles.sliderLabels}>
+              <Text style={styles.sliderLabelText}>1 mile</Text>
+              <Text style={styles.sliderLabelText}>12 miles</Text>
+              <Text style={styles.sliderLabelText}>21+ miles</Text>
+            </View>
+          </View>
+
+          {/* Time of day card */}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>What time of the day do you prefer?</Text>
+            <View style={styles.chipRow}>
               {TIME_OF_DAY.map(t => (
                 <TouchableOpacity
                   key={t.id}
-                  style={[styles.timeCard, timeOfDay === t.id && styles.timeCardActive]}
+                  style={[styles.timeChip, timeOfDay === t.id && styles.timeChipActive]}
                   onPress={() => setTimeOfDay(t.id)}
                 >
-                  <View style={[styles.timeIconCircle, { backgroundColor: t.color + '20' }]}>
-                    <Ionicons name={t.icon as any} size={32} color={t.color} />
-                  </View>
-                  <Text style={[styles.timeLabel, timeOfDay === t.id && styles.timeLabelActive]}>{t.label}</Text>
+                  <Ionicons
+                    name={t.icon as any}
+                    size={12}
+                    color={timeOfDay === t.id ? '#fff' : '#57636C'}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.timeChipText, timeOfDay === t.id && styles.timeChipTextActive]}>
+                    {t.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
-        )}
 
-        {/* Step 5 - Vibes */}
-        {step === 5 && (
-          <View>
-            <Text style={styles.title}>What interests you?</Text>
-            <Text style={styles.subtitle}>Select activities you'd like to experience</Text>
-            {!user?.isPremium && (
-              <View style={styles.freeNote}>
-                <Ionicons name="information-circle-outline" size={16} color="#F59E0B" />
-                <Text style={styles.freeNoteText}>Free: up to 5 places per trip</Text>
-              </View>
-            )}
+          {/* CTA */}
+          <TouchableOpacity
+            style={[styles.ctaBtn, canGoToStep2 && styles.ctaBtnEnabled]}
+            onPress={() => canGoToStep2 && setStep(2)}
+            disabled={!canGoToStep2}
+          >
+            <Text style={[styles.ctaBtnText, canGoToStep2 && styles.ctaBtnTextEnabled]}>Select Vibe</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
+      {/* ── STEP 2: Vibes (existing step 5, design unchanged) ── */}
+      {step === 2 && (
+        <>
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 130 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.iconCircle}>
+              <Ionicons name="sparkles-outline" size={30} color="#fff" />
+            </View>
+            <Text style={styles.vibeTitle}>What interests you?</Text>
+            <Text style={styles.vibeSubtitle}>Select activities you would like to experience</Text>
             <View style={styles.vibeGrid}>
               {VIBES.map(v => (
                 <TouchableOpacity
@@ -303,92 +352,141 @@ export default function CreateTripScreen({ navigation }: Props) {
                   style={[styles.vibeChip, selectedVibes.includes(v.id) && styles.vibeChipActive]}
                   onPress={() => toggleVibe(v.id)}
                 >
-                  <Ionicons name={v.icon as any} size={18} color={selectedVibes.includes(v.id) ? '#22C55E' : v.color} style={{ marginRight: 8 }} />
-                  <Text style={[styles.vibeLabel, selectedVibes.includes(v.id) && styles.vibeLabelActive]}>{v.label}</Text>
+                  <Ionicons
+                    name={v.icon as any}
+                    size={18}
+                    color={selectedVibes.includes(v.id) ? '#22C55E' : v.color}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={[styles.vibeLabel, selectedVibes.includes(v.id) && styles.vibeLabelActive]}>
+                    {v.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
+          </ScrollView>
+          <View style={styles.bottomBar}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
+              <Text style={styles.backBtnText}>Back</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.findBtn, canFindPlaces && styles.findBtnEnabled]}
+              onPress={handleFindPlaces}
+              disabled={!canFindPlaces}
+            >
+              <Text style={[styles.findBtnText, canFindPlaces && styles.findBtnTextEnabled]}>
+                Find My Places
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </ScrollView>
+        </>
+      )}
 
-      <View style={styles.bottomBar}>
-        {step > 1 && (
-          <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-            <Text style={styles.backBtnText}>Back</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.continueBtn, step === 1 && { flex: 1 }, canContinue() && styles.continueBtnEnabled]}
-          onPress={handleContinue}
-          disabled={!canContinue()}
-        >
-          <Text style={[styles.continueBtnText, canContinue() && styles.continueBtnTextEnabled]}>
-            {step === 5 ? 'Discover Places ' : 'Continue '}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <UpgradeGate
-        visible={showGate}
-        message={gateMessage}
-        onUpgrade={() => { setShowGate(false); navigation.navigate('Subscription'); }}
-        onDismiss={() => setShowGate(false)}
-      />
+      {/* Input Location Modal */}
+      <Modal visible={showLocationModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Enter your location</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. New York City, London, Tokyo"
+              placeholderTextColor="#8E8E93"
+              value={locationInput}
+              onChangeText={setLocationInput}
+              autoFocus
+              onSubmitEditing={handleConfirmLocation}
+              returnKeyType="done"
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { setShowLocationModal(false); setLocationInput(''); }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalConfirm} onPress={handleConfirmLocation}>
+                <Text style={styles.modalConfirmText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  loadingContainer: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  loadingContainer: { flex: 1, backgroundColor: '#F9FAFB' },
   loadingContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   loadingIconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  loadingTitle: { fontSize: 24, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  loadingSubtitle: { fontSize: 15, color: '#57636C', textAlign: 'center', lineHeight: 22 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 20, paddingBottom: 4 },
-  topBarTitle: { fontSize: 17, fontWeight: '600', color: '#111827' },
-  progressWrapper: { paddingHorizontal: 16, paddingTop: 8 },
-  progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E5EA' },
+  loadingTitle: { fontSize: 24, fontFamily: F.bold, color: '#111827', marginBottom: 8 },
+  loadingSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', textAlign: 'center', lineHeight: 22 },
+
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: '#F9FAFB' },
+  topBarTitle: { fontSize: 25, fontFamily: F.medium, color: '#111827' },
+
+  progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
   progressActive: { backgroundColor: '#22C55E' },
-  stepLabel: { color: '#8E8E93', fontSize: 13, marginBottom: 4 },
-  content: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 130 },
-  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  title: { fontSize: 26, fontWeight: '700', color: '#111827', marginBottom: 8, lineHeight: 32 },
-  subtitle: { fontSize: 15, color: '#8E8E93', marginBottom: 28 },
-  input: { backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 16, fontSize: 16, color: '#111827' },
-  prefCard: { backgroundColor: '#F2F2F7', borderRadius: 16, padding: 16, marginBottom: 16 },
-  prefHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  prefTitle: { fontSize: 15, fontWeight: '600', color: '#111827' },
-  prefValue: { fontSize: 15, fontWeight: '700', color: '#22C55E' },
-  sliderTrack: { height: 4, backgroundColor: '#E5E5EA', borderRadius: 2, marginBottom: 14 },
-  sliderFill: { height: 4, backgroundColor: '#22C55E', borderRadius: 2 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  chip: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5EA', alignItems: 'center', justifyContent: 'center' },
-  chipActive: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
-  chipText: { fontSize: 14, color: '#111827' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
-  rangeLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  rangeText: { fontSize: 12, color: '#8E8E93' },
-  timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  timeCard: { width: (width - 44) / 2, backgroundColor: '#F2F2F7', borderRadius: 16, paddingVertical: 24, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
-  timeCardActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
-  timeIconCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  timeLabel: { fontSize: 15, fontWeight: '500', color: '#111827' },
-  timeLabelActive: { color: '#22C55E', fontWeight: '700' },
-  freeNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFBEB', borderRadius: 10, padding: 10, marginBottom: 16, gap: 6 },
-  freeNoteText: { fontSize: 13, color: '#92400E', fontWeight: '500' },
+  stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
+
+  scrollContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
+  sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 16, marginTop: 6 },
+
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+  cardLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardLabel: { fontSize: 15, fontFamily: F.medium, color: '#111827', flex: 1 },
+  cardValue: { fontSize: 15, fontFamily: F.bold, color: '#22C55E', marginLeft: 8 },
+
+  locationBtnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  locationBtn: { flex: 1, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 10 },
+  locationBtnOutline: { borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#fff' },
+  locationBtnOutlineText: { fontSize: 13, fontFamily: F.medium, color: '#374151' },
+  locationBtnFilled: { backgroundColor: '#22C55E' },
+  locationBtnFilledText: { fontSize: 13, fontFamily: F.semibold, color: '#fff' },
+  destinationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: '#F0FDF4', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8 },
+  destinationBadgeText: { fontSize: 13, fontFamily: F.medium, color: '#16A34A', flex: 1 },
+
+  sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 2 },
+  sliderLabelText: { fontSize: 12, fontFamily: F.regular, color: '#9CA3AF' },
+
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  timeChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff' },
+  timeChipActive: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
+  timeChipText: { fontSize: 13, fontFamily: F.medium, color: '#374151' },
+  timeChipTextActive: { fontFamily: F.semibold, color: '#fff' },
+
+  ctaBtn: { marginTop: 8, height: 52, borderRadius: 14, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+  ctaBtnEnabled: { backgroundColor: '#22C55E' },
+  ctaBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
+  ctaBtnTextEnabled: { color: '#fff' },
+
+  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 8, lineHeight: 32 },
+  vibeSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', marginBottom: 24 },
   vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 50, paddingVertical: 12, paddingHorizontal: 16, borderWidth: 2, borderColor: 'transparent' },
+  vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 50, paddingVertical: 11, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent' },
   vibeChipActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
-  vibeLabel: { fontSize: 14, color: '#111827', fontWeight: '500' },
-  vibeLabelActive: { color: '#22C55E', fontWeight: '600' },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 32, paddingTop: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7', gap: 12 },
-  backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E5EA', alignItems: 'center', justifyContent: 'center' },
-  backBtnText: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  continueBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E5EA', alignItems: 'center', justifyContent: 'center' },
-  continueBtnEnabled: { backgroundColor: '#22C55E' },
-  continueBtnText: { fontSize: 16, fontWeight: '600', color: '#8E8E93' },
-  continueBtnTextEnabled: { color: '#fff' },
+  vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
+  vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
+
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 32, paddingTop: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
+  backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
+  findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+  findBtnEnabled: { backgroundColor: '#22C55E' },
+  findBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
+  findBtnTextEnabled: { color: '#fff' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  modalBox: { width: '88%', backgroundColor: '#fff', borderRadius: 20, padding: 24 },
+  modalTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 16 },
+  modalInput: { backgroundColor: '#F3F4F6', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontFamily: F.regular, color: '#111827', marginBottom: 20, borderWidth: 1, borderColor: '#E5E7EB' },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  modalCancel: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+  modalCancelText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
+  modalConfirm: { flex: 1, height: 44, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  modalConfirmText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
 });

@@ -33,8 +33,15 @@
           "enableGooglePay": false
         }
       ],
+      [
+        "react-native-maps",
+        {
+          "maps_cocos_key": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c"
+        }
+      ],
       "@react-native-google-signin/google-signin",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-font"
     ]
   }
 }
