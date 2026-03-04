@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Image, Text, StyleSheet, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -19,11 +19,15 @@ export default function LogoScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../assets/logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <View style={styles.logoWrap}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.tagline}>Trips That Matter</Text>
+      </View>
+      <Text style={styles.version}>v1.0</Text>
     </View>
   );
 }
@@ -35,8 +39,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  logoWrap: {
+    alignItems: 'center',
+  },
   logo: {
-    width: width * 0.8,
-    height: height * 0.3,
+    width: width * 0.65,
+    height: height * 0.22,
+  },
+  tagline: {
+    marginTop: 4,
+    fontSize: 15,
+    letterSpacing: 2.5,
+    color: '#22C55E',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+  },
+  version: {
+    position: 'absolute',
+    bottom: 36,
+    fontSize: 12,
+    color: '#D1D5DB',
+    letterSpacing: 1,
   },
 });

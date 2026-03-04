@@ -87,7 +87,15 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="Suggested Places" onBack={() => navigation.goBack()} />
 
-      {destination ? <Text style={styles.destinationTag}>{'\uD83D\uDCCD'} {destination}</Text> : null}
+      {destination ? (
+        <View style={styles.destRow}>
+          <Ionicons name="location" size={13} color="#22C55E" />
+          <Text style={styles.destinationTag}>{destination}</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{places.length} places</Text>
+          </View>
+        </View>
+      ) : null}
 
       {places.length === 0 ? (
         <View style={styles.emptyState}>
@@ -123,27 +131,30 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  destinationTag: { fontSize: 13, color: '#57636C', paddingHorizontal: 14, marginBottom: 6 },
-  list: { paddingHorizontal: 14, paddingBottom: 110 },
-  card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F2F2F7', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2, overflow: 'hidden' },
-  cardImage: { width: 110, height: 140 },
-  cardBody: { flex: 1, padding: 10, justifyContent: 'space-between' },
-  cardName: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 4 },
-  cardDesc: { fontSize: 12, color: '#57636C', lineHeight: 17, marginBottom: 6, flex: 1 },
-  cardMeta: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  destRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  destinationTag: { fontSize: 13, color: '#374151', fontWeight: '500', flex: 1 },
+  countBadge: { backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#BBF7D0' },
+  countBadgeText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
+  list: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 120 },
+  card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3, overflow: 'hidden' },
+  cardImage: { width: 115, height: 148 },
+  cardBody: { flex: 1, padding: 12, justifyContent: 'space-between' },
+  cardName: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#111827', marginBottom: 3 },
+  cardDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 6, flex: 1 },
+  cardMeta: { flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 12, color: '#57636C', maxWidth: 90 },
-  addBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 10, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#22C55E' },
+  addBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRadius: 12, backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#22C55E' },
   addBtnSelected: { backgroundColor: '#22C55E' },
-  addBtnText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
+  addBtnText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#22C55E' },
   addBtnTextSelected: { color: '#fff' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: 'Inter_600SemiBold', color: '#111827', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   backBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
-  backBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
-  ctaBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  backBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 28, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  ctaBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
 });

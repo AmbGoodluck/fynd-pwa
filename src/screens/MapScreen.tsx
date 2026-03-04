@@ -883,8 +883,7 @@ export default function MapScreen({ navigation, route }: Props) {
       {showRating && (
         <View style={styles.ratingOverlay}>
           <View style={styles.ratingCard}>
-            <Text style={styles.ratingTitle}>Rate Your Trip</Text>
-            <Text style={styles.ratingSubtitle}>How was your experience?</Text>
+            <Text style={styles.ratingTitle}>How do you rate Fynd so far?</Text>
 
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (

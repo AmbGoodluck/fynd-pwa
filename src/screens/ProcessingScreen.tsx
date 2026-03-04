@@ -43,32 +43,73 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.animationWrap}>
-        <LottieView
-          source={require('../../assets/loading.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
+      <View style={styles.inner}>
+        <View style={styles.animationWrap}>
+          <LottieView
+            source={require('../../assets/loading.json')}
+            autoPlay
+            loop
+            style={styles.lottie}
+          />
+        </View>
+        <Text style={styles.message}>{MESSAGES[msgIndex]}</Text>
+        <View style={styles.dotRow}>
+          {MESSAGES.map((_, i) => (
+            <View key={i} style={[styles.dot, i === msgIndex && styles.dotActive]} />
+          ))}
+        </View>
+        <Text style={styles.subMessage}>Hang tight, this won't take long.</Text>
       </View>
-      <Text style={styles.message}>{MESSAGES[msgIndex]}</Text>
-      <Text style={styles.subMessage}>This won't take long</Text>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#e8faea', alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, backgroundColor: '#ffffff' },
+  inner: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   animationWrap: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(34,197,94,0.08)',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#F0FDF4',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 36,
+    shadowColor: '#22C55E',
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
-  lottie: { width: 200, height: 200 },
-  message: { fontSize: 20, fontFamily: F.bold, color: '#111827', marginTop: 28, textAlign: 'center', paddingHorizontal: 40 },
-  subMessage: { fontSize: 14, fontFamily: F.regular, color: '#111827', marginTop: 8, textAlign: 'center' },
+  lottie: { width: 180, height: 180 },
+  message: {
+    fontSize: 22,
+    fontFamily: F.bold,
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 30,
+  },
+  dotRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+  },
+  dotActive: {
+    backgroundColor: '#22C55E',
+    width: 18,
+  },
+  subMessage: {
+    fontSize: 14,
+    fontFamily: F.regular,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
 });
