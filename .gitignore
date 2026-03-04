@@ -43,3 +43,7 @@ yarn-error.*
 .env
 *.env
 functions/.env
+
+# Firebase - commit google-services.json (contains no billing credentials)
+# android/app/google-services.json
+ios/GoogleService-Info.plist

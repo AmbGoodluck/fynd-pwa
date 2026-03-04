@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fynd.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,12 +22,21 @@
         "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.fyndapp"
+      "package": "com.fynd.app",
+      "googleServicesFile": "./android/app/google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "fynd"
+        }
+      ],
       [
         "@stripe/stripe-react-native",
         {
@@ -37,6 +47,12 @@
       "@react-native-google-signin/google-signin",
       "expo-web-browser",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c976e985-a3f5-40f4-b5d9-e61bab2fae8e"
+      }
+    },
+    "owner": "ambgoodluck311"
   }
 }
