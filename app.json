@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/logo-icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "fynd-app",
     "splash": {
       "image": "./assets/logo-icon.png",
       "resizeMode": "contain",
@@ -31,12 +32,6 @@
         {
           "merchantIdentifier": "merchant.com.fynd",
           "enableGooglePay": false
-        }
-      ],
-      [
-        "react-native-maps",
-        {
-          "apiKey": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c"
         }
       ],
       "@react-native-google-signin/google-signin",

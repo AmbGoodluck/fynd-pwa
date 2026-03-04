@@ -26,7 +26,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
     const apiCall = searchPlacesByVibe(destination || '', vibeKeywords || [], latitude || 0, longitude || 0)
       .catch(() => []);
-    const minDelay = new Promise<void>(res => setTimeout(res, 2500));
+    const minDelay = new Promise<void>(res => setTimeout(res, 5000));
 
     Promise.all([apiCall, minDelay]).then(([places]) => {
       if (cancelled) return;

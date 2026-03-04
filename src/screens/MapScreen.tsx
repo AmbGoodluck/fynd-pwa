@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { F } from '../theme/fonts';
@@ -20,10 +21,7 @@ import AppHeader from '../components/AppHeader';
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
 const API_KEY = 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
-const MAP_H = 220; // logical display height in px
-// Request at device-pixel-width; scale=2 doubles it for retina
-const MAP_PX_W = Math.round(SW);
-const MAP_PX_H = MAP_H;
+const MAP_H = 280;
 const LABELS = '123456789ABCDEFGHIJKLMNOP';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,112 +61,258 @@ function walkTime(km: number): string {
   return m > 0 ? `${h}h ${m}m walk` : `${h}h walk`;
 }
 
-// Auto-zoom level that fits all stops in frame
-function autoZoom(stops: Stop[]): number {
-  if (stops.length <= 1) return 15;
-  const lats = stops.map(s => s.coordinate.latitude);
-  const lngs = stops.map(s => s.coordinate.longitude);
-  const span = Math.max(
-    Math.max(...lats) - Math.min(...lats),
-    Math.max(...lngs) - Math.min(...lngs),
+// ─── HTML builders ────────────────────────────────────────────────────────────
+
+/**
+ * Full interactive Google Maps JS — bakes STOPS into the HTML.
+ * User location + activeIdx changes are pushed later via injectJavaScript.
+ */
+function buildTripHtml(stops: Stop[]): string {
+  const stopsData = JSON.stringify(
+    stops.map((s, i) => ({
+      id: s.id,
+      name: s.name,
+      lat: s.coordinate.latitude,
+      lng: s.coordinate.longitude,
+      label: LABELS[i] ?? 'X',
+    }))
   );
-  if (span < 0.01) return 15;
-  if (span < 0.04) return 14;
-  if (span < 0.10) return 13;
-  if (span < 0.25) return 12;
-  if (span < 0.60) return 11;
-  if (span < 1.50) return 10;
-  return 9;
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var STOPS = ${stopsData};
+    var USER = null;
+    var activeIdx = 0;
+    var map, markers = [], polyline, userMarker;
+
+    function pinSvg(label, isActive) {
+      var color = isActive ? '#22C55E' : '#EF4444';
+      var size = isActive ? 40 : 34;
+      var fs = isActive ? 13 : 11;
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + Math.round(size * 1.3) + '" viewBox="0 0 40 52">'
+        + '<path d="M20 0C9 0 0 9 0 20c0 14 20 32 20 32S40 34 40 20C40 9 31 0 20 0z" fill="' + color + '"/>'
+        + '<circle cx="20" cy="19" r="12" fill="white"/>'
+        + '<text x="20" y="24" font-family="Arial,sans-serif" font-size="' + fs + '" font-weight="bold" text-anchor="middle" fill="' + color + '">' + label + '</text>'
+        + '</svg>';
+      return {
+        url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(size, Math.round(size * 1.3)),
+        anchor: new google.maps.Point(size / 2, Math.round(size * 1.3)),
+      };
+    }
+
+    function blueDotSvg() {
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22">'
+        + '<circle cx="11" cy="11" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>'
+        + '<circle cx="11" cy="11" r="3" fill="white"/>'
+        + '</svg>';
+      return {
+        url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(22, 22),
+        anchor: new google.maps.Point(11, 11),
+      };
+    }
+
+    function initMap() {
+      var center = STOPS.length > 0
+        ? { lat: STOPS[0].lat, lng: STOPS[0].lng }
+        : { lat: 40.7128, lng: -74.006 };
+
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: center,
+        zoom: 13,
+        disableDefaultUI: true,
+        gestureHandling: 'greedy',
+        clickableIcons: false,
+        styles: [
+          { featureType: 'poi', stylers: [{ visibility: 'simplified' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+        ],
+      });
+
+      renderAll();
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
+      }
+    }
+
+    function renderAll() {
+      markers.forEach(function(m) { m.setMap(null); });
+      markers = [];
+      if (polyline) polyline.setMap(null);
+      if (userMarker) userMarker.setMap(null);
+      if (STOPS.length === 0) return;
+
+      if (STOPS.length > 1) {
+        polyline = new google.maps.Polyline({
+          path: STOPS.map(function(s) { return { lat: s.lat, lng: s.lng }; }),
+          geodesic: true,
+          strokeColor: '#22C55E',
+          strokeOpacity: 0.85,
+          strokeWeight: 4,
+          map: map,
+        });
+      }
+
+      STOPS.forEach(function(stop, i) {
+        var m = new google.maps.Marker({
+          position: { lat: stop.lat, lng: stop.lng },
+          map: map,
+          icon: pinSvg(stop.label, i === activeIdx),
+          title: stop.name,
+          zIndex: i === activeIdx ? 10 : 1,
+        });
+        (function(idx) {
+          m.addListener('click', function() {
+            activeIdx = idx;
+            refreshMarkers();
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ type: 'markerTap', index: idx })
+              );
+            }
+          });
+        })(i);
+        markers.push(m);
+      });
+
+      drawUserDot();
+      fitAll();
+    }
+
+    function drawUserDot() {
+      if (userMarker) userMarker.setMap(null);
+      if (!USER) return;
+      userMarker = new google.maps.Marker({
+        position: USER,
+        map: map,
+        icon: blueDotSvg(),
+        zIndex: 20,
+        title: 'You',
+      });
+    }
+
+    function refreshMarkers() {
+      markers.forEach(function(m, i) {
+        m.setIcon(pinSvg(STOPS[i].label, i === activeIdx));
+        m.setZIndex(i === activeIdx ? 10 : 1);
+      });
+    }
+
+    function fitAll() {
+      if (STOPS.length === 0) return;
+      if (STOPS.length === 1) {
+        map.setCenter({ lat: STOPS[0].lat, lng: STOPS[0].lng });
+        map.setZoom(15);
+        return;
+      }
+      var b = new google.maps.LatLngBounds();
+      STOPS.forEach(function(s) { b.extend({ lat: s.lat, lng: s.lng }); });
+      if (USER) b.extend(USER);
+      map.fitBounds(b, { top: 50, right: 30, bottom: 30, left: 30 });
+    }
+
+    /* ── Called from React Native via injectJavaScript ── */
+
+    function setActiveStop(idx) {
+      activeIdx = idx;
+      refreshMarkers();
+      if (STOPS[idx]) {
+        map.panTo({ lat: STOPS[idx].lat, lng: STOPS[idx].lng });
+        map.setZoom(15);
+      }
+    }
+
+    function showOverview() {
+      refreshMarkers();
+      fitAll();
+    }
+
+    function setUserLocation(lat, lng) {
+      USER = { lat: lat, lng: lng };
+      drawUserDot();
+    }
+  </script>
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async">
+  </script>
+</body>
+</html>`;
 }
 
-const hasCoord = (s: Stop) =>
-  s.coordinate != null &&
-  (s.coordinate.latitude !== 0 || s.coordinate.longitude !== 0);
-
-// ─── Static Maps URL builders ─────────────────────────────────────────────────
-
 /**
- * Overview: all stops as numbered markers + green polyline route.
- * Active stop marker is green; others are red.
+ * Idle map (Map tab, no active trip) — shows user's location only.
  */
-function buildOverviewUrl(
-  stops: Stop[],
-  activeIdx: number,
-  user: Coord | null,
-): string {
-  const valid = stops.filter(hasCoord);
-  if (valid.length === 0) return '';
+function buildIdleHtml(): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var USER = null;
+    var map, userMarker;
 
-  let u =
-    `https://maps.googleapis.com/maps/api/staticmap` +
-    `?size=${MAP_PX_W}x${MAP_PX_H}&scale=2&maptype=roadmap`;
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        center: { lat: 40.7128, lng: -74.006 },
+        zoom: 11,
+        disableDefaultUI: true,
+        gestureHandling: 'greedy',
+        clickableIcons: false,
+        styles: [
+          { featureType: 'poi', stylers: [{ visibility: 'simplified' }] },
+          { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+        ],
+      });
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
+      }
+    }
 
-  // Minimal style: hide clutter
-  u += '&style=feature:poi|visibility:simplified';
-  u += '&style=feature:transit|visibility:off';
-
-  // Route polyline
-  if (valid.length > 1) {
-    const pts = valid
-      .map(s => `${s.coordinate.latitude},${s.coordinate.longitude}`)
-      .join('|');
-    u += `&path=weight:4|color:0x22C55Ebb|${pts}`;
-  }
-
-  // Numbered markers — cap at 10 to keep URL within limits
-  valid.slice(0, 10).forEach((s, i) => {
-    const color = i === activeIdx ? '0x22C55E' : 'red';
-    const label = LABELS[i] ?? 'X';
-    u += `&markers=color:${color}|label:${label}|${s.coordinate.latitude},${s.coordinate.longitude}`;
-  });
-
-  // User location (small blue dot)
-  if (user) {
-    u += `&markers=color:blue|size:small|${user.latitude},${user.longitude}`;
-  }
-
-  // Center on midpoint of all stops; zoom to fit bounding box
-  const avgLat = valid.reduce((a, s) => a + s.coordinate.latitude, 0) / valid.length;
-  const avgLng = valid.reduce((a, s) => a + s.coordinate.longitude, 0) / valid.length;
-  u += `&center=${avgLat.toFixed(6)},${avgLng.toFixed(6)}&zoom=${autoZoom(valid)}`;
-  u += `&key=${API_KEY}`;
-  return u;
-}
-
-/**
- * Focus: zoom into a single stop at z=15, draw dotted line from user if available.
- */
-function buildFocusUrl(stop: Stop, user: Coord | null): string {
-  const { latitude: lat, longitude: lng } = stop.coordinate;
-  let u =
-    `https://maps.googleapis.com/maps/api/staticmap` +
-    `?size=${MAP_PX_W}x${MAP_PX_H}&scale=2&maptype=roadmap`;
-
-  u += '&style=feature:poi|visibility:simplified';
-  u += `&markers=color:0x22C55E|label:${LABELS[0]}|${lat},${lng}`;
-
-  if (user) {
-    u += `&markers=color:blue|size:small|${user.latitude},${user.longitude}`;
-    // Geodesic dashed-style line from user to stop
-    u += `&path=weight:3|color:0x22C55E88|geodesic:true|${user.latitude},${user.longitude}|${lat},${lng}`;
-  }
-
-  u += `&center=${lat.toFixed(6)},${lng.toFixed(6)}&zoom=15`;
-  u += `&key=${API_KEY}`;
-  return u;
-}
-
-/**
- * Idle (Map tab, no active trip): show user's current position.
- */
-function buildIdleUrl(user: Coord): string {
-  let u =
-    `https://maps.googleapis.com/maps/api/staticmap` +
-    `?size=${MAP_PX_W}x${MAP_PX_H}&scale=2&maptype=roadmap`;
-  u += `&markers=color:0x22C55E|label:Y|${user.latitude},${user.longitude}`;
-  u += `&center=${user.latitude.toFixed(6)},${user.longitude.toFixed(6)}&zoom=14`;
-  u += `&key=${API_KEY}`;
-  return u;
+    function setUserLocation(lat, lng) {
+      USER = { lat: lat, lng: lng };
+      if (userMarker) userMarker.setMap(null);
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22">'
+        + '<circle cx="11" cy="11" r="8" fill="#22C55E" stroke="white" stroke-width="3"/>'
+        + '<circle cx="11" cy="11" r="3" fill="white"/></svg>';
+      userMarker = new google.maps.Marker({
+        position: USER,
+        map: map,
+        icon: {
+          url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
+          scaledSize: new google.maps.Size(22, 22),
+          anchor: new google.maps.Point(11, 11),
+        },
+        title: 'Your location',
+      });
+      map.setCenter(USER);
+      map.setZoom(14);
+    }
+  </script>
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async">
+  </script>
+</body>
+</html>`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -178,12 +322,23 @@ export default function MapScreen({ navigation, route }: Props) {
   const stops: Stop[] = route?.params?.stops ?? [];
   const hasStops = stops.length > 0;
 
+  const webViewRef = useRef<WebView>(null);
+  const [webViewReady, setWebViewReady] = useState(false);
+  const [mapLoading, setMapLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
   const [userLoc, setUserLoc] = useState<Coord | null>(null);
-  const [imgLoading, setImgLoading] = useState(true);
-  const [focusMode, setFocusMode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [rating, setRating] = useState(0);
 
-  // Request location once on mount
+  // Build HTML once — stops are baked in; user location + activeIdx are pushed via injectJavaScript
+  const mapHtml = useMemo(
+    () => (hasStops ? buildTripHtml(stops) : buildIdleHtml()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasStops]   // intentionally only rebuild if tab vs trip changes
+  );
+
+  // Request GPS once on mount
   useEffect(() => {
     (async () => {
       try {
@@ -192,38 +347,63 @@ export default function MapScreen({ navigation, route }: Props) {
         const loc = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-        setUserLoc({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
+        setUserLoc({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       } catch (_) {}
     })();
   }, []);
 
+  // Push user location into WebView as soon as both are ready
+  useEffect(() => {
+    if (!webViewReady || !userLoc) return;
+    webViewRef.current?.injectJavaScript(
+      `setUserLocation(${userLoc.latitude}, ${userLoc.longitude}); true;`
+    );
+  }, [webViewReady, userLoc]);
+
+  // Push activeIdx into the map when it changes from RN (arrows / thumbnails)
+  const lastInjectedIdx = useRef(-1);
+  useEffect(() => {
+    if (!webViewReady || !hasStops) return;
+    if (lastInjectedIdx.current === activeIdx) return; // already in sync
+    lastInjectedIdx.current = activeIdx;
+    webViewRef.current?.injectJavaScript(`setActiveStop(${activeIdx}); true;`);
+  }, [activeIdx, webViewReady, hasStops]);
+
+  // Handle messages from the WebView (Google Maps)
+  const onMessage = (event: WebViewMessageEvent) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'mapReady') {
+        setWebViewReady(true);
+        setMapLoading(false);
+      } else if (data.type === 'markerTap') {
+        lastInjectedIdx.current = data.index; // prevent echo injection
+        setActiveIdx(data.index);
+      }
+    } catch (_) {}
+  };
+
+  // Show rating popup after 4 seconds on map page
+  useEffect(() => {
+    if (!hasStops) return; // only show on active trip map
+    const timer = setTimeout(() => {
+      setShowRating(true);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [hasStops]);
+
   const activeStop = hasStops ? stops[activeIdx] : null;
 
-  // Real-time distance from user to the active stop
   const distToActive = useMemo(() => {
-    if (!userLoc || !activeStop || !hasCoord(activeStop)) return null;
-    return haversineKm(
-      userLoc.latitude, userLoc.longitude,
-      activeStop.coordinate.latitude, activeStop.coordinate.longitude,
-    );
+    if (!userLoc || !activeStop) return null;
+    const { latitude: lat, longitude: lng } = activeStop.coordinate;
+    if (lat === 0 && lng === 0) return null;
+    return haversineKm(userLoc.latitude, userLoc.longitude, lat, lng);
   }, [userLoc, activeStop]);
 
-  // Rebuild map URL whenever dependencies change
-  const mapUrl = useMemo(() => {
-    if (!hasStops) return userLoc ? buildIdleUrl(userLoc) : null;
-    if (focusMode && activeStop && hasCoord(activeStop)) {
-      return buildFocusUrl(activeStop, userLoc);
-    }
-    return buildOverviewUrl(stops, activeIdx, userLoc);
-  }, [hasStops, stops, activeIdx, userLoc, focusMode, activeStop]);
-
-  // Reset loading spinner each time the URL changes
-  useEffect(() => { setImgLoading(true); }, [mapUrl]);
-
-  const selectStop = (i: number) => { setActiveIdx(i); setFocusMode(false); };
+  const selectStop = (i: number) => {
+    setActiveIdx(i);
+  };
 
   const openStopInGMaps = (stop: Stop) => {
     const { latitude, longitude } = stop.coordinate;
@@ -248,45 +428,221 @@ export default function MapScreen({ navigation, route }: Props) {
     Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
   };
 
+  const showOverview = () => {
+    webViewRef.current?.injectJavaScript(`showOverview(); true;`);
+  };
+
+  const endTrip = () => {
+    Alert.alert(
+      'End Trip?',
+      'Are you sure you want to end this trip? You will return to the home page.',
+      [
+        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'End Trip',
+          onPress: () => {
+            navigation.reset({
+              index: 0,
+              routes: [
+                {
+                  name: 'MainTabs',
+                  params: { screen: 'Create Trip' },
+                },
+              ],
+            });
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
+
+  const submitRating = () => {
+    // Save rating or send to backend
+    setShowRating(false);
+    setRating(0);
+  };
+
+  // ── Fullscreen map mode ───────────────────────────────────────────────────
+  if (isFullscreen) {
+    return (
+      <SafeAreaView style={styles.fullscreenContainer} edges={['top']}>
+        {/* Fullscreen Map WebView */}
+        <View style={styles.fullscreenMapBox}>
+          <WebView
+            ref={webViewRef}
+            source={{ html: mapHtml }}
+            style={styles.webView}
+            javaScriptEnabled
+            domStorageEnabled
+            onMessage={onMessage}
+            scrollEnabled={false}
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+          />
+
+          {/* Loading overlay */}
+          {mapLoading && (
+            <View style={styles.mapLoadingOverlay}>
+              <ActivityIndicator color="#22C55E" size="large" />
+              <Text style={styles.mapLoadingTxt}>Loading map…</Text>
+            </View>
+          )}
+
+          {/* Floating controls in fullscreen */}
+          {!mapLoading && (
+            <View style={styles.fullscreenControls}>
+              <TouchableOpacity style={styles.overviewBtn} onPress={showOverview}>
+                <Ionicons name="contract-outline" size={13} color="#111827" />
+                <Text style={styles.overviewBtnTxt}>Overview</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.endTripBtn} onPress={endTrip}>
+                <Ionicons name="power" size={13} color="#fff" />
+                <Text style={styles.endTripBtnTxt}>End Trip</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity style={styles.navigateBtn} onPress={openFullRoute}>
+                <Ionicons name="navigate" size={13} color="#fff" />
+                <Text style={styles.navigateBtnTxt}>Navigate</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Close fullscreen button */}
+          <TouchableOpacity
+            style={styles.closeFullscreenBtn}
+            onPress={() => setIsFullscreen(false)}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom panel with stop info in fullscreen */}
+        <View style={styles.fullscreenBottomPanel}>
+          {/* Stop navigator bar */}
+          <View style={styles.stopBar}>
+            <TouchableOpacity
+              onPress={() => activeIdx > 0 && selectStop(activeIdx - 1)}
+              disabled={activeIdx === 0}
+              style={[styles.arrowBtn, activeIdx === 0 && styles.arrowBtnDim]}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={22}
+                color={activeIdx === 0 ? '#C7C7CC' : '#111827'}
+              />
+            </TouchableOpacity>
+
+            <View style={styles.stopBarCenter}>
+              <Text style={styles.stopBarCount}>
+                Stop{' '}
+                <Text style={styles.stopBarNum}>{activeIdx + 1}</Text>
+                <Text style={styles.stopBarOf}> / {stops.length}</Text>
+              </Text>
+              {activeStop ? (
+                <Text style={styles.stopBarName} numberOfLines={1}>
+                  {activeStop.name}
+                </Text>
+              ) : null}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => activeIdx < stops.length - 1 && selectStop(activeIdx + 1)}
+              disabled={activeIdx === stops.length - 1}
+              style={[styles.arrowBtn, activeIdx === stops.length - 1 && styles.arrowBtnDim]}
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={22}
+                color={activeIdx === stops.length - 1 ? '#C7C7CC' : '#111827'}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Active stop detail card */}
+          {activeStop ? (
+            <View style={[styles.detailCard, styles.detailCardFullscreen]}>
+              <Image source={{ uri: activeStop.image }} style={styles.detailImg} />
+
+              <View style={styles.detailBody}>
+                <Text style={styles.detailName} numberOfLines={1}>
+                  {activeStop.name}
+                </Text>
+                {activeStop.description ? (
+                  <Text style={styles.detailDesc} numberOfLines={1}>
+                    {activeStop.description}
+                  </Text>
+                ) : null}
+
+                <View style={styles.chips}>
+                  {activeStop.rating ? (
+                    <View style={styles.chip}>
+                      <Ionicons name="star" size={11} color="#F59E0B" />
+                      <Text style={styles.chipTxt}>{activeStop.rating}</Text>
+                    </View>
+                  ) : null}
+                  {distToActive !== null ? (
+                    <View style={styles.chip}>
+                      <Ionicons name="walk-outline" size={11} color="#22C55E" />
+                      <Text style={styles.chipTxt}>
+                        {distToActive} km · {walkTime(distToActive)}
+                      </Text>
+                    </View>
+                  ) : activeStop.distance ? (
+                    <View style={styles.chip}>
+                      <Ionicons name="walk-outline" size={11} color="#22C55E" />
+                      <Text style={styles.chipTxt}>{activeStop.distance}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.goBtn}
+                onPress={() => openStopInGMaps(activeStop)}
+              >
+                <Ionicons name="navigate-outline" size={20} color="#22C55E" />
+                <Text style={styles.goBtnTxt}>Go</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // ── Idle state (Map tab, no active trip) ───────────────────────────────────
   if (!hasStops) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <AppHeader title="Map" />
 
-        {/* Static map of user's location */}
         <View style={styles.mapBox}>
-          {mapUrl ? (
-            <>
-              <Image
-                source={{ uri: mapUrl }}
-                style={styles.mapImg}
-                onLoad={() => setImgLoading(false)}
-                onError={() => setImgLoading(false)}
-              />
-              {imgLoading && (
-                <View style={styles.mapLoadingOverlay}>
-                  <ActivityIndicator color="#22C55E" size="large" />
-                </View>
-              )}
-              {!imgLoading && (
-                <View style={styles.locationPillWrap}>
-                  <View style={styles.locationPill}>
-                    <Ionicons name="location" size={13} color="#22C55E" />
-                    <Text style={styles.locationPillTxt}>Your location</Text>
-                  </View>
-                </View>
-              )}
-            </>
-          ) : (
-            <View style={styles.mapPlaceholder}>
-              <Ionicons name="map-outline" size={48} color="#E5E5EA" />
-              <Text style={styles.mapPlaceholderTxt}>Finding your location…</Text>
+          <WebView
+            ref={webViewRef}
+            source={{ html: mapHtml }}
+            style={styles.webView}
+            javaScriptEnabled
+            domStorageEnabled
+            onMessage={onMessage}
+            scrollEnabled={false}
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+          />
+          {mapLoading && (
+            <View style={styles.mapLoadingOverlay}>
+              <ActivityIndicator color="#22C55E" size="large" />
+              <Text style={styles.mapLoadingTxt}>Loading map…</Text>
             </View>
           )}
         </View>
 
-        {/* CTA card */}
         <View style={styles.idleCard}>
           <Ionicons name="compass-outline" size={44} color="#22C55E" style={{ marginBottom: 14 }} />
           <Text style={styles.idleTitle}>Your trip map lives here</Text>
@@ -312,51 +668,57 @@ export default function MapScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="Trip Map" onBack={() => navigation.goBack()} />
 
-      {/* ── Static map image ── */}
-      <TouchableOpacity
-        activeOpacity={0.97}
-        onPress={() => setFocusMode(f => !f)}
-        style={styles.mapBox}
-      >
-        {mapUrl ? (
-          <Image
-            source={{ uri: mapUrl }}
-            style={styles.mapImg}
-            onLoadStart={() => setImgLoading(true)}
-            onLoad={() => setImgLoading(false)}
-            onError={() => setImgLoading(false)}
-          />
-        ) : (
-          <View style={styles.mapPlaceholder}>
+      {/* ── Interactive Google Maps WebView ── */}
+      <View style={styles.mapBox}>
+        <WebView
+          ref={webViewRef}
+          source={{ html: mapHtml }}
+          style={styles.webView}
+          javaScriptEnabled
+          domStorageEnabled
+          onMessage={onMessage}
+          scrollEnabled={false}
+          bounces={false}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
+          originWhitelist={['*']}
+          mixedContentMode="always"
+        />
+
+        {/* Loading overlay */}
+        {mapLoading && (
+          <View style={styles.mapLoadingOverlay}>
             <ActivityIndicator color="#22C55E" size="large" />
+            <Text style={styles.mapLoadingTxt}>Loading map…</Text>
           </View>
         )}
 
-        {/* Loading spinner overlay */}
-        {imgLoading && mapUrl ? (
-          <View style={styles.mapLoadingOverlay}>
-            <ActivityIndicator color="#22C55E" size="large" />
+        {/* Floating controls — only shown after map is ready */}
+        {!mapLoading && (
+          <View style={styles.mapControls}>
+            <TouchableOpacity style={styles.overviewBtn} onPress={showOverview}>
+              <Ionicons name="contract-outline" size={13} color="#111827" />
+              <Text style={styles.overviewBtnTxt}>Overview</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.endTripBtn} onPress={endTrip}>
+              <Ionicons name="power" size={13} color="#fff" />
+              <Text style={styles.endTripBtnTxt}>End Trip</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity 
+              style={styles.fullscreenBtn}
+              onPress={() => setIsFullscreen(true)}
+            >
+              <Ionicons name="expand-outline" size={13} color="#fff" />
+              <Text style={styles.fullscreenBtnTxt}>Fullscreen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navigateBtn} onPress={openFullRoute}>
+              <Ionicons name="navigate" size={13} color="#fff" />
+              <Text style={styles.navigateBtnTxt}>Navigate</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
-
-        {/* Floating controls row */}
-        <View style={styles.mapControls}>
-          <View style={styles.focusPill}>
-            <Ionicons
-              name={focusMode ? 'contract-outline' : 'expand-outline'}
-              size={12}
-              color="#111827"
-            />
-            <Text style={styles.focusPillTxt}>
-              {focusMode ? 'Overview' : 'Focus stop'}
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.navigateBtn} onPress={openFullRoute}>
-            <Ionicons name="navigate" size={13} color="#fff" />
-            <Text style={styles.navigateBtnTxt}>Navigate</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+        )}
+      </View>
 
       {/* ── Stop navigator bar ── */}
       <View style={styles.stopBar}>
@@ -420,7 +782,6 @@ export default function MapScreen({ navigation, route }: Props) {
                   <Text style={styles.chipTxt}>{activeStop.rating}</Text>
                 </View>
               ) : null}
-
               {distToActive !== null ? (
                 <View style={styles.chip}>
                   <Ionicons name="walk-outline" size={11} color="#22C55E" />
@@ -473,21 +834,11 @@ export default function MapScreen({ navigation, route }: Props) {
                   i === activeIdx && styles.thumbBadgeActive,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.thumbBadgeTxt,
-                    i === activeIdx && styles.thumbBadgeTxtActive,
-                  ]}
-                >
-                  {i + 1}
-                </Text>
+                <Text style={styles.thumbBadgeTxt}>{i + 1}</Text>
               </View>
             </View>
             <Text
-              style={[
-                styles.thumbLbl,
-                i === activeIdx && styles.thumbLblActive,
-              ]}
+              style={[styles.thumbLbl, i === activeIdx && styles.thumbLblActive]}
               numberOfLines={1}
             >
               {stop.name}
@@ -495,6 +846,54 @@ export default function MapScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* ── Rating Modal ── */}
+      {showRating && (
+        <View style={styles.ratingOverlay}>
+          <View style={styles.ratingCard}>
+            <Text style={styles.ratingTitle}>Rate Your Trip</Text>
+            <Text style={styles.ratingSubtitle}>How was your experience?</Text>
+
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starBtn}
+                >
+                  <Ionicons
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={40}
+                    color={star <= rating ? '#F59E0B' : '#D1D5DB'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.ratingActions}>
+              <TouchableOpacity
+                style={styles.ratingCancelBtn}
+                onPress={() => {
+                  setShowRating(false);
+                  setRating(0);
+                }}
+              >
+                <Text style={styles.ratingCancelTxt}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.ratingSubmitBtn,
+                  rating === 0 && styles.ratingSubmitBtnDisabled,
+                ]}
+                onPress={submitRating}
+                disabled={rating === 0}
+              >
+                <Text style={styles.ratingSubmitTxt}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -503,7 +902,48 @@ export default function MapScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
 
-  // ── Map box (shared) ──
+  // ── Fullscreen mode ──
+  fullscreenContainer: { flex: 1, backgroundColor: '#000' },
+  fullscreenMapBox: {
+    flex: 1,
+    backgroundColor: '#F2F2F7',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  fullscreenControls: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    pointerEvents: 'box-none',
+  },
+  closeFullscreenBtn: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenBottomPanel: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    maxHeight: '35%',
+  },
+  detailCardFullscreen: {
+    marginVertical: 10,
+  },
+
+  // ── Map box ──
   mapBox: {
     width: '100%',
     height: MAP_H,
@@ -511,38 +951,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  mapImg: { width: '100%', height: MAP_H, resizeMode: 'cover' },
+  webView: { flex: 1 },
   mapLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.55)',
-  },
-  mapPlaceholder: {
-    width: '100%',
-    height: MAP_H,
-    alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: '#F2F2F7',
   },
-  mapPlaceholderTxt: { fontSize: 13, color: '#8E8E93', marginTop: 8 },
-
-  // Location pill (idle)
-  locationPillWrap: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
+  mapLoadingTxt: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#8E8E93',
+    fontFamily: F.regular,
   },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.93)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  locationPillTxt: { fontSize: 12, fontFamily: F.medium, color: '#111827' },
 
   // Map floating controls
   mapControls: {
@@ -553,8 +974,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    pointerEvents: 'box-none',
   },
-  focusPill: {
+  overviewBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -563,7 +985,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  focusPillTxt: { fontSize: 12, fontFamily: F.medium, color: '#111827' },
+  overviewBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#111827' },
+  endTripBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EF4444',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  endTripBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
+  fullscreenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#3B82F6',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  fullscreenBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
   navigateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -668,7 +1110,7 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 3,
   },
-  detailDesc: { fontSize: 12, color: '#57636C', marginBottom: 6 },
+  detailDesc: { fontSize: 12, color: '#57636C', marginBottom: 5 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
     flexDirection: 'row',
@@ -722,7 +1164,6 @@ const styles = StyleSheet.create({
   },
   thumbBadgeActive: { backgroundColor: '#22C55E' },
   thumbBadgeTxt: { fontSize: 10, fontFamily: F.bold, color: '#fff' },
-  thumbBadgeTxtActive: { color: '#fff' },
   thumbLbl: {
     fontSize: 10,
     fontFamily: F.regular,
@@ -732,4 +1173,80 @@ const styles = StyleSheet.create({
     width: 68,
   },
   thumbLblActive: { fontFamily: F.medium, color: '#22C55E' },
+
+  // ── Rating Modal ──
+  ratingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  ratingCard: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+  },
+  ratingTitle: {
+    fontSize: 20,
+    fontFamily: F.bold,
+    color: '#111827',
+    marginBottom: 6,
+  },
+  ratingSubtitle: {
+    fontSize: 14,
+    fontFamily: F.regular,
+    color: '#6B7280',
+    marginBottom: 20,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
+  starBtn: {
+    padding: 4,
+  },
+  ratingActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  ratingCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+  },
+  ratingCancelTxt: {
+    fontSize: 14,
+    fontFamily: F.semibold,
+    color: '#6B7280',
+  },
+  ratingSubmitBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+  },
+  ratingSubmitBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+  },
+  ratingSubmitTxt: {
+    fontSize: 14,
+    fontFamily: F.semibold,
+    color: '#fff',
+  },
 });
