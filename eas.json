@@ -8,17 +8,50 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "fynd-app-42ef4.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "fynd-app-42ef4",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "fynd-app-42ef4.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "52406028380",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:52406028380:android:28243c30c2ab415b81be99",
+        "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://b96701c181b70e88148fc9d22b61e4ce@o4510987876630528.ingest.us.sentry.io/4510987885740032",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51RWWEHDc2A8DjvXcSm2oPlMw1LlkVAP5S6FwaFmUFpBoRiToSyxVQjPD68iE9frI9h4ztU4ttHDMWwzd4kedbKM6005kHGTT1k"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "fynd-app-42ef4.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "fynd-app-42ef4",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "fynd-app-42ef4.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "52406028380",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:52406028380:android:28243c30c2ab415b81be99",
+        "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://b96701c181b70e88148fc9d22b61e4ce@o4510987876630528.ingest.us.sentry.io/4510987885740032",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51RWWEHDc2A8DjvXcSm2oPlMw1LlkVAP5S6FwaFmUFpBoRiToSyxVQjPD68iE9frI9h4ztU4ttHDMWwzd4kedbKM6005kHGTT1k"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "fynd-app-42ef4.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "fynd-app-42ef4",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "fynd-app-42ef4.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "52406028380",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:52406028380:android:28243c30c2ab415b81be99",
+        "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://b96701c181b70e88148fc9d22b61e4ce@o4510987876630528.ingest.us.sentry.io/4510987885740032",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51RWWEHDc2A8DjvXcSm2oPlMw1LlkVAP5S6FwaFmUFpBoRiToSyxVQjPD68iE9frI9h4ztU4ttHDMWwzd4kedbKM6005kHGTT1k"
       }
     }
   },
