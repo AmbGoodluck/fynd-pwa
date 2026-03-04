@@ -25,7 +25,6 @@ export default function LogoScreen({ navigation }: Props) {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.tagline}>Trips That Matter</Text>
       </View>
       <Text style={styles.version}>v1.0</Text>
     </View>
@@ -45,14 +44,6 @@ const styles = StyleSheet.create({
   logo: {
     width: width * 0.65,
     height: height * 0.22,
-  },
-  tagline: {
-    marginTop: 4,
-    fontSize: 15,
-    letterSpacing: 2.5,
-    color: '#22C55E',
-    fontWeight: '500',
-    textTransform: 'uppercase',
   },
   version: {
     position: 'absolute',

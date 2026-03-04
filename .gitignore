@@ -38,7 +38,12 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
+
+# Android - track source, ignore build output
+/android/app/build/
+/android/build/
+/android/.gradle/
+/android/app/.cxx/
 
 .env
 *.env
