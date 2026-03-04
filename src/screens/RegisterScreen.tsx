@@ -79,7 +79,7 @@ export default function RegisterScreen({ navigation }: Props) {
       navigation.replace('MainTabs');
 
     } catch (e: any) {
-      console.log('Register error:', e.code, e.message);
+      console.error('Register error:', e.code, e.message);
       const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered.' :
                   e.code === 'auth/invalid-email' ? 'Please enter a valid email.' :
                   e.code === 'auth/weak-password' ? 'Password must be at least 6 characters.' :
@@ -151,7 +151,7 @@ export default function RegisterScreen({ navigation }: Props) {
             });
             navigation.replace('MainTabs');
           } catch (e: any) {
-            console.log('Google sign-up error', e);
+            console.error('Google sign-up error', e);
             setError('Google sign-in failed.');
           } finally {
             setLoading(false);

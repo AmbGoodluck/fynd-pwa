@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import { submitFeedback } from '../services/feedbackService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
@@ -432,6 +433,25 @@ export default function MapScreen({ navigation, route }: Props) {
     webViewRef.current?.injectJavaScript(`showOverview(); true;`);
   };
 
+  const showFeedbackRequest = () => {
+    Alert.alert(
+      '💬 Share Your Feedback',
+      'We hope you enjoyed your trip! Would you kindly take a moment to share your experience with us? Your feedback helps us improve.',
+      [
+        {
+          text: 'Maybe Later',
+          style: 'cancel',
+        },
+        {
+          text: 'Give Feedback',
+          onPress: () => {
+            navigation.navigate('Feedback');
+          },
+        },
+      ]
+    );
+  };
+
   const endTrip = () => {
     Alert.alert(
       'End Trip?',
@@ -450,6 +470,8 @@ export default function MapScreen({ navigation, route }: Props) {
                 },
               ],
             });
+            // Show feedback request after navigating home
+            setTimeout(() => showFeedbackRequest(), 600);
           },
           style: 'destructive',
         },
@@ -457,8 +479,18 @@ export default function MapScreen({ navigation, route }: Props) {
     );
   };
 
-  const submitRating = () => {
-    // Save rating or send to backend
+  const submitRating = async () => {
+    // Save rating to Firestore
+    try {
+      await submitFeedback({
+        type: 'rating',
+        rating: rating,
+      });
+    } catch (error) {
+      console.error('Error saving rating:', error);
+    }
+
+    // Close rating modal and return to map
     setShowRating(false);
     setRating(0);
   };

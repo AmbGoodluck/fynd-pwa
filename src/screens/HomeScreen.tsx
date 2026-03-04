@@ -58,7 +58,7 @@ export default function HomeScreen({ navigation }: Props) {
       const data = await getRecentItineraries(user.id, 5);
       setRecentItineraries(data);
     } catch (e) {
-      console.log('Error loading itineraries:', e);
+      console.error('Error loading itineraries:', e);
     } finally {
       setLoadingItineraries(false);
     }

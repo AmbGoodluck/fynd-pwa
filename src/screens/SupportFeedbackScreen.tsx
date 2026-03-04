@@ -52,7 +52,10 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Feedback" />
+      <AppHeader
+        title="Feedback"
+        onBack={navigation?.canGoBack?.() ? () => navigation.goBack() : undefined}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 

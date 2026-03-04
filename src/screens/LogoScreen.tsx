@@ -5,30 +5,38 @@ const { width, height } = Dimensions.get('window');
 
 type Props = { navigation: any };
 
-export default function SplashScreen({ navigation }: Props) {
+export default function LogoScreen({ navigation }: Props) {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        navigation.replace('MainTabs');
+        navigation.replace('Splash');
       } catch (error) {
         console.error('Navigation error:', error);
       }
-    }, 5000);
+    }, 3500);
     return () => clearTimeout(timer);
   }, [navigation]);
 
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../assets/find-splash.png')}
-        style={styles.splash}
-        resizeMode="cover"
+        source={require('../../assets/logo.png')}
+        style={styles.logo}
+        resizeMode="contain"
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  splash: { width, height },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: width * 0.8,
+    height: height * 0.3,
+  },
 });

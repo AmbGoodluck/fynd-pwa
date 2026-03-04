@@ -118,7 +118,7 @@ export default function LoginScreen({ navigation }: Props) {
             });
             navigation.replace('MainTabs');
           } catch (e: any) {
-            console.log('Google sign-in error', e);
+            console.error('Google sign-in error', e);
             setError('Google sign-in failed.');
           } finally {
             setLoading(false);

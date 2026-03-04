@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
@@ -16,12 +16,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const explorationHours = params.explorationHours || 3;
   const timeOfDay = params.timeOfDay || 'morning';
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedForItinerary, setSelectedForItinerary] = useState<any[]>([]);
-
-  const filtered = places.filter((p: any) =>
-    p.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleAddToItinerary = (place: any) => {
     const isSelected = selectedForItinerary.find(p => p.placeId === place.placeId);
@@ -94,18 +89,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
       {destination ? <Text style={styles.destinationTag}>{'\uD83D\uDCCD'} {destination}</Text> : null}
 
-      <View style={styles.searchWrap}>
-        <Ionicons name="search-outline" size={18} color="#8E8E93" style={{ marginRight: 8 }} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search places..."
-          placeholderTextColor="#8E8E93"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {filtered.length === 0 ? (
+      {places.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="search" size={60} color="#E5E5EA" />
           <Text style={styles.emptyTitle}>No places found</Text>
@@ -116,7 +100,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={places}
           keyExtractor={item => item.placeId}
           renderItem={renderPlace}
           contentContainerStyle={styles.list}
@@ -141,8 +125,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   destinationTag: { fontSize: 13, color: '#57636C', paddingHorizontal: 14, marginBottom: 6 },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 14, marginHorizontal: 14, paddingHorizontal: 12, height: 44, marginBottom: 8 },
-  searchInput: { flex: 1, fontSize: 15, color: '#111827' },
   list: { paddingHorizontal: 14, paddingBottom: 110 },
   card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F2F2F7', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2, overflow: 'hidden' },
   cardImage: { width: 110, height: 140 },

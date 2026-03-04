@@ -70,7 +70,7 @@ export default function ServiceHubScreen({ navigation }: Props) {
       const loc = await Location.getCurrentPositionAsync({});
       return { lat: loc.coords.latitude, lng: loc.coords.longitude };
     } catch (e) {
-      console.log('Location error:', e);
+      console.error('Location error:', e);
       return null;
     }
   };
@@ -116,7 +116,7 @@ export default function ServiceHubScreen({ navigation }: Props) {
 
       setResults(withDistance);
     } catch (e) {
-      console.log('ServiceHub fetch error:', e);
+      console.error('ServiceHub fetch error:', e);
       setResults([]);
     } finally {
       setLoadingResults(false);

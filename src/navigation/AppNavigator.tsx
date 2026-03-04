@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 // V1 active screens
+import LogoScreen from '../screens/LogoScreen';
 import SplashScreen from '../screens/SplashScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import MapScreen from '../screens/MapScreen';
@@ -45,8 +46,10 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Logo" component={LogoScreen} />
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="Feedback" component={SupportFeedbackScreen} />
         <Stack.Screen name="Processing" component={ProcessingScreen} />
         <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
         <Stack.Screen name="Itinerary" component={ItineraryScreen} />
