@@ -20,7 +20,7 @@ export default function SplashScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <Image
-        source={require('../../assets/find-splash.png')}
+        source={require('../../assets/find-splash.jpg')}
         style={styles.splash}
         resizeMode="cover"
       />
