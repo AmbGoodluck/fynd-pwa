@@ -1,0 +1,10 @@
+name = "fynd-api"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+OPENAI_DEFAULT_MODEL = "gpt-4o"
+
+# Run: wrangler secret put OPENAI_API_KEY
+# Then paste your key when prompted
