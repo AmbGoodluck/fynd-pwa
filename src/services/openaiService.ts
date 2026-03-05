@@ -2,7 +2,8 @@ import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const OPENAI_PROXY = process.env.EXPO_PUBLIC_OPENAI_PROXY || '';
+const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
+const OPENAI_PROXY = (process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '') || WEB_PROXY_FALLBACK;
 
 export interface TripInput {
   destination: string;
@@ -54,9 +55,8 @@ Include all ${input.places.length} places. Total time should fit within ${input.
     messages: [{ role: 'user', content: prompt }],
   };
 
-  const target = OPENAI_PROXY ? `${OPENAI_PROXY.replace(/\/$/, '')}/api/chat` : 'https://api.openai.com/v1/chat/completions';
+  const target = `${OPENAI_PROXY}/api/chat`;
   const headers: any = { 'Content-Type': 'application/json' };
-  if (!OPENAI_PROXY) headers['Authorization'] = `Bearer ${OPENAI_API_KEY}`;
 
   Sentry.addBreadcrumb({ category: 'openai', message: `generateItinerary → ${target}`, level: 'info', data: { platform: Platform.OS, destination: input.destination } });
 
@@ -109,9 +109,8 @@ export async function enhancePlaceDescription(placeName: string, vibes: string[]
     temperature: 0.8,
     messages: [{ role: 'user', content: prompt }],
   };
-  const target = OPENAI_PROXY ? `${OPENAI_PROXY.replace(/\/$/, '')}/api/chat` : 'https://api.openai.com/v1/chat/completions';
+  const target = `${OPENAI_PROXY}/api/chat`;
   const headers: any = { 'Content-Type': 'application/json' };
-  if (!OPENAI_PROXY) headers['Authorization'] = `Bearer ${OPENAI_API_KEY}`;
 
   const controller2 = new AbortController();
   const timeout2 = setTimeout(() => controller2.abort(), 20000);

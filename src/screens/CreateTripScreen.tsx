@@ -13,6 +13,7 @@ import AppHeader from '../components/AppHeader';
 import { reverseGeocode } from '../services/googlePlacesService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
 
 // ── Vibes (current step 5, design unchanged) ───────────────────────────
 const VIBES = [
@@ -234,7 +235,7 @@ export default function CreateTripScreen({ navigation }: Props) {
       // Geocode the text location to get lat/lng for accurate distance calculations.
       // Uses the proxy on web, direct API on native — so no CORS issues.
       try {
-        const PROXY = (process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '');
+        const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
         const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
         let url: string;
         if (Platform.OS === 'web' && PROXY) {
