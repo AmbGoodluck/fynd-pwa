@@ -10,6 +10,7 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import AppNavigator from './src/navigation/AppNavigator';
+import DeviceWarning from './src/components/DeviceWarning';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -35,6 +36,7 @@ function App() {
 
   return (
     <SafeAreaProvider>
+      <DeviceWarning />
       <AppNavigator />
     </SafeAreaProvider>
   );

@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Modal, TextInput, Alert,
+  StatusBar, Modal, TextInput, Alert, Linking,
   PanResponder, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 
@@ -128,11 +129,40 @@ export default function CreateTripScreen({ navigation }: Props) {
   const handleUseLocation = async () => {
     setLocationLoading(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Location Access', 'Enable location access in your device settings to use this feature.');
+      // Check existing permission status first
+      const existing = await Location.getForegroundPermissionsAsync();
+
+      if (existing.status === 'denied' && !existing.canAskAgain) {
+        // Permanently denied — direct to Settings
+        Alert.alert(
+          'Location Permission Required',
+          'Fynd needs location access to find places near you. Please enable it in your device Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
         return;
       }
+
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== 'granted') {
+        if (!canAskAgain) {
+          Alert.alert(
+            'Location Disabled',
+            'Location access was denied. Open Settings to enable it for Fynd.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+          );
+        } else {
+          Alert.alert('Location Access', 'Enable location access to use this feature.');
+        }
+        return;
+      }
+
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { latitude: lat, longitude: lng } = loc.coords;
       setLatitude(lat);
@@ -140,7 +170,8 @@ export default function CreateTripScreen({ navigation }: Props) {
       const [address] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
       const name = address?.city || address?.district || address?.region || 'My Location';
       setDestination(name);
-    } catch {
+    } catch (err) {
+      Sentry.captureException(err, { tags: { context: 'handleUseLocation' } });
       Alert.alert('Error', 'Could not get your location. Please enter it manually.');
     } finally {
       setLocationLoading(false);

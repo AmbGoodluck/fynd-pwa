@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
+import * as Sentry from '@sentry/react-native';
 import { searchPlacesByVibe } from '../services/googlePlacesService';
 
 const MESSAGES = [
@@ -25,11 +26,28 @@ export default function ProcessingScreen({ navigation, route }: Props) {
     }, 1100);
 
     const apiCall = searchPlacesByVibe(destination || '', vibeKeywords || [], latitude || 0, longitude || 0)
-      .catch(() => []);
-    const minDelay = new Promise<void>(res => setTimeout(res, 5000));
+      .catch((err) => {
+        Sentry.captureException(err, {
+          tags: { context: 'ProcessingScreen.searchPlacesByVibe' },
+          extra: { destination, vibeKeywords, latitude, longitude },
+        });
+        return [] as any[];
+      });
+    const minDelay = new Promise<void>(res => setTimeout(res, 3000));
 
     Promise.all([apiCall, minDelay]).then(([places]) => {
       if (cancelled) return;
+
+      if (!places || places.length === 0) {
+        clearInterval(msgTimer);
+        Alert.alert(
+          'No Places Found',
+          `We couldn't find places for "${destination}". This may be a connectivity issue or the destination may be too specific. Try a city or well-known area.`,
+          [{ text: 'Go Back', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+
       navigation.replace('SuggestedPlaces', {
         places, destination, vibes, explorationHours, distanceMiles, timeOfDay, latitude, longitude,
       });

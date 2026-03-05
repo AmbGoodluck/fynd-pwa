@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import { submitFeedback } from '../services/feedbackService';
@@ -349,7 +350,9 @@ export default function MapScreen({ navigation, route }: Props) {
           accuracy: Location.Accuracy.Balanced,
         });
         setUserLoc({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-      } catch (_) {}
+      } catch (err) {
+        Sentry.captureException(err, { tags: { context: 'MapScreen.getUserLocation' } });
+      }
     })();
   }, []);
 

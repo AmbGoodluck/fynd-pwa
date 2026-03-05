@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/react-native';
+
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c";
 const BASE = 'https://maps.googleapis.com/maps/api/place';
 
@@ -65,21 +67,42 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
     const combined: PlaceResult[] = [];
 
     for (const result of results) {
-      if (result.status === 'fulfilled' && result.value.status === 'OK' && result.value.results) {
-        console.log('Google Places batch count:', result.value.results.length);
-        for (const p of result.value.results) {
-          if (!seen.has(p.place_id)) {
-            seen.add(p.place_id);
-            combined.push(mapPlace(p));
+      if (result.status === 'fulfilled') {
+        const data = result.value;
+        if (data.status === 'OK' && data.results) {
+          console.log('Google Places batch count:', data.results.length);
+          for (const p of data.results) {
+            if (!seen.has(p.place_id)) {
+              seen.add(p.place_id);
+              combined.push(mapPlace(p));
+            }
           }
+        } else if (data.status && data.status !== 'ZERO_RESULTS') {
+          // Log non-trivial API errors (REQUEST_DENIED, OVER_QUERY_LIMIT, INVALID_REQUEST, etc.)
+          console.warn('Google Places API status:', data.status, data.error_message);
+          Sentry.captureMessage(`Google Places API error: ${data.status}`, {
+            level: 'error',
+            extra: {
+              status: data.status,
+              error_message: data.error_message,
+              destination,
+              vibes,
+            },
+          });
+        } else if (data.status === 'ZERO_RESULTS') {
+          console.log('Google Places: ZERO_RESULTS for query');
         }
+      } else {
+        console.warn('Google Places fetch rejected:', result.reason);
+        Sentry.captureException(result.reason, { tags: { context: 'searchPlacesByVibe.fetch' } });
       }
     }
 
     console.log('Google Places total unique results:', combined.length);
     return combined.slice(0, 30);
   } catch (e) {
-    console.log('Google Places error:', e);
+    console.warn('Google Places searchPlacesByVibe error:', e);
+    Sentry.captureException(e, { tags: { context: 'searchPlacesByVibe' }, extra: { destination, vibes } });
     return [];
   }
 }
@@ -118,7 +141,8 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
       city: '',
     }));
   } catch (e) {
-    console.log('Nearby search error:', e);
+    console.warn('Nearby search error:', e);
+    Sentry.captureException(e, { tags: { context: 'searchNearby' }, extra: { lat, lng, type } });
     return [];
   }
 }

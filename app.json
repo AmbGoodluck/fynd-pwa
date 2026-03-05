@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fynd.app"
+      "bundleIdentifier": "com.fynd.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Fynd uses your location to find great places near you and build personalised itineraries.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Fynd uses your location to find great places near you and build personalised itineraries."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +27,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.fynd.app",
-      "googleServicesFile": "./android/app/google-services.json"
+      "googleServicesFile": "./android/app/google-services.json",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,7 +42,8 @@
         {
           "url": "https://sentry.io/",
           "project": "react-native",
-          "organization": "fynd"
+          "organization": "fynd",
+          "dsn": "https://b96701c181b70e88148fc9d22b61e4ce@o4510987876630528.ingest.us.sentry.io/4510987885740032"
         }
       ],
       [

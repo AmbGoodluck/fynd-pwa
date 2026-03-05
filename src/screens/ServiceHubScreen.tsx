@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { checkServiceHubAccess } from '../services/database';
 import UpgradeGate from '../components/UpgradeGate';
 import * as Location from 'expo-location';
+import * as Sentry from '@sentry/react-native';
 import { searchNearby, PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
 import { enhancePlaceDescription } from '../services/openaiService';
 
@@ -65,11 +66,24 @@ export default function ServiceHubScreen({ navigation }: Props) {
 
   const getCurrentLocation = async (): Promise<{ lat: number; lng: number } | null> => {
     try {
+      const existing = await Location.getForegroundPermissionsAsync();
+      if (existing.status === 'denied' && !existing.canAskAgain) {
+        Alert.alert(
+          'Location Required',
+          'Service Hub needs your location to find nearby services. Enable it in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return null;
+      }
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return null;
       const loc = await Location.getCurrentPositionAsync({});
       return { lat: loc.coords.latitude, lng: loc.coords.longitude };
     } catch (e) {
+      Sentry.captureException(e, { tags: { context: 'ServiceHubScreen.getCurrentLocation' } });
       console.error('Location error:', e);
       return null;
     }

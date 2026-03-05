@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/react-native';
+
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const OPENAI_PROXY = process.env.EXPO_PUBLIC_OPENAI_PROXY || ''; // e.g. http://localhost:4000
 
@@ -56,11 +58,26 @@ Include all ${input.places.length} places. Total time should fit within ${input.
   if (!OPENAI_PROXY) headers['Authorization'] = `Bearer ${OPENAI_API_KEY}`;
 
   const response = await fetch(target, { method: 'POST', headers, body: JSON.stringify(payload) });
-  if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => '');
+    Sentry.captureMessage(`OpenAI generateItinerary HTTP ${response.status}`, {
+      level: 'error',
+      extra: { status: response.status, body: errBody, target },
+    });
+    throw new Error(`OpenAI error: ${response.status}`);
+  }
   const data = await response.json();
   const text = data.choices?.[0]?.message?.content || '';
   const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  try {
+    return JSON.parse(clean);
+  } catch (parseErr) {
+    Sentry.captureMessage('OpenAI itinerary JSON parse failed', {
+      level: 'error',
+      extra: { raw: clean.slice(0, 500) },
+    });
+    throw parseErr;
+  }
 }
 
 export async function enhancePlaceDescription(placeName: string, vibes: string[], destination: string): Promise<string> {
