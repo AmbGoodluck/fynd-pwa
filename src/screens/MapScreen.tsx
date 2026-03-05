@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
@@ -344,6 +345,18 @@ export default function MapScreen({ navigation, route }: Props) {
   useEffect(() => {
     (async () => {
       try {
+        if (Platform.OS === 'web') {
+          // Use browser Geolocation API directly on web
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+              (err) => console.warn('[MapScreen] Web geolocation error:', err.message),
+              { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+            );
+          }
+          return;
+        }
+        // Native (Android/iOS)
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') return;
         const loc = await Location.getCurrentPositionAsync({
@@ -351,7 +364,7 @@ export default function MapScreen({ navigation, route }: Props) {
         });
         setUserLoc({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       } catch (err) {
-        Sentry.captureException(err, { tags: { context: 'MapScreen.getUserLocation' } });
+        Sentry.captureException(err, { tags: { context: 'MapScreen.getUserLocation', platform: Platform.OS } });
       }
     })();
   }, []);

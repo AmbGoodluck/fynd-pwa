@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Alert, Platform } from 'react-native';
 import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
@@ -11,12 +11,14 @@ const MESSAGES = [
   'Finding hidden gems\u2026',
   'Building your journey\u2026',
 ];
+const MAX_RETRIES = 2;
 
 type Props = { navigation: any; route: any };
 
 export default function ProcessingScreen({ navigation, route }: Props) {
   const { destination, vibeKeywords, vibes, explorationHours, distanceMiles, timeOfDay, latitude, longitude } = route?.params || {};
   const [msgIndex, setMsgIndex] = useState(0);
+  const retryCount = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,25 +27,56 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       setMsgIndex(i => (i + 1) % MESSAGES.length);
     }, 1100);
 
-    const apiCall = searchPlacesByVibe(destination || '', vibeKeywords || [], latitude || 0, longitude || 0)
-      .catch((err) => {
-        Sentry.captureException(err, {
-          tags: { context: 'ProcessingScreen.searchPlacesByVibe' },
-          extra: { destination, vibeKeywords, latitude, longitude },
+    async function fetchPlaces(): Promise<any[]> {
+      try {
+        Sentry.addBreadcrumb({
+          category: 'processing',
+          message: `Searching places for "${destination}" (attempt ${retryCount.current + 1}/${MAX_RETRIES + 1})`,
+          level: 'info',
+          data: { destination, vibeKeywords, latitude, longitude, platform: Platform.OS },
         });
-        return [] as any[];
-      });
-    const minDelay = new Promise<void>(res => setTimeout(res, 3000));
+        const places = await searchPlacesByVibe(destination || '', vibeKeywords || [], latitude || 0, longitude || 0);
+        return places;
+      } catch (err) {
+        Sentry.captureException(err, {
+          tags: { context: 'ProcessingScreen.searchPlacesByVibe', platform: Platform.OS },
+          extra: { destination, vibeKeywords, latitude, longitude, attempt: retryCount.current + 1 },
+        });
+        return [];
+      }
+    }
 
-    Promise.all([apiCall, minDelay]).then(([places]) => {
+    async function run() {
+      const minDelay = new Promise<void>(res => setTimeout(res, 3000));
+      let places = await fetchPlaces();
+
+      // Retry up to MAX_RETRIES times if first attempt returns empty
+      while ((!places || places.length === 0) && retryCount.current < MAX_RETRIES && !cancelled) {
+        retryCount.current += 1;
+        console.log(`[Processing] Retry ${retryCount.current}/${MAX_RETRIES} for "${destination}"`);
+        // Brief delay before retry
+        await new Promise(res => setTimeout(res, 1500));
+        places = await fetchPlaces();
+      }
+
+      // Wait for minimum display time
+      await minDelay;
+
       if (cancelled) return;
 
       if (!places || places.length === 0) {
         clearInterval(msgTimer);
+        Sentry.captureMessage('ProcessingScreen: no places found after all retries', {
+          level: 'warning',
+          extra: { destination, vibeKeywords, latitude, longitude, retries: retryCount.current, platform: Platform.OS },
+        });
         Alert.alert(
           'No Places Found',
-          `We couldn't find places for "${destination}". This may be a connectivity issue or the destination may be too specific. Try a city or well-known area.`,
-          [{ text: 'Go Back', onPress: () => navigation.goBack() }]
+          `We couldn't find places for "${destination}". This may be a connectivity issue or the destination may be too specific.\n\nTip: Try a city name like "London" or "New York".`,
+          [
+            { text: 'Try Again', onPress: () => { retryCount.current = 0; run(); } },
+            { text: 'Go Back', onPress: () => navigation.goBack(), style: 'cancel' },
+          ]
         );
         return;
       }
@@ -51,7 +84,9 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       navigation.replace('SuggestedPlaces', {
         places, destination, vibes, explorationHours, distanceMiles, timeOfDay, latitude, longitude,
       });
-    });
+    }
+
+    run();
 
     return () => {
       cancelled = true;

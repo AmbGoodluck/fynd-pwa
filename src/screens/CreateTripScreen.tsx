@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  StatusBar, Modal, TextInput, Alert, Linking,
-  PanResponder, Dimensions,
+  StatusBar, Modal, TextInput, Alert, Linking, Platform,
+  PanResponder, Dimensions, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import * as Location from 'expo-location';
 import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import { reverseGeocode } from '../services/googlePlacesService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -126,20 +127,52 @@ export default function CreateTripScreen({ navigation }: Props) {
   const canGoToStep2 = destination.trim().length > 0 && timeOfDay !== '';
   const canFindPlaces = selectedVibes.length > 0;
 
+  const openSettings = () => {
+    // Linking.openSettings() is only supported on native platforms
+    if (Platform.OS === 'web') {
+      Alert.alert('Location Blocked', 'Please enable location in your browser settings (click the lock icon in the address bar) and reload the page.');
+    } else {
+      Linking.openSettings();
+    }
+  };
+
   const handleUseLocation = async () => {
     setLocationLoading(true);
     try {
-      // Check existing permission status first
+      Sentry.addBreadcrumb({ category: 'location', message: `Requesting location on ${Platform.OS}`, level: 'info' });
+
+      if (Platform.OS === 'web') {
+        // Use browser Geolocation API directly for maximum web compatibility
+        if (!navigator.geolocation) {
+          Alert.alert('Not Supported', 'Geolocation is not supported by your browser.');
+          return;
+        }
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false, timeout: 15000, maximumAge: 60000,
+          });
+        });
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setLatitude(lat);
+        setLongitude(lng);
+        // Use our cross-platform reverse geocoder (goes through proxy on web)
+        const name = await reverseGeocode(lat, lng);
+        setDestination(name);
+        Sentry.addBreadcrumb({ category: 'location', message: `Web location found: ${name} (${lat.toFixed(4)}, ${lng.toFixed(4)})`, level: 'info' });
+        return;
+      }
+
+      // ── Native (Android/iOS) ──
       const existing = await Location.getForegroundPermissionsAsync();
 
       if (existing.status === 'denied' && !existing.canAskAgain) {
-        // Permanently denied — direct to Settings
         Alert.alert(
           'Location Permission Required',
           'Fynd needs location access to find places near you. Please enable it in your device Settings.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            { text: 'Open Settings', onPress: openSettings },
           ]
         );
         return;
@@ -154,7 +187,7 @@ export default function CreateTripScreen({ navigation }: Props) {
             'Location access was denied. Open Settings to enable it for Fynd.',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+              { text: 'Open Settings', onPress: openSettings },
             ]
           );
         } else {
@@ -167,22 +200,62 @@ export default function CreateTripScreen({ navigation }: Props) {
       const { latitude: lat, longitude: lng } = loc.coords;
       setLatitude(lat);
       setLongitude(lng);
-      const [address] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-      const name = address?.city || address?.district || address?.region || 'My Location';
+      // Use cross-platform reverse geocode that works on all platforms
+      const name = await reverseGeocode(lat, lng);
       setDestination(name);
-    } catch (err) {
-      Sentry.captureException(err, { tags: { context: 'handleUseLocation' } });
-      Alert.alert('Error', 'Could not get your location. Please enter it manually.');
+      Sentry.addBreadcrumb({ category: 'location', message: `Native location found: ${name} (${lat.toFixed(4)}, ${lng.toFixed(4)})`, level: 'info' });
+    } catch (err: any) {
+      // Web GeolocationPositionError has a code property
+      if (err?.code === 1) {
+        // PERMISSION_DENIED
+        Alert.alert('Location Blocked', 'Please allow location access in your browser settings and try again.');
+      } else if (err?.code === 2) {
+        // POSITION_UNAVAILABLE
+        Alert.alert('Location Unavailable', 'Your device could not determine your location. Try again or enter it manually.');
+      } else if (err?.code === 3) {
+        // TIMEOUT
+        Alert.alert('Location Timeout', 'Getting your location took too long. Please try again or enter it manually.');
+      } else {
+        Alert.alert('Error', 'Could not get your location. Please enter it manually.');
+      }
+      Sentry.captureException(err, {
+        tags: { context: 'handleUseLocation', platform: Platform.OS },
+        extra: { code: err?.code, message: err?.message },
+      });
     } finally {
       setLocationLoading(false);
     }
   };
 
-  const handleConfirmLocation = () => {
-    if (locationInput.trim()) {
-      setDestination(locationInput.trim());
-      setLatitude(null);
-      setLongitude(null);
+  const handleConfirmLocation = async () => {
+    const input = locationInput.trim();
+    if (input) {
+      setDestination(input);
+      // Geocode the text location to get lat/lng for accurate distance calculations.
+      // Uses the proxy on web, direct API on native — so no CORS issues.
+      try {
+        const PROXY = (process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '');
+        const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+        let url: string;
+        if (Platform.OS === 'web' && PROXY) {
+          url = `${PROXY}/api/places/textsearch?query=${encodeURIComponent(input)}`;
+        } else {
+          url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(input)}&key=${API_KEY}`;
+        }
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
+          const loc = data.results[0].geometry.location;
+          setLatitude(loc.lat);
+          setLongitude(loc.lng);
+        } else {
+          setLatitude(null);
+          setLongitude(null);
+        }
+      } catch {
+        setLatitude(null);
+        setLongitude(null);
+      }
     }
     setShowLocationModal(false);
     setLocationInput('');

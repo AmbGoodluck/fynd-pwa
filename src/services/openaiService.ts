@@ -1,7 +1,8 @@
+import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-const OPENAI_PROXY = process.env.EXPO_PUBLIC_OPENAI_PROXY || ''; // e.g. http://localhost:4000
+const OPENAI_PROXY = process.env.EXPO_PUBLIC_OPENAI_PROXY || '';
 
 export interface TripInput {
   destination: string;
@@ -57,12 +58,31 @@ Include all ${input.places.length} places. Total time should fit within ${input.
   const headers: any = { 'Content-Type': 'application/json' };
   if (!OPENAI_PROXY) headers['Authorization'] = `Bearer ${OPENAI_API_KEY}`;
 
-  const response = await fetch(target, { method: 'POST', headers, body: JSON.stringify(payload) });
+  Sentry.addBreadcrumb({ category: 'openai', message: `generateItinerary → ${target}`, level: 'info', data: { platform: Platform.OS, destination: input.destination } });
+
+  // Add timeout so the call doesn't hang forever
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  let response: Response;
+  try {
+    response = await fetch(target, { method: 'POST', headers, body: JSON.stringify(payload), signal: controller.signal });
+  } catch (fetchErr: any) {
+    clearTimeout(timeout);
+    const isAbort = fetchErr?.name === 'AbortError';
+    Sentry.captureException(fetchErr, {
+      tags: { context: 'generateItinerary.fetch', platform: Platform.OS },
+      extra: { target, timedOut: isAbort },
+    });
+    throw new Error(isAbort ? 'OpenAI request timed out after 30s' : `OpenAI fetch failed: ${fetchErr?.message}`);
+  }
+  clearTimeout(timeout);
+
   if (!response.ok) {
     const errBody = await response.text().catch(() => '');
     Sentry.captureMessage(`OpenAI generateItinerary HTTP ${response.status}`, {
       level: 'error',
-      extra: { status: response.status, body: errBody, target },
+      extra: { status: response.status, body: errBody.slice(0, 500), target, platform: Platform.OS },
     });
     throw new Error(`OpenAI error: ${response.status}`);
   }
@@ -93,7 +113,16 @@ export async function enhancePlaceDescription(placeName: string, vibes: string[]
   const headers: any = { 'Content-Type': 'application/json' };
   if (!OPENAI_PROXY) headers['Authorization'] = `Bearer ${OPENAI_API_KEY}`;
 
-  const response = await fetch(target, { method: 'POST', headers, body: JSON.stringify(payload) });
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content.trim();
+  const controller2 = new AbortController();
+  const timeout2 = setTimeout(() => controller2.abort(), 20000);
+  try {
+    const response = await fetch(target, { method: 'POST', headers, body: JSON.stringify(payload), signal: controller2.signal });
+    clearTimeout(timeout2);
+    if (!response.ok) return `A must-visit spot in ${destination}.`;
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || `A must-visit spot in ${destination}.`;
+  } catch (e) {
+    clearTimeout(timeout2);
+    return `A must-visit spot in ${destination}.`;
+  }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -66,6 +66,21 @@ export default function ServiceHubScreen({ navigation }: Props) {
 
   const getCurrentLocation = async (): Promise<{ lat: number; lng: number } | null> => {
     try {
+      if (Platform.OS === 'web') {
+        // Use browser Geolocation API directly for web compatibility
+        if (!navigator.geolocation) {
+          Alert.alert('Not Supported', 'Geolocation is not supported by your browser.');
+          return null;
+        }
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false, timeout: 15000, maximumAge: 60000,
+          });
+        });
+        return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      }
+
+      // Native path (Android/iOS)
       const existing = await Location.getForegroundPermissionsAsync();
       if (existing.status === 'denied' && !existing.canAskAgain) {
         Alert.alert(
@@ -73,7 +88,9 @@ export default function ServiceHubScreen({ navigation }: Props) {
           'Service Hub needs your location to find nearby services. Enable it in Settings.',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            { text: 'Open Settings', onPress: () => {
+              if (Platform.OS !== 'web') Linking.openSettings();
+            }},
           ]
         );
         return null;
@@ -82,8 +99,11 @@ export default function ServiceHubScreen({ navigation }: Props) {
       if (status !== 'granted') return null;
       const loc = await Location.getCurrentPositionAsync({});
       return { lat: loc.coords.latitude, lng: loc.coords.longitude };
-    } catch (e) {
-      Sentry.captureException(e, { tags: { context: 'ServiceHubScreen.getCurrentLocation' } });
+    } catch (e: any) {
+      if (Platform.OS === 'web' && e?.code === 1) {
+        Alert.alert('Location Blocked', 'Please allow location access in your browser settings and reload.');
+      }
+      Sentry.captureException(e, { tags: { context: 'ServiceHubScreen.getCurrentLocation', platform: Platform.OS } });
       console.error('Location error:', e);
       return null;
     }

@@ -1,7 +1,14 @@
+import { Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 
-const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c";
-const BASE = 'https://maps.googleapis.com/maps/api/place';
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+const PROXY = (process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '');
+const GOOGLE_BASE = 'https://maps.googleapis.com/maps/api/place';
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
+
+// On web, all Google Places requests go through our Cloudflare Worker to avoid CORS.
+// On native (Android/iOS), we call Google directly (no CORS restriction).
+const isWeb = Platform.OS === 'web';
 
 export interface PlaceResult {
   placeId: string;
@@ -23,28 +30,53 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+/** Build a text-search URL based on platform */
+function textSearchUrl(queryStr: string): string {
+  if (isWeb && PROXY) {
+    return `${PROXY}/api/places/textsearch?query=${encodeURIComponent(queryStr)}`;
+  }
+  return `${GOOGLE_BASE}/textsearch/json?query=${encodeURIComponent(queryStr)}&key=${API_KEY}`;
+}
+
+/** Build a nearby-search URL based on platform */
+function nearbySearchUrl(lat: number, lng: number, type: string): string {
+  if (isWeb && PROXY) {
+    return `${PROXY}/api/places/nearbysearch?location=${lat},${lng}&radius=2000&type=${encodeURIComponent(type)}`;
+  }
+  return `${GOOGLE_BASE}/nearbysearch/json?location=${lat},${lng}&radius=2000&type=${encodeURIComponent(type)}&key=${API_KEY}`;
+}
+
+/** Build a photo URL based on platform (web → proxy hides key, native → direct) */
+export function getPhotoUrl(photoRef: string, maxWidth = 400): string {
+  if (!photoRef) return FALLBACK_IMG;
+  if (isWeb && PROXY) {
+    return `${PROXY}/api/places/photo?photo_reference=${encodeURIComponent(photoRef)}&maxwidth=${maxWidth}`;
+  }
+  return `${GOOGLE_BASE}/photo?maxwidth=${maxWidth}&photo_reference=${encodeURIComponent(photoRef)}&key=${API_KEY}`;
 }
 
 export async function searchPlacesByVibe(destination: string, vibes: string[], originLat = 0, originLng = 0): Promise<PlaceResult[]> {
   try {
     function mapPlace(p: any): PlaceResult {
+      const ref = p.photos?.[0]?.photo_reference || '';
+      const dist = haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng);
       return {
         placeId: p.place_id,
         name: p.name,
         address: p.formatted_address,
         rating: p.rating || 4.0,
         description: p.editorial_summary?.overview || p.types?.[0]?.replace(/_/g, ' ') || '',
-        photoRef: p.photos?.[0]?.photo_reference || '',
-        photoUrl: p.photos?.[0]?.photo_reference
-          ? `${BASE}/photo?maxwidth=400&photo_reference=${p.photos[0].photo_reference}&key=${API_KEY}`
-          : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+        photoRef: ref,
+        photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
         city: destination,
-        distanceKm: haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng) || Math.floor(Math.random() * 20) + 1,
-        walkMinutes: Math.round((haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng) || 5) * 12),
+        distanceKm: dist || Math.floor(Math.random() * 20) + 1,
+        walkMinutes: Math.round((dist || 5) * 12),
       };
     }
 
@@ -54,12 +86,10 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
     const query1 = `${keywords1} in ${destination}`;
     const query2 = `best ${keywords2} places to visit in ${destination}`;
 
-    const urls = [
-      `${BASE}/textsearch/json?query=${encodeURIComponent(query1)}&key=${API_KEY}`,
-      `${BASE}/textsearch/json?query=${encodeURIComponent(query2)}&key=${API_KEY}`,
-    ];
+    const urls = [textSearchUrl(query1), textSearchUrl(query2)];
 
-    console.log('Google Places queries:', query1, '|', query2);
+    console.log(`[Places] platform=${Platform.OS} proxy=${isWeb && PROXY ? 'yes' : 'no'}`);
+    console.log('[Places] queries:', query1, '|', query2);
 
     const results = await Promise.allSettled(urls.map(url => fetch(url).then(r => r.json())));
 
@@ -70,7 +100,7 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       if (result.status === 'fulfilled') {
         const data = result.value;
         if (data.status === 'OK' && data.results) {
-          console.log('Google Places batch count:', data.results.length);
+          console.log('[Places] batch count:', data.results.length);
           for (const p of data.results) {
             if (!seen.has(p.place_id)) {
               seen.add(p.place_id);
@@ -78,38 +108,27 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
             }
           }
         } else if (data.status && data.status !== 'ZERO_RESULTS') {
-          // Log non-trivial API errors (REQUEST_DENIED, OVER_QUERY_LIMIT, INVALID_REQUEST, etc.)
-          console.warn('Google Places API status:', data.status, data.error_message);
+          console.warn('[Places] API status:', data.status, data.error_message);
           Sentry.captureMessage(`Google Places API error: ${data.status}`, {
             level: 'error',
-            extra: {
-              status: data.status,
-              error_message: data.error_message,
-              destination,
-              vibes,
-            },
+            extra: { status: data.status, error_message: data.error_message, destination, vibes, platform: Platform.OS },
           });
         } else if (data.status === 'ZERO_RESULTS') {
-          console.log('Google Places: ZERO_RESULTS for query');
+          console.log('[Places] ZERO_RESULTS for query');
         }
       } else {
-        console.warn('Google Places fetch rejected:', result.reason);
-        Sentry.captureException(result.reason, { tags: { context: 'searchPlacesByVibe.fetch' } });
+        console.warn('[Places] fetch rejected:', result.reason);
+        Sentry.captureException(result.reason, { tags: { context: 'searchPlacesByVibe.fetch', platform: Platform.OS } });
       }
     }
 
-    console.log('Google Places total unique results:', combined.length);
+    console.log('[Places] total unique results:', combined.length);
     return combined.slice(0, 30);
   } catch (e) {
-    console.warn('Google Places searchPlacesByVibe error:', e);
-    Sentry.captureException(e, { tags: { context: 'searchPlacesByVibe' }, extra: { destination, vibes } });
+    console.warn('[Places] searchPlacesByVibe error:', e);
+    Sentry.captureException(e, { tags: { context: 'searchPlacesByVibe', platform: Platform.OS }, extra: { destination, vibes } });
     return [];
   }
-}
-
-export function getPhotoUrl(photoRef: string, maxWidth = 400): string {
-  if (!photoRef) return 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
-  return `${BASE}/photo?maxwidth=${maxWidth}&photo_reference=${photoRef}&key=${API_KEY}`;
 }
 
 export async function searchNearby(lat: number, lng: number, type: string): Promise<PlaceResult[]> {
@@ -122,27 +141,52 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
       Police: 'police',
     };
     const googleType = typeMap[type] || 'point_of_interest';
-    const url = `${BASE}/nearbysearch/json?location=${lat},${lng}&radius=2000&type=${googleType}&key=${API_KEY}`;
+    const url = nearbySearchUrl(lat, lng, googleType);
     const res = await fetch(url);
     const data = await res.json();
     if (!data.results) return [];
-    return data.results.slice(0, 8).map((p: any) => ({
-      placeId: p.place_id,
-      name: p.name,
-      address: p.vicinity,
-      rating: p.rating || 0,
-      description: '',
-      photoRef: p.photos?.[0]?.photo_reference || '',
-      photoUrl: p.photos?.[0]?.photo_reference
-        ? `${BASE}/photo?maxwidth=400&photo_reference=${p.photos[0].photo_reference}&key=${API_KEY}`
-        : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-      coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
-      category: type,
-      city: '',
-    }));
+    return data.results.slice(0, 8).map((p: any) => {
+      const ref = p.photos?.[0]?.photo_reference || '';
+      return {
+        placeId: p.place_id,
+        name: p.name,
+        address: p.vicinity,
+        rating: p.rating || 0,
+        description: '',
+        photoRef: ref,
+        photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
+        coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
+        category: type,
+        city: '',
+      };
+    });
   } catch (e) {
-    console.warn('Nearby search error:', e);
-    Sentry.captureException(e, { tags: { context: 'searchNearby' }, extra: { lat, lng, type } });
+    console.warn('[Places] Nearby search error:', e);
+    Sentry.captureException(e, { tags: { context: 'searchNearby', platform: Platform.OS }, extra: { lat, lng, type } });
     return [];
+  }
+}
+
+/** Reverse-geocode coordinates to a city name. Works on all platforms. */
+export async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    let url: string;
+    if (isWeb && PROXY) {
+      url = `${PROXY}/api/places/geocode?latlng=${lat},${lng}`;
+    } else {
+      url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${API_KEY}`;
+    }
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.results && data.results.length > 0) {
+      const comps = data.results[0].address_components || [];
+      const city = comps.find((c: any) => c.types.includes('locality'));
+      const region = comps.find((c: any) => c.types.includes('administrative_area_level_1'));
+      return city?.long_name || region?.long_name || data.results[0].formatted_address?.split(',')[0] || 'My Location';
+    }
+    return 'My Location';
+  } catch (e) {
+    console.warn('[Places] reverseGeocode error:', e);
+    return 'My Location';
   }
 }

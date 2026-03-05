@@ -9,6 +9,7 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import AppNavigator from './src/navigation/AppNavigator';
 import DeviceWarning from './src/components/DeviceWarning';
 
@@ -30,6 +31,7 @@ function App() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    ...Ionicons.font,
   });
 
   if (!fontsLoaded) return null;
