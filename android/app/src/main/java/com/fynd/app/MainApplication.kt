@@ -1,4 +1,4 @@
-package com.anonymous.fyndapp
+package com.fynd.app
 
 import android.app.Application
 import android.content.res.Configuration
