@@ -10,6 +10,9 @@ const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e258
 // On native (Android/iOS), we call Google directly (no CORS restriction).
 const isWeb = Platform.OS === 'web';
 
+// Debug: log resolved env at module load so we know the config is wired
+console.log(`[Places] Module loaded: platform=${Platform.OS} isWeb=${isWeb} PROXY="${PROXY}" API_KEY="${API_KEY ? API_KEY.substring(0, 10) + '...' : 'MISSING'}"`);
+
 export interface PlaceResult {
   placeId: string;
   name: string;
@@ -90,8 +93,16 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
 
     console.log(`[Places] platform=${Platform.OS} proxy=${isWeb && PROXY ? 'yes' : 'no'}`);
     console.log('[Places] queries:', query1, '|', query2);
+    console.log('[Places] urls:', urls);
 
-    const results = await Promise.allSettled(urls.map(url => fetch(url).then(r => r.json())));
+    const results = await Promise.allSettled(urls.map(async url => {
+      console.log('[Places] fetching:', url.substring(0, 120));
+      const r = await fetch(url);
+      console.log('[Places] response status:', r.status, r.statusText);
+      const data = await r.json();
+      console.log('[Places] response data status:', data.status, 'results:', data.results?.length || 0);
+      return data;
+    }));
 
     const seen = new Set<string>();
     const combined: PlaceResult[] = [];

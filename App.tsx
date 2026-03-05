@@ -15,8 +15,8 @@ import DeviceWarning from './src/components/DeviceWarning';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  debug: false,
-  enableInExpoDevelopment: false,
+  debug: __DEV__,
+  enableInExpoDevelopment: true,
   tracesSampleRate: 1.0,
 });
 
