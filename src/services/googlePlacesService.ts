@@ -68,6 +68,15 @@ export function getPhotoUrl(photoRef: string, maxWidth = 400): string {
 }
 
 export async function searchPlacesByVibe(destination: string, vibes: string[], originLat = 0, originLng = 0): Promise<PlaceResult[]> {
+  function toErrorMessage(reason: unknown): string {
+    if (reason instanceof Error) return reason.message;
+    try {
+      return JSON.stringify(reason);
+    } catch {
+      return String(reason);
+    }
+  }
+
   try {
     function mapPlace(p: any): PlaceResult {
       const ref = p.photos?.[0]?.photo_reference || '';
@@ -109,6 +118,8 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       return data;
     }));
 
+    const hadFulfilledResponse = results.some(r => r.status === 'fulfilled');
+
     const seen = new Set<string>();
     const combined: PlaceResult[] = [];
 
@@ -134,16 +145,30 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
         }
       } else {
         console.warn('[Places] fetch rejected:', result.reason);
-        Sentry.captureException(result.reason, { tags: { context: 'searchPlacesByVibe.fetch', platform: Platform.OS } });
+        Sentry.captureException(result.reason, {
+          tags: { context: 'searchPlacesByVibe.fetch', platform: Platform.OS },
+          extra: { destination, vibes, proxy: PROXY, isWeb },
+        });
       }
+    }
+
+    if (!hadFulfilledResponse) {
+      const reasons = results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map(r => toErrorMessage(r.reason))
+        .join(' | ');
+      throw new Error(`All Places requests failed: ${reasons}`);
     }
 
     console.log('[Places] total unique results:', combined.length);
     return combined.slice(0, 30);
   } catch (e) {
     console.warn('[Places] searchPlacesByVibe error:', e);
-    Sentry.captureException(e, { tags: { context: 'searchPlacesByVibe', platform: Platform.OS }, extra: { destination, vibes } });
-    return [];
+    Sentry.captureException(e, {
+      tags: { context: 'searchPlacesByVibe', platform: Platform.OS },
+      extra: { destination, vibes, proxy: PROXY, isWeb },
+    });
+    throw e;
   }
 }
 

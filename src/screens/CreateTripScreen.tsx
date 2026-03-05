@@ -253,9 +253,13 @@ export default function CreateTripScreen({ navigation }: Props) {
           setLatitude(null);
           setLongitude(null);
         }
-      } catch {
+      } catch (err: any) {
         setLatitude(null);
         setLongitude(null);
+        Sentry.captureException(err, {
+          tags: { context: 'CreateTripScreen.handleConfirmLocation', platform: Platform.OS },
+          extra: { input, destination, proxyConfigured: !!PROXY },
+        });
       }
     }
     setShowLocationModal(false);
