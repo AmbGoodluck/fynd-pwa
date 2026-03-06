@@ -18,6 +18,9 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const tripVibes = params.vibes || [];
   const explorationHours = params.explorationHours || 3;
   const timeOfDay = params.timeOfDay || 'morning';
+  // User GPS coords — set when the user taps "Use my location" or enters a location.
+  const userLatitude: number | null = params.latitude ?? null;
+  const userLongitude: number | null = params.longitude ?? null;
 
   const [selectedForItinerary, setSelectedForItinerary] = useState<any[]>([]);
 
@@ -55,6 +58,8 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       vibes: tripVibes,
       explorationHours,
       timeOfDay,
+      userLatitude,
+      userLongitude,
     });
   };
 

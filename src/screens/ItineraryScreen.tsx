@@ -23,6 +23,18 @@ function mapPlaceToStop(p: any, index: number) {
   };
 }
 
+// Haversine formula — returns straight-line distance in km between two GPS coordinates.
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 type Stop = ReturnType<typeof mapPlaceToStop>;
 type Props = { navigation: any; route?: any };
 
@@ -31,8 +43,21 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const rawPlaces = route?.params?.places ?? route?.params?.stops ?? [];
   const destination = route?.params?.destination || 'Your Destination';
   const tripData = route?.params || {};
+  // User GPS reference point passed from SuggestedPlacesScreen.
+  const userLat: number | null = route?.params?.userLatitude ?? null;
+  const userLng: number | null = route?.params?.userLongitude ?? null;
 
-  const initialStops: Stop[] = rawPlaces.map(mapPlaceToStop);
+  // Map raw places then sort nearest → farthest if we have a reference point.
+  const rawStops: Stop[] = rawPlaces.map(mapPlaceToStop);
+  const initialStops: Stop[] =
+    userLat !== null && userLng !== null
+      ? [...rawStops].sort(
+          (a, b) =>
+            haversineKm(userLat, userLng, a.coordinate.latitude, a.coordinate.longitude) -
+            haversineKm(userLat, userLng, b.coordinate.latitude, b.coordinate.longitude)
+        )
+      : rawStops;
+
   const [stops, setStops] = useState<Stop[]>(initialStops);
   const [showMapModal, setShowMapModal] = useState(false);
 
