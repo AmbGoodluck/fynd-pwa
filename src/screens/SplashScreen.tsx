@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Platform } from 'react-native';
+import { View, Image, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 
 // Web loads instantly from cache; use a shorter delay so it feels snappy.
 const SPLASH_DELAY = Platform.OS === 'web' ? 1800 : 3500;
@@ -7,6 +7,11 @@ const SPLASH_DELAY = Platform.OS === 'web' ? 1800 : 3500;
 type Props = { navigation: any };
 
 export default function SplashScreen({ navigation }: Props) {
+  const { width, height } = useWindowDimensions();
+  const aspect = height > 0 ? width / height : 0.5;
+  // Wide viewports (iPad, laptop) keep full artwork visible without hard crop.
+  const splashMode: 'cover' | 'contain' = aspect > 0.62 ? 'contain' : 'cover';
+
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -23,7 +28,7 @@ export default function SplashScreen({ navigation }: Props) {
       <Image
         source={require('../../assets/find-splash.jpg')}
         style={styles.splash}
-        resizeMode="cover"
+        resizeMode={splashMode}
       />
     </View>
   );

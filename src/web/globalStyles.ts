@@ -14,7 +14,6 @@ import { Platform } from 'react-native';
 
 const FYND_GREEN = '#22C55E';
 const BACKDROP   = '#0F172A';  // deep navy — visible on desktop sides
-const MAX_WIDTH  = 440;
 
 export function injectWebGlobalStyles(): void {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
@@ -53,22 +52,8 @@ export function injectWebGlobalStyles(): void {
   }
 
   // ── Global CSS ─────────────────────────────────────────────────────────────
-  //
-  // Architecture: Mobile App Web Container (Airbnb / Uber / Instagram pattern)
-  //
-  //   html  (height:100%, overflow:hidden)
-  //   └── body  (height:100%, overflow:hidden — NEVER scrolls)
-  //       └── #root  (max-width:440px, height:100dvh — viewport-locked shell)
-  //           └── React Native tree (flex:1 fills the 440px shell)
-  //               ├── SafeAreaView / headers  (fixed height)
-  //               ├── ScrollView / FlatList   (flex:1, scrolls internally)
-  //               └── Bottom bars / Tab bar   (fixed height, always visible)
-  //
-  // Previous root cause:
-  //   • body had `min-height:100dvh` → body could grow and scroll
-  //   • #root had `flex:1` with no height anchor → grew with content
-  //   • result: entire page scrolled; bottom navigation disappeared
-  //
+  // WebAppViewport (React) now owns the 440px shell and live viewport height.
+  // CSS here only locks the page surface and keeps RN roots full-height.
   const style = document.createElement('style');
   style.id = 'fynd-web-styles';
   style.textContent = `
@@ -78,13 +63,10 @@ export function injectWebGlobalStyles(): void {
       box-sizing: border-box;
     }
 
-    /* ── 1. VIEWPORT LOCK — html + body NEVER scroll ───────────────────── */
-    /*                                                                       */
-    /*  Setting height:100% on html gives body a concrete parent height.    */
-    /*  overflow:hidden on both prevents the outer page from scrolling.     */
-    /*  All scrolling happens exclusively inside RN ScrollView / FlatList.  */
+    /* ── 1. PAGE SURFACE LOCK — outer page never scrolls ────────────────── */
     html {
       height: 100%;
+      width: 100%;
       overflow: hidden;
       overscroll-behavior: none;
       -webkit-text-size-adjust: 100%;
@@ -94,46 +76,31 @@ export function injectWebGlobalStyles(): void {
 
     body {
       height: 100%;
-      overflow: hidden;
-      /*
-       * position:fixed is the iOS Safari key fix.
-       * Without it, iOS Safari's rubber-band scroll affects children even
-       * when overflow:hidden is set, preventing inner ScrollViews from
-       * receiving touch events reliably.
-       * position:fixed locks the body to the viewport as a non-scroll surface.
-       * width:100% is required because position:fixed collapses body's width.
-       */
-      position: fixed;
       width: 100%;
+      overflow: hidden;
+      position: fixed;
+      inset: 0;
       background-color: ${BACKDROP};
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
       margin: 0;
       padding: 0;
       overscroll-behavior: none;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ── 2. APP SHELL — 440px mobile container, viewport-locked ─────────── */
-    /*                                                                        */
-    /*  height:100vh           → fallback for browsers without dvh support   */
-    /*  height:100dvh          → modern: excludes collapsible browser chrome  */
-    /*  overflow:hidden        → clips React Native children to this box      */
-    /*  isolation:isolate      → creates stacking context for z-index         */
+    /* ── 2. Root host stretches to viewport; React shell handles max-width ─ */
     #root {
-      max-width: ${MAX_WIDTH}px !important;
-      width: 100% !important;
-      height: 100vh;
-      height: 100dvh;                           /* overrides ↑ when supported */
+      width: 100%;
+      height: 100%;
       overflow: hidden !important;
-      background-color: #ffffff;
-      position: relative;
       display: flex !important;
       flex-direction: column !important;
-      flex-shrink: 0;
-      box-shadow: 0 0 80px rgba(0, 0, 0, 0.55);
-      isolation: isolate;
+    }
+
+    #root > div {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     /* ── 3. SAFE AREA CSS VARIABLES ─────────────────────────────────────── */
