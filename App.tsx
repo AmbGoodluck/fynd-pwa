@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
-import * as Font from 'expo-font';
 import {
   useFonts,
   Inter_400Regular,
@@ -9,19 +8,8 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import AppNavigator from './src/navigation/AppNavigator';
 import DeviceWarning from './src/components/DeviceWarning';
-
-function normalizeError(err: unknown, fallback: string): Error {
-  if (err instanceof Error) return err;
-  if (typeof err === 'string') return new Error(err);
-  try {
-    return new Error(`${fallback}: ${JSON.stringify(err)}`);
-  } catch {
-    return new Error(fallback);
-  }
-}
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -31,46 +19,32 @@ Sentry.init({
 });
 
 function App() {
-  const [textFontsLoaded, textFontError] = useFonts({
+  // Load all fonts — Inter text fonts + Ionicons icon font — in one call.
+  // Using require() directly for Ionicons forces Metro to include the TTF as a
+  // direct bundle dependency of this file, which guarantees it's available on
+  // every platform (web, Android, iOS). The font key 'ionicons' must match
+  // exactly what @expo/vector-icons uses internally when rendering glyphs.
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
   });
-  const [iconsReady, setIconsReady] = useState(false);
 
   useEffect(() => {
-    // Icon font is critical; rendering before this loads causes square glyphs on web.
-    let mounted = true;
-    Font.loadAsync(Ionicons.font)
-      .then(() => {
-        if (mounted) setIconsReady(true);
-      })
-      .catch((err) => {
-        Sentry.captureException(normalizeError(err, 'Ionicons font load failed'), {
-          tags: { context: 'App.loadIoniconsFont' },
-          extra: { platform: 'runtime-font-load', rawError: String(err) },
-        });
-        // Do not block app start forever on font load failures.
-        if (mounted) setIconsReady(true);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (textFontError) {
-      Sentry.captureException(normalizeError(textFontError, 'Text font load failed'), {
+    if (fontError) {
+      Sentry.captureException(fontError instanceof Error ? fontError : new Error(String(fontError)), {
         tags: { context: 'App.useFonts' },
-        extra: { platform: 'runtime-font-load', rawError: String(textFontError) },
       });
     }
-  }, [textFontError]);
+  }, [fontError]);
 
-  if (!iconsReady) return null;
-  // Text fonts are non-critical; continue with system fallback if needed.
-  void textFontsLoaded;
+  // Block render until fonts are ready. If loading fails (fontError), render
+  // anyway so the app is not permanently stuck — icons may be invisible but
+  // the rest of the UI stays functional.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>
