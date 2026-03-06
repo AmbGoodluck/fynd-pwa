@@ -327,10 +327,11 @@ type Props = { navigation: any; route?: any };
 export default function MapScreen({ navigation, route }: Props) {
   const { width: viewportWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const isMobileWeb = Platform.OS === 'web' && viewportWidth <= 900;
 
   // Mobile browsers can overlay a bottom toolbar that is not always reported
   // via safe-area insets. Add a conservative cushion on mobile web.
-  const browserBottomCushion = Platform.OS === 'web' && viewportWidth <= 900 ? 56 : 0;
+  const browserBottomCushion = isMobileWeb ? 72 : 0;
   const navBottomInset = Math.max(insets.bottom, browserBottomCushion);
 
   const stops: Stop[] = route?.params?.stops ?? [];
@@ -376,12 +377,23 @@ export default function MapScreen({ navigation, route }: Props) {
       try {
         if (Platform.OS === 'web') {
           // Use browser Geolocation API directly on web
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
+          const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
+          if (geo && typeof geo.getCurrentPosition === 'function') {
+            geo.getCurrentPosition(
               (pos) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-              (err) => console.warn('[MapScreen] Web geolocation error:', err.message),
+              (err) => {
+                Sentry.captureMessage('MapScreen web geolocation error', {
+                  level: 'warning',
+                  extra: { message: err.message, code: err.code },
+                });
+              },
               { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
             );
+          } else {
+            Sentry.captureMessage('MapScreen web geolocation unavailable', {
+              level: 'warning',
+              extra: { hasNavigator: typeof navigator !== 'undefined' },
+            });
           }
           return;
         }
@@ -454,6 +466,17 @@ export default function MapScreen({ navigation, route }: Props) {
 
   const activeStop = hasStops ? stops[activeIdx] : null;
 
+  const tripBottomLayoutStyle = isMobileWeb
+    ? ({
+        position: 'fixed',
+        left: 10,
+        right: 10,
+        bottom: navBottomInset,
+        zIndex: 50,
+        paddingBottom: Math.max(insets.bottom, 8),
+      } as any)
+    : ({ paddingBottom: navBottomInset } as const);
+
   const distToActive = useMemo(() => {
     if (!userLoc || !activeStop) return null;
     const { latitude: lat, longitude: lng } = activeStop.coordinate;
@@ -500,32 +523,12 @@ export default function MapScreen({ navigation, route }: Props) {
     webViewRef.current?.injectJavaScript(`showOverview(); true;`);
   };
 
-  const showFeedbackRequest = () => {
-    Alert.alert(
-      '💬 Share Your Feedback',
-      'We hope you enjoyed your trip! Would you kindly take a moment to share your experience with us? Your feedback helps us improve.',
-      [
-        {
-          text: 'Maybe Later',
-          style: 'cancel',
-        },
-        {
-          text: 'Give Feedback',
-          onPress: () => {
-            navigation.navigate('Feedback');
-          },
-        },
-      ]
-    );
-  };
-
   const endTrip = () => {
     const doEnd = () => {
       navigation.reset({
         index: 0,
-        routes: [{ name: 'MainTabs', params: { screen: 'Create Trip' } }],
+        routes: [{ name: 'MainTabs', params: { screen: 'Create Trip', params: { showPostTripFeedbackPrompt: true } } }],
       });
-      setTimeout(() => showFeedbackRequest(), 600);
     };
     if (Platform.OS === 'web') {
       if (window.confirm('End this trip and return to the home page?')) doEnd();
@@ -549,7 +552,7 @@ export default function MapScreen({ navigation, route }: Props) {
         rating: rating,
       });
     } catch (error) {
-      console.error('Error saving rating:', error);
+      Sentry.captureException(error, { tags: { context: 'MapScreen.submitRating' } });
     }
 
     // Close rating modal and return to map
@@ -560,7 +563,7 @@ export default function MapScreen({ navigation, route }: Props) {
   // ── Fullscreen map mode ───────────────────────────────────────────────────
   if (isFullscreen) {
     return (
-      <SafeAreaView style={styles.fullscreenContainer} edges={['top']}>
+      <SafeAreaView style={styles.fullscreenContainer} edges={['top', 'bottom']}>
         {/* Fullscreen Map */}
         <View style={styles.fullscreenMapBox}>
           <FyndMapView
@@ -703,7 +706,7 @@ export default function MapScreen({ navigation, route }: Props) {
   // ── Idle state (Map tab, no active trip) ───────────────────────────────────
   if (!hasStops) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <AppHeader title="Map" />
 
         <View style={styles.mapBox}>
@@ -743,7 +746,7 @@ export default function MapScreen({ navigation, route }: Props) {
 
   // ── Active trip map ────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <AppHeader title="Trip Map" onBack={() => navigation.goBack()} />
 
       {/* ── Interactive Map (WebView on native, iframe on web) ── */}
@@ -791,7 +794,7 @@ export default function MapScreen({ navigation, route }: Props) {
       </View>
 
       {/* ── Stop navigator bar ── */}
-      <View style={[styles.tripBottomSection, { paddingBottom: navBottomInset }]}>
+      <View style={[styles.tripBottomSection, tripBottomLayoutStyle]}>
         <View style={styles.stopBar}>
           <TouchableOpacity
             onPress={() => activeIdx > 0 && selectStop(activeIdx - 1)}
@@ -1122,6 +1125,9 @@ const styles = StyleSheet.create({
   idleCtaTxt: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
 
   // ── Stop navigator bar ──
+  tripBottomSection: {
+    backgroundColor: '#fff',
+  },
   stopBar: {
     flexDirection: 'row',
     alignItems: 'center',

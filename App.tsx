@@ -4,10 +4,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
 import {
   useFonts,
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import AppNavigator from './src/navigation/AppNavigator';
 import { injectWebGlobalStyles } from './src/web/globalStyles';
@@ -24,26 +20,35 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// On web production builds, Cloudflare Pages fails to serve files whose URL
-// contains "@" (e.g. /assets/node_modules/@expo/vector-icons/…Ionicons.ttf)
-// because the SPA catch-all redirect in _redirects intercepts the request
-// before the static-file handler. We copy the font to /fonts/Ionicons.ttf at
-// build time (a clean path) and reference it here. On native, require() is
-// used so Metro bundles the asset normally.
-const ioniconsSource =
-  Platform.OS === 'web' && !__DEV__
+// On production web, load fonts from /fonts/* to avoid @-scoped asset URLs
+// that can be misrouted by SPA redirect rules on some deployments.
+const useWebFontUris = Platform.OS === 'web' && !__DEV__;
+
+const fontSources = {
+  Inter_400Regular: useWebFontUris
+    ? { uri: '/fonts/Inter_400Regular.ttf' }
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
+  Inter_500Medium: useWebFontUris
+    ? { uri: '/fonts/Inter_500Medium.ttf' }
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
+  Inter_600SemiBold: useWebFontUris
+    ? { uri: '/fonts/Inter_600SemiBold.ttf' }
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
+  Inter_700Bold: useWebFontUris
+    ? { uri: '/fonts/Inter_700Bold.ttf' }
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
+  ionicons: useWebFontUris
     ? { uri: '/fonts/Ionicons.ttf' }
     : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf');
+      require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
+};
 
 function App() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    ionicons: ioniconsSource,
-  });
+  const [fontsLoaded, fontError] = useFonts(fontSources);
 
   useEffect(() => {
     if (fontError) {
