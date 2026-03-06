@@ -56,6 +56,7 @@ export default function WebAppViewport({ children }: Props) {
 const styles = StyleSheet.create({
   viewport: {
     flex: 1,
+    minHeight: 0,
     backgroundColor: BACKDROP,
     alignItems: 'center',
     justifyContent: 'center',
@@ -63,6 +64,7 @@ const styles = StyleSheet.create({
   deviceShell: {
     width: '100%',
     maxWidth: MAX_WIDTH,
+    minHeight: 0,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     flexDirection: 'column',

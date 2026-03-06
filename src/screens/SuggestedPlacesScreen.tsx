@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
@@ -112,18 +112,16 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={places}
-          keyExtractor={item => item.placeId}
-          renderItem={renderPlace}
-          style={{ flex: 1 }}
-          initialNumToRender={6}
-          maxToRenderPerBatch={8}
-          windowSize={7}
-          removeClippedSubviews
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-        />
+          keyboardShouldPersistTaps="handled"
+        >
+          {places.map((item) => (
+            <View key={item.placeId}>{renderPlace({ item })}</View>
+          ))}
+        </ScrollView>
       )}
 
       {/* CTA bar — flex child, always pinned at bottom of scroll area.
@@ -148,7 +146,8 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, minHeight: 0, backgroundColor: '#F9FAFB' },
+  scrollView: { flex: 1, minHeight: 0 },
   destRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
   destinationTag: { fontSize: 13, color: '#374151', fontWeight: '500', flex: 1 },
   countBadge: { backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#BBF7D0' },
