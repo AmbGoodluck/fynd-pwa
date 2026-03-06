@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
 import {
@@ -18,19 +19,25 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
+// On web production builds, Cloudflare Pages fails to serve files whose URL
+// contains "@" (e.g. /assets/node_modules/@expo/vector-icons/…Ionicons.ttf)
+// because the SPA catch-all redirect in _redirects intercepts the request
+// before the static-file handler. We copy the font to /fonts/Ionicons.ttf at
+// build time (a clean path) and reference it here. On native, require() is
+// used so Metro bundles the asset normally.
+const ioniconsSource =
+  Platform.OS === 'web' && !__DEV__
+    ? { uri: '/fonts/Ionicons.ttf' }
+    : // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf');
+
 function App() {
-  // Load all fonts — Inter text fonts + Ionicons icon font — in one call.
-  // Using require() directly for Ionicons forces Metro to include the TTF as a
-  // direct bundle dependency of this file, which guarantees it's available on
-  // every platform (web, Android, iOS). The font key 'ionicons' must match
-  // exactly what @expo/vector-icons uses internally when rendering glyphs.
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
+    ionicons: ioniconsSource,
   });
 
   useEffect(() => {
