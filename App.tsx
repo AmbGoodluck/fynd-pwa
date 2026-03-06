@@ -13,6 +13,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import AppNavigator from './src/navigation/AppNavigator';
 import DeviceWarning from './src/components/DeviceWarning';
 
+function normalizeError(err: unknown, fallback: string): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === 'string') return new Error(err);
+  try {
+    return new Error(`${fallback}: ${JSON.stringify(err)}`);
+  } catch {
+    return new Error(fallback);
+  }
+}
+
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   debug: __DEV__,
@@ -37,10 +47,12 @@ function App() {
         if (mounted) setIconsReady(true);
       })
       .catch((err) => {
-        Sentry.captureException(err, {
+        Sentry.captureException(normalizeError(err, 'Ionicons font load failed'), {
           tags: { context: 'App.loadIoniconsFont' },
-          extra: { platform: 'runtime-font-load' },
+          extra: { platform: 'runtime-font-load', rawError: String(err) },
         });
+        // Do not block app start forever on font load failures.
+        if (mounted) setIconsReady(true);
       });
     return () => {
       mounted = false;
@@ -49,9 +61,9 @@ function App() {
 
   useEffect(() => {
     if (textFontError) {
-      Sentry.captureException(textFontError, {
+      Sentry.captureException(normalizeError(textFontError, 'Text font load failed'), {
         tags: { context: 'App.useFonts' },
-        extra: { platform: 'runtime-font-load' },
+        extra: { platform: 'runtime-font-load', rawError: String(textFontError) },
       });
     }
   }, [textFontError]);
