@@ -309,6 +309,7 @@ export default function CreateTripScreen({ navigation }: Props) {
       {/* ── STEP 1: Preferences summary ── */}
       {step === 1 && (
         <ScrollView
+          style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

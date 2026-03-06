@@ -57,7 +57,7 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
         onBack={navigation?.canGoBack?.() ? () => navigation.goBack() : undefined}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {submitted && (
           <View style={styles.successBanner}>

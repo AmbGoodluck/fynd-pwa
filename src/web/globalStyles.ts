@@ -94,7 +94,17 @@ export function injectWebGlobalStyles(): void {
 
     body {
       height: 100%;
-      overflow: hidden;                         /* ← body NEVER scrolls    */
+      overflow: hidden;
+      /*
+       * position:fixed is the iOS Safari key fix.
+       * Without it, iOS Safari's rubber-band scroll affects children even
+       * when overflow:hidden is set, preventing inner ScrollViews from
+       * receiving touch events reliably.
+       * position:fixed locks the body to the viewport as a non-scroll surface.
+       * width:100% is required because position:fixed collapses body's width.
+       */
+      position: fixed;
+      width: 100%;
       background-color: ${BACKDROP};
       display: flex;
       justify-content: center;
