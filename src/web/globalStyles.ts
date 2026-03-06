@@ -78,8 +78,6 @@ export function injectWebGlobalStyles(): void {
       height: 100%;
       width: 100%;
       overflow: hidden;
-      position: fixed;
-      inset: 0;
       background-color: ${BACKDROP};
       margin: 0;
       padding: 0;

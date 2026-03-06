@@ -29,13 +29,11 @@ export default function WebAppViewport({ children }: Props) {
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
     vv?.addEventListener('resize', update);
-    vv?.addEventListener('scroll', update);
 
     return () => {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
       vv?.removeEventListener('resize', update);
-      vv?.removeEventListener('scroll', update);
     };
   }, [isWeb]);
 
@@ -59,7 +57,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
     backgroundColor: BACKDROP,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   deviceShell: {
     width: '100%',
