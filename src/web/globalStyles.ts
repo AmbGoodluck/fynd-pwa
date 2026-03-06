@@ -53,67 +53,126 @@ export function injectWebGlobalStyles(): void {
   }
 
   // ── Global CSS ─────────────────────────────────────────────────────────────
+  //
+  // Architecture: Mobile App Web Container (Airbnb / Uber / Instagram pattern)
+  //
+  //   html  (height:100%, overflow:hidden)
+  //   └── body  (height:100%, overflow:hidden — NEVER scrolls)
+  //       └── #root  (max-width:440px, height:100dvh — viewport-locked shell)
+  //           └── React Native tree (flex:1 fills the 440px shell)
+  //               ├── SafeAreaView / headers  (fixed height)
+  //               ├── ScrollView / FlatList   (flex:1, scrolls internally)
+  //               └── Bottom bars / Tab bar   (fixed height, always visible)
+  //
+  // Previous root cause:
+  //   • body had `min-height:100dvh` → body could grow and scroll
+  //   • #root had `flex:1` with no height anchor → grew with content
+  //   • result: entire page scrolled; bottom navigation disappeared
+  //
   const style = document.createElement('style');
   style.id = 'fynd-web-styles';
   style.textContent = `
+
+    /* ── 0. UNIVERSAL BOX MODEL ─────────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── 1. VIEWPORT LOCK — html + body NEVER scroll ───────────────────── */
+    /*                                                                       */
+    /*  Setting height:100% on html gives body a concrete parent height.    */
+    /*  overflow:hidden on both prevents the outer page from scrolling.     */
+    /*  All scrolling happens exclusively inside RN ScrollView / FlatList.  */
     html {
+      height: 100%;
+      overflow: hidden;
       overscroll-behavior: none;
       -webkit-text-size-adjust: 100%;
+      -moz-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
 
     body {
+      height: 100%;
+      overflow: hidden;                         /* ← body NEVER scrolls    */
       background-color: ${BACKDROP};
       display: flex;
       justify-content: center;
-      min-height: 100dvh;
-      min-height: 100vh;
+      align-items: stretch;
       margin: 0;
+      padding: 0;
       overscroll-behavior: none;
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ── Centred 440 px app shell ─────────────────────────────────────── */
+    /* ── 2. APP SHELL — 440px mobile container, viewport-locked ─────────── */
+    /*                                                                        */
+    /*  height:100vh           → fallback for browsers without dvh support   */
+    /*  height:100dvh          → modern: excludes collapsible browser chrome  */
+    /*  overflow:hidden        → clips React Native children to this box      */
+    /*  isolation:isolate      → creates stacking context for z-index         */
     #root {
       max-width: ${MAX_WIDTH}px !important;
       width: 100% !important;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background-color: #fff;
+      height: 100vh;
+      height: 100dvh;                           /* overrides ↑ when supported */
+      overflow: hidden !important;
+      background-color: #ffffff;
       position: relative;
-      overflow: hidden;
+      display: flex !important;
+      flex-direction: column !important;
+      flex-shrink: 0;
       box-shadow: 0 0 80px rgba(0, 0, 0, 0.55);
+      isolation: isolate;
     }
 
-    /* ── One-finger vertical scroll on every overflow container ─────────── */
+    /* ── 3. SAFE AREA CSS VARIABLES ─────────────────────────────────────── */
+    /*  Available to any component that needs env(safe-area-inset-*)         */
+    :root {
+      --safe-area-top:    env(safe-area-inset-top,    0px);
+      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-area-left:   env(safe-area-inset-left,   0px);
+      --safe-area-right:  env(safe-area-inset-right,  0px);
+    }
+
+    /* ── 4. SCROLLING — touch-optimised, vertical only ─────────────────── */
     * {
       -webkit-overflow-scrolling: touch;
     }
 
-    /* ── Hide scrollbars (clean native feel) ────────────────────────────── */
+    /* Prevent any child from creating horizontal overflow on the shell     */
+    #root > * {
+      max-width: 100%;
+    }
+
+    /* ── 5. SCROLLBARS — hidden for native-app feel ─────────────────────── */
     *::-webkit-scrollbar { display: none; }
     * {
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
 
-    /* ── Prevent accidental text selection on interactive elements ───────── */
-    button, [role="button"] {
-      user-select: none;
-      -webkit-user-select: none;
-    }
-
-    /* ── Prevent iOS Safari text zoom on focus (font must be ≥ 16 px) ───── */
-    input, textarea, select {
-      font-size: max(16px, 1em) !important;
-    }
-
-    /* ── RN Modal portals must cover the full viewport, not the 440 px slot  */
+    /* ── 6. MODAL PORTALS — cover full viewport, not just the 440px slot ── */
+    /*  React Native Modal renders via a portal outside #root.               */
+    /*  position:fixed + inset:0 ensures it covers the entire screen.        */
     [data-testid="modal-backdrop"],
     [aria-modal="true"],
     .rn-modal-host {
       position: fixed !important;
       inset: 0 !important;
+      z-index: 9999 !important;
+    }
+
+    /* ── 7. iOS SAFARI — prevent zoom on input focus ────────────────────── */
+    /*  Font-size must be ≥ 16px to prevent Safari from zooming on focus.   */
+    input, textarea, select {
+      font-size: max(16px, 1em) !important;
+    }
+
+    /* ── 8. INTERACTION — no tap highlight, no accidental text selection ── */
+    button, [role="button"] {
+      user-select: none;
+      -webkit-user-select: none;
     }
   `;
   document.head.appendChild(style);

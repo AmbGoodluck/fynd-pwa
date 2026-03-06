@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Linking, Alert, Modal, Image, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
@@ -35,6 +35,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const initialStops: Stop[] = rawPlaces.map(mapPlaceToStop);
   const [stops, setStops] = useState<Stop[]>(initialStops);
   const [showMapModal, setShowMapModal] = useState(false);
+
+  // Reactive safe-area bottom inset: home indicator height on iOS, 0 on web.
+  const { bottom: bottomInset } = useSafeAreaInsets();
 
   useEffect(() => {
     logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
@@ -139,12 +142,13 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           data={stops}
           keyExtractor={item => item.id}
           renderItem={renderStop}
-          contentContainerStyle={{ paddingVertical: 5, paddingBottom: 110 }}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingVertical: 5, paddingBottom: 16 }}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(12, bottomInset) }]}>
         <TouchableOpacity
           style={[styles.mapBtn, stops.length === 0 && { opacity: 0.4 }]}
           onPress={() => stops.length > 0 && setShowMapModal(true)}
@@ -229,7 +233,7 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   goBackBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   goBackBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 28, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  bottomBar: { paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 14, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
   mapBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   mapBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
 

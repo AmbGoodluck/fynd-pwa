@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
@@ -17,6 +17,11 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const timeOfDay = params.timeOfDay || 'morning';
 
   const [selectedForItinerary, setSelectedForItinerary] = useState<any[]>([]);
+
+  // Correct bottom padding for any device: home indicator on iOS, 0 on web/Android.
+  // Applied to the CTA bar so its background extends edge-to-edge but content
+  // stays above the home bar.  Never hardcode a safe-area guess.
+  const { bottom: bottomInset } = useSafeAreaInsets();
 
   const handleAddToItinerary = (place: any) => {
     const isSelected = selectedForItinerary.find(p => p.placeId === place.placeId);
@@ -111,6 +116,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           data={places}
           keyExtractor={item => item.placeId}
           renderItem={renderPlace}
+          style={{ flex: 1 }}
           initialNumToRender={6}
           maxToRenderPerBatch={8}
           windowSize={7}
@@ -120,8 +126,9 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         />
       )}
 
-      {/* CTA bar — always visible so users know how to proceed */}
-      <View style={styles.ctaBar}>
+      {/* CTA bar — flex child, always pinned at bottom of scroll area.
+           paddingBottom extends into the safe-area zone (home indicator). */}
+      <View style={[styles.ctaBar, { paddingBottom: Math.max(12, bottomInset) }]}>
         <TouchableOpacity
           style={[styles.ctaBtn, selectedForItinerary.length === 0 && styles.ctaBtnDisabled]}
           onPress={handleGenerateItinerary}
@@ -146,7 +153,7 @@ const styles = StyleSheet.create({
   destinationTag: { fontSize: 13, color: '#374151', fontWeight: '500', flex: 1 },
   countBadge: { backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: '#BBF7D0' },
   countBadgeText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
-  list: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 120 },
+  list: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 16 },
   card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3, overflow: 'hidden' },
   cardImage: { width: 115, height: 148 },
   cardBody: { flex: 1, padding: 12, justifyContent: 'space-between' },
@@ -164,7 +171,7 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   backBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   backBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
-  ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 28, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  ctaBar: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
   ctaBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   ctaBtnDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },

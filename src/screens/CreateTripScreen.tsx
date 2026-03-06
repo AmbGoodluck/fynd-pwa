@@ -4,7 +4,7 @@ import {
   StatusBar, Modal, TextInput, Alert, Linking, Platform,
   PanResponder, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '@sentry/react-native';
@@ -110,6 +110,9 @@ type Props = { navigation: any };
 
 export default function CreateTripScreen({ navigation }: Props) {
   const [step, setStep] = useState(1);
+
+  // Reactive safe-area bottom inset for the step-2 bottom bar.
+  const { bottom: bottomInset } = useSafeAreaInsets();
 
   // Step 1 state
   const [destination, setDestination] = useState('');
@@ -412,7 +415,8 @@ export default function CreateTripScreen({ navigation }: Props) {
       {step === 2 && (
         <>
           <ScrollView
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 130 }]}
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconCircle}>
@@ -440,7 +444,7 @@ export default function CreateTripScreen({ navigation }: Props) {
               ))}
             </View>
           </ScrollView>
-          <View style={styles.bottomBar}>
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(14, bottomInset) }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
@@ -539,7 +543,7 @@ const styles = StyleSheet.create({
   vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
   vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
 
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 32, paddingTop: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
+  bottomBar: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 14, paddingTop: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
   findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
