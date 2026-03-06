@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity,
   StatusBar, Modal, TextInput, Alert, Linking, Platform,
   PanResponder, ActivityIndicator,
 } from 'react-native';
@@ -10,6 +10,7 @@ import * as Location from 'expo-location';
 import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import FyndScrollContainer from '../components/FyndScrollContainer';
 import { reverseGeocode } from '../services/googlePlacesService';
 import { logEvent } from '../services/firebase';
 
@@ -308,11 +309,9 @@ export default function CreateTripScreen({ navigation }: Props) {
 
       {/* ── STEP 1: Preferences summary ── */}
       {step === 1 && (
-        <ScrollView
+        <FyndScrollContainer
           style={{ flex: 1 }}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.sectionTitle}>Select your preference</Text>
 
@@ -409,16 +408,15 @@ export default function CreateTripScreen({ navigation }: Props) {
           >
             <Text style={[styles.ctaBtnText, canGoToStep2 && styles.ctaBtnTextEnabled]}>Select Vibe</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </FyndScrollContainer>
       )}
 
       {/* ── STEP 2: Vibes (existing step 5, design unchanged) ── */}
       {step === 2 && (
         <>
-          <ScrollView
+          <FyndScrollContainer
             style={{ flex: 1 }}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
-            showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconCircle}>
               <Ionicons name="sparkles-outline" size={30} color="#fff" />
@@ -444,7 +442,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                 </TouchableOpacity>
               ))}
             </View>
-          </ScrollView>
+          </FyndScrollContainer>
           <View style={[styles.bottomBar, { paddingBottom: Math.max(14, bottomInset) }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>

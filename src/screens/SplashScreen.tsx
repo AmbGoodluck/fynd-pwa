@@ -22,7 +22,7 @@ export default function SplashScreen({ navigation }: Props) {
     <View style={styles.container}>
       <Image
         source={require('../../assets/find-splash.jpg')}
-        style={styles.splash}
+        style={styles.splashImage}
         resizeMode="contain"
       />
     </View>
@@ -30,15 +30,14 @@ export default function SplashScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  //
-  // Using absoluteFillObject on the CONTAINER (not just the image) is
-  // deliberate. React Navigation's Stack Navigator renders each screen
-  // inside an Animated.View that itself uses absoluteFillObject.
-  // By making our container also absolute, we anchor directly to that
-  // screen wrapper — bypassing the flex chain entirely.
-  // This guarantees full-screen coverage on every browser and device
-  // regardless of any intermediate flex container collapsing.
-  //
-  container: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
-  splash: { ...StyleSheet.absoluteFillObject },
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  splashImage: {
+    width: '100%',
+    height: '100%',
+  },
 });

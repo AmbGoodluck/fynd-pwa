@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import FyndScrollContainer from '../components/FyndScrollContainer';
 
 type Props = { navigation: any; route: any };
 
@@ -112,16 +113,14 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
+        <FyndScrollContainer
           style={styles.scrollView}
           contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
         >
           {places.map((item) => (
             <View key={item.placeId}>{renderPlace({ item })}</View>
           ))}
-        </ScrollView>
+        </FyndScrollContainer>
       )}
 
       {/* CTA bar — flex child, always pinned at bottom of scroll area.

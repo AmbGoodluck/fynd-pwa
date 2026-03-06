@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 
 if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import { submitFeedback } from '../services/feedbackService';
 import AppHeader from '../components/AppHeader';
+import FyndScrollContainer from '../components/FyndScrollContainer';
 
 const QUICK_OPTIONS = [
   { id: 'love', emoji: '\uD83D\uDE0D', label: 'I love Fynd' },
@@ -57,7 +58,7 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
         onBack={navigation?.canGoBack?.() ? () => navigation.goBack() : undefined}
       />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <FyndScrollContainer style={{ flex: 1 }} contentContainerStyle={styles.scroll}>
 
         {submitted && (
           <View style={styles.successBanner}>
@@ -196,7 +197,7 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
           )}
         </View>
 
-      </ScrollView>
+      </FyndScrollContainer>
     </SafeAreaView>
   );
 }
