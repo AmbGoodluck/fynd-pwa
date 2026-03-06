@@ -431,8 +431,12 @@ export default function MapScreen({ navigation, route }: Props) {
 
   const openStopInGMaps = (stop: Stop) => {
     const { latitude, longitude } = stop.coordinate;
-    Linking.openURL(`https://maps.google.com/maps?q=${latitude},${longitude}`)
-      .catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+    const url = `https://maps.google.com/maps?q=${latitude},${longitude}`;
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+    }
   };
 
   const openFullRoute = () => {
@@ -449,7 +453,11 @@ export default function MapScreen({ navigation, route }: Props) {
       `&origin=${o.latitude},${o.longitude}` +
       `&destination=${d.latitude},${d.longitude}`;
     if (wp) url += `&waypoints=${encodeURIComponent(wp)}`;
-    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+    }
   };
 
   const showOverview = () => {
@@ -476,30 +484,25 @@ export default function MapScreen({ navigation, route }: Props) {
   };
 
   const endTrip = () => {
-    Alert.alert(
-      'End Trip?',
-      'Are you sure you want to end this trip? You will return to the home page.',
-      [
-        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
-        {
-          text: 'End Trip',
-          onPress: () => {
-            navigation.reset({
-              index: 0,
-              routes: [
-                {
-                  name: 'MainTabs',
-                  params: { screen: 'Create Trip' },
-                },
-              ],
-            });
-            // Show feedback request after navigating home
-            setTimeout(() => showFeedbackRequest(), 600);
-          },
-          style: 'destructive',
-        },
-      ]
-    );
+    const doEnd = () => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'MainTabs', params: { screen: 'Create Trip' } }],
+      });
+      setTimeout(() => showFeedbackRequest(), 600);
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('End this trip and return to the home page?')) doEnd();
+    } else {
+      Alert.alert(
+        'End Trip?',
+        'Are you sure you want to end this trip? You will return to the home page.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'End Trip', onPress: doEnd, style: 'destructive' },
+        ]
+      );
+    }
   };
 
   const submitRating = async () => {
@@ -541,7 +544,7 @@ export default function MapScreen({ navigation, route }: Props) {
 
           {/* Floating controls in fullscreen */}
           {!mapLoading && (
-            <View style={styles.fullscreenControls}>
+            <View style={styles.fullscreenControls} pointerEvents="box-none">
               <TouchableOpacity style={styles.overviewBtn} onPress={showOverview}>
                 <Ionicons name="contract-outline" size={13} color="#111827" />
                 <Text style={styles.overviewBtnTxt}>Overview</Text>
@@ -726,7 +729,7 @@ export default function MapScreen({ navigation, route }: Props) {
 
         {/* Floating controls — only shown after map is ready */}
         {!mapLoading && (
-          <View style={styles.mapControls}>
+          <View style={styles.mapControls} pointerEvents="box-none">
             <TouchableOpacity style={styles.overviewBtn} onPress={showOverview}>
               <Ionicons name="contract-outline" size={13} color="#111827" />
               <Text style={styles.overviewBtnTxt}>Overview</Text>
@@ -948,7 +951,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    pointerEvents: 'box-none',
+    zIndex: 10,
   },
   closeFullscreenBtn: {
     position: 'absolute',
@@ -1004,7 +1007,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    pointerEvents: 'box-none',
+    zIndex: 10,
   },
   overviewBtn: {
     flexDirection: 'row',
