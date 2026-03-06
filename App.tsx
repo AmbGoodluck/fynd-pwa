@@ -1,5 +1,4 @@
-import React from 'react';
-import { Text } from 'react-native';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
 import {
@@ -20,13 +19,8 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// Apply Inter Regular as the default font for all Text in the app
-// Weighted styles (600, 700) are set per-component via the F constants
-(Text as any).defaultProps = (Text as any).defaultProps ?? {};
-(Text as any).defaultProps.style = [{ fontFamily: 'Inter_400Regular' }];
-
 function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -34,7 +28,17 @@ function App() {
     ...Ionicons.font,
   });
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (fontError) {
+      Sentry.captureException(fontError, {
+        tags: { context: 'App.useFonts' },
+        extra: { platform: 'runtime-font-load' },
+      });
+    }
+  }, [fontError]);
+
+  // If font loading fails on some devices, continue rendering to avoid blank screens.
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <SafeAreaProvider>

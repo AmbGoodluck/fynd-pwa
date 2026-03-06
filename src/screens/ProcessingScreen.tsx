@@ -55,14 +55,14 @@ export default function ProcessingScreen({ navigation, route }: Props) {
   const run = async () => {
     setErrorMsg(null);
     setLoading(true);
-    const minDelay = new Promise<void>(res => setTimeout(res, 3000));
+    const minDelay = new Promise<void>(res => setTimeout(res, 900));
     let places = await fetchPlaces();
 
     // Retry up to MAX_RETRIES times if first attempt returns empty
     while ((!places || places.length === 0) && retryCount.current < MAX_RETRIES && !cancelledRef.current) {
       retryCount.current += 1;
       console.log(`[Processing] Retry ${retryCount.current}/${MAX_RETRIES} for "${destination}"`);
-      await new Promise(res => setTimeout(res, 1500));
+      await new Promise(res => setTimeout(res, 700));
       places = await fetchPlaces();
     }
 

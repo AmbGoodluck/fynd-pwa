@@ -111,6 +111,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           data={places}
           keyExtractor={item => item.placeId}
           renderItem={renderPlace}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />

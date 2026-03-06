@@ -59,7 +59,7 @@ function nearbySearchUrl(lat: number, lng: number, type: string): string {
 }
 
 /** Build a photo URL based on platform (web → proxy hides key, native → direct) */
-export function getPhotoUrl(photoRef: string, maxWidth = 400): string {
+export function getPhotoUrl(photoRef: string, maxWidth = 320): string {
   if (!photoRef) return FALLBACK_IMG;
   if (isWeb && PROXY) {
     return `${PROXY}/api/places/photo?photo_reference=${encodeURIComponent(photoRef)}&maxwidth=${maxWidth}`;
