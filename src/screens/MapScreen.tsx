@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import WebView, { WebViewMessageEvent } from 'react-native-webview';
+import FyndMapView, { FyndMapViewRef } from '../components/FyndMapView';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '@sentry/react-native';
@@ -325,7 +325,7 @@ export default function MapScreen({ navigation, route }: Props) {
   const stops: Stop[] = route?.params?.stops ?? [];
   const hasStops = stops.length > 0;
 
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<FyndMapViewRef>(null);
   const [webViewReady, setWebViewReady] = useState(false);
   const [mapLoading, setMapLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -386,10 +386,17 @@ export default function MapScreen({ navigation, route }: Props) {
     webViewRef.current?.injectJavaScript(`setActiveStop(${activeIdx}); true;`);
   }, [activeIdx, webViewReady, hasStops]);
 
-  // Handle messages from the WebView (Google Maps)
-  const onMessage = (event: WebViewMessageEvent) => {
+  // Safety valve: if mapReady message never arrives (e.g. API key issue), clear
+  // the loading overlay after 12 s so the UI is never permanently stuck.
+  useEffect(() => {
+    const t = setTimeout(() => setMapLoading(false), 12000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Handle messages from the map (Google Maps JS → FyndMapView bridge)
+  const onMessage = (rawData: string) => {
     try {
-      const data = JSON.parse(event.nativeEvent.data);
+      const data = JSON.parse(rawData);
       if (data.type === 'mapReady') {
         setWebViewReady(true);
         setMapLoading(false);
@@ -515,21 +522,13 @@ export default function MapScreen({ navigation, route }: Props) {
   if (isFullscreen) {
     return (
       <SafeAreaView style={styles.fullscreenContainer} edges={['top']}>
-        {/* Fullscreen Map WebView */}
+        {/* Fullscreen Map */}
         <View style={styles.fullscreenMapBox}>
-          <WebView
+          <FyndMapView
             ref={webViewRef}
-            source={{ html: mapHtml }}
+            html={mapHtml}
             style={styles.webView}
-            javaScriptEnabled
-            domStorageEnabled
             onMessage={onMessage}
-            scrollEnabled={false}
-            bounces={false}
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            originWhitelist={['*']}
-            mixedContentMode="always"
           />
 
           {/* Loading overlay */}
@@ -669,19 +668,11 @@ export default function MapScreen({ navigation, route }: Props) {
         <AppHeader title="Map" />
 
         <View style={styles.mapBox}>
-          <WebView
+          <FyndMapView
             ref={webViewRef}
-            source={{ html: mapHtml }}
+            html={mapHtml}
             style={styles.webView}
-            javaScriptEnabled
-            domStorageEnabled
             onMessage={onMessage}
-            scrollEnabled={false}
-            bounces={false}
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            originWhitelist={['*']}
-            mixedContentMode="always"
           />
           {mapLoading && (
             <View style={styles.mapLoadingOverlay}>
@@ -716,21 +707,13 @@ export default function MapScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="Trip Map" onBack={() => navigation.goBack()} />
 
-      {/* ── Interactive Google Maps WebView ── */}
+      {/* ── Interactive Map (WebView on native, iframe on web) ── */}
       <View style={styles.mapBox}>
-        <WebView
+        <FyndMapView
           ref={webViewRef}
-          source={{ html: mapHtml }}
+          html={mapHtml}
           style={styles.webView}
-          javaScriptEnabled
-          domStorageEnabled
           onMessage={onMessage}
-          scrollEnabled={false}
-          bounces={false}
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          originWhitelist={['*']}
-          mixedContentMode="always"
         />
 
         {/* Loading overlay */}

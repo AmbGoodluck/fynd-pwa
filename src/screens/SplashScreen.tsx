@@ -1,7 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Dimensions } from 'react-native';
+import { View, Image, StyleSheet, Dimensions, Platform } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
+
+// Web loads instantly from cache; use a shorter delay so it feels snappy.
+const SPLASH_DELAY = Platform.OS === 'web' ? 1800 : 3500;
 
 type Props = { navigation: any };
 
@@ -13,7 +16,7 @@ export default function SplashScreen({ navigation }: Props) {
       } catch (error) {
         console.error('Navigation error:', error);
       }
-    }, 5000);
+    }, SPLASH_DELAY);
     return () => clearTimeout(timer);
   }, [navigation]);
 

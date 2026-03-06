@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:web": "npx expo export --platform web && cp feedback/privacy-policy.html dist/privacy-policy.html && cp feedback/terms.html dist/terms.html && cp public/_redirects dist/_redirects && node -e \"const fs=require('fs');fs.mkdirSync('dist/fonts',{recursive:true});fs.copyFileSync('node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf','dist/fonts/Ionicons.ttf')\""
+    "build:web": "npx expo export --platform web && node -e \"const fs=require('fs');const cp=(s,d)=>fs.copyFileSync(s,d);cp('feedback/privacy-policy.html','dist/privacy-policy.html');cp('feedback/terms.html','dist/terms.html');cp('public/_redirects','dist/_redirects');cp('public/manifest.json','dist/manifest.json');cp('assets/logo-icon.png','dist/icon.png');fs.mkdirSync('dist/fonts',{recursive:true});cp('node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf','dist/fonts/Ionicons.ttf');console.log('Post-build assets copied.');\""
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

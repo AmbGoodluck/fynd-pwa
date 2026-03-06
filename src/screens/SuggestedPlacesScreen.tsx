@@ -120,16 +120,22 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         />
       )}
 
-      {selectedForItinerary.length > 0 && (
-        <View style={styles.ctaBar}>
-          <TouchableOpacity style={styles.ctaBtn} onPress={handleGenerateItinerary}>
-            <Ionicons name="map-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.ctaBtnText}>
-              Build Itinerary ({selectedForItinerary.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* CTA bar — always visible so users know how to proceed */}
+      <View style={styles.ctaBar}>
+        <TouchableOpacity
+          style={[styles.ctaBtn, selectedForItinerary.length === 0 && styles.ctaBtnDisabled]}
+          onPress={handleGenerateItinerary}
+          disabled={selectedForItinerary.length === 0}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="map-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.ctaBtnText}>
+            {selectedForItinerary.length === 0
+              ? 'Select places to continue'
+              : `Build Itinerary (${selectedForItinerary.length})`}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -160,5 +166,6 @@ const styles = StyleSheet.create({
   backBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
   ctaBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 14, paddingBottom: 28, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
   ctaBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  ctaBtnDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
 });
