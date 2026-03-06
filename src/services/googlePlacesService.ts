@@ -84,24 +84,26 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       return {
         placeId: p.place_id,
         name: p.name,
-        address: p.formatted_address,
+        address: p.formatted_address || p.vicinity || destination || 'Unknown area',
         rating: p.rating || 4.0,
         description: p.editorial_summary?.overview || p.types?.[0]?.replace(/_/g, ' ') || '',
         photoRef: ref,
         photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
-        city: destination,
+        city: destination || 'Nearby',
         distanceKm: dist || Math.floor(Math.random() * 20) + 1,
         walkMinutes: Math.round((dist || 5) * 12),
       };
     }
 
-    const keywords1 = vibes.slice(0, 3).join(' ');
-    const keywords2 = vibes.length > 3 ? vibes.slice(3, 6).join(' ') : 'attractions';
+    const safeDestination = destination?.trim() || 'near me';
+    const safeVibes = vibes.length > 0 ? vibes : ['attractions', 'landmarks', 'food'];
+    const keywords1 = safeVibes.slice(0, 3).join(' ');
+    const keywords2 = safeVibes.length > 3 ? safeVibes.slice(3, 6).join(' ') : 'attractions';
 
-    const query1 = `${keywords1} in ${destination}`;
-    const query2 = `best ${keywords2} places to visit in ${destination}`;
+    const query1 = `${keywords1} in ${safeDestination}`;
+    const query2 = `best ${keywords2} places to visit in ${safeDestination}`;
 
     const urls = [textSearchUrl(query1), textSearchUrl(query2)];
 
@@ -150,6 +152,27 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
           extra: { destination, vibes, proxy: PROXY, isWeb },
         });
       }
+    }
+
+    if (combined.length === 0 && originLat !== 0 && originLng !== 0) {
+      console.log('[Places] Falling back to nearby search by coordinates');
+      const nearbyTypes = ['tourist_attraction', 'restaurant', 'cafe'];
+      const nearbyResults = await Promise.allSettled(
+        nearbyTypes.map(type => fetch(nearbySearchUrl(originLat, originLng, type)).then(r => r.json()))
+      );
+
+      for (const result of nearbyResults) {
+        if (result.status !== 'fulfilled') continue;
+        const data = result.value;
+        if (data?.status !== 'OK' || !Array.isArray(data.results)) continue;
+        for (const p of data.results) {
+          if (!seen.has(p.place_id)) {
+            seen.add(p.place_id);
+            combined.push(mapPlace(p));
+          }
+        }
+      }
+      console.log('[Places] nearby fallback count:', combined.length);
     }
 
     if (!hadFulfilledResponse) {

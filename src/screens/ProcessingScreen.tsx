@@ -75,10 +75,19 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       const errDetail = lastError.current ? `\n\nError: ${lastError.current}` : '';
       const msg = `No places found for "${destination}" after ${retryCount.current + 1} attempts.${errDetail}\n\nCheck your connection or try a different city.`;
       setErrorMsg(msg);
-      Sentry.captureMessage('ProcessingScreen: no places found after all retries', {
-        level: 'warning',
-        extra: { destination, vibeKeywords, latitude, longitude, retries: retryCount.current, platform: Platform.OS },
-      });
+      if (lastError.current) {
+        Sentry.captureMessage('ProcessingScreen: no places found after all retries', {
+          level: 'warning',
+          extra: { destination, vibeKeywords, latitude, longitude, retries: retryCount.current, platform: Platform.OS, error: lastError.current },
+        });
+      } else {
+        Sentry.addBreadcrumb({
+          category: 'processing',
+          message: 'No places found after retries (no underlying exception)',
+          level: 'info',
+          data: { destination, vibeKeywords, latitude, longitude, retries: retryCount.current, platform: Platform.OS },
+        });
+      }
       return;
     }
 
