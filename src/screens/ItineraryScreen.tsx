@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Linking, Alert, Modal, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Linking, Alert, Modal, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import { logEvent } from '../services/firebase';
 
 // Maps a PlaceResult (from SuggestedPlaces) to the stop shape used in this screen
 function mapPlaceToStop(p: any, index: number) {
@@ -35,18 +36,27 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [stops, setStops] = useState<Stop[]>(initialStops);
   const [showMapModal, setShowMapModal] = useState(false);
 
+  useEffect(() => {
+    logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
+  }, []);
+
   const removePlace = (id: string) =>
     setStops(prev => prev.filter(s => s.id !== id));
 
   const openGoogleMaps = () => {
     if (stops.length === 0) return;
 
+    const openUrl = (url: string) => {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+      } else {
+        Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+      }
+    };
+
     if (stops.length === 1) {
       const { latitude, longitude } = stops[0].coordinate;
-      const url = `https://maps.google.com/maps?q=${latitude},${longitude}`;
-      Linking.openURL(url).catch(() =>
-        Alert.alert('Error', 'Could not open Google Maps.')
-      );
+      openUrl(`https://maps.google.com/maps?q=${latitude},${longitude}`);
       return;
     }
 
@@ -59,14 +69,12 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
     let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${dest.latitude},${dest.longitude}`;
     if (waypoints) url += `&waypoints=${encodeURIComponent(waypoints)}`;
-
-    Linking.openURL(url).catch(() =>
-      Alert.alert('Error', 'Could not open Google Maps.')
-    );
+    openUrl(url);
   };
 
   const openInAppMap = () => {
     setShowMapModal(false);
+    logEvent('map_opened', { type: 'in_app', destination, stop_count: stops.length });
     navigation.navigate('TripMap', { stops });
   };
 

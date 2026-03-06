@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Dimensions, Platform } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { View, Image, StyleSheet, Platform } from 'react-native';
 
 // Web loads instantly from cache; use a shorter delay so it feels snappy.
 const SPLASH_DELAY = Platform.OS === 'web' ? 1800 : 3500;
@@ -33,5 +31,5 @@ export default function SplashScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  splash: { width, height },
+  splash: { ...StyleSheet.absoluteFillObject },
 });

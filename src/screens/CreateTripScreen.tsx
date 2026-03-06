@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   StatusBar, Modal, TextInput, Alert, Linking, Platform,
-  PanResponder, Dimensions, ActivityIndicator,
+  PanResponder, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,8 +11,8 @@ import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import { reverseGeocode } from '../services/googlePlacesService';
+import { logEvent } from '../services/firebase';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
 
 // ── Vibes (current step 5, design unchanged) ───────────────────────────
@@ -43,10 +43,10 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
   min: number; max: number; value: number; step?: number; onChange: (v: number) => void;
 }) {
   const containerRef = useRef<View>(null);
-  const metricsRef = useRef({ x: 0, width: SCREEN_WIDTH - 56 });
+  const metricsRef = useRef({ x: 0, width: 300 }); // onLayout corrects immediately
   const cbRef = useRef(onChange);
   cbRef.current = onChange;
-  const [renderW, setRenderW] = useState(SCREEN_WIDTH - 56);
+  const [renderW, setRenderW] = useState(300); // onLayout corrects immediately
 
   const THUMB = 22;
   const HPAD = 16;
@@ -277,6 +277,7 @@ export default function CreateTripScreen({ navigation }: Props) {
       const vibe = VIBES.find(v => v.id === id);
       return vibe?.keyword || vibe?.label || id;
     });
+    logEvent('trip_started', { destination, vibes: selectedVibes.join(','), explorationHours, distanceMiles, timeOfDay });
     navigation.navigate('Processing', {
       vibeKeywords, destination, vibes: selectedVibes,
       explorationHours, distanceMiles, timeOfDay, latitude, longitude,

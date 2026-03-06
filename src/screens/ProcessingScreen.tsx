@@ -2,9 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LottieView from 'lottie-react-native';
 import * as Sentry from '@sentry/react-native';
 import { searchPlacesByVibe } from '../services/googlePlacesService';
+import { logEvent } from '../services/firebase';
+
+// LottieView is native-only — dynamically imported so the web bundle never touches it
+const LottieView = Platform.OS !== 'web'
+  ? require('lottie-react-native').default
+  : null;
 
 const MESSAGES = [
   'Matching your vibe\u2026',
@@ -91,6 +96,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       return;
     }
 
+    logEvent('places_found', { destination, count: places.length, vibes: (vibeKeywords || []).join(',') });
     navigation.replace('SuggestedPlaces', {
       places, destination, vibes, explorationHours, distanceMiles, timeOfDay, latitude, longitude,
     });
@@ -139,12 +145,16 @@ export default function ProcessingScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.inner}>
         <View style={styles.animationWrap}>
-          <LottieView
-            source={require('../../assets/loading.json')}
-            autoPlay
-            loop
-            style={styles.lottie}
-          />
+          {Platform.OS === 'web' ? (
+            <ActivityIndicator size={100} color="#22C55E" />
+          ) : (
+            <LottieView
+              source={require('../../assets/loading.json')}
+              autoPlay
+              loop
+              style={styles.lottie}
+            />
+          )}
         </View>
         <Text style={styles.message}>{MESSAGES[msgIndex]}</Text>
         <View style={styles.dotRow}>
