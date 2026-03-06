@@ -20,6 +20,17 @@ export function injectWebGlobalStyles(): void {
   if (document.getElementById('fynd-web-styles')) return;   // idempotent
 
   // ── PWA meta tags ──────────────────────────────────────────────────────────
+  // Ensure proper viewport meta tag exists for mobile responsiveness
+  const existingVP = document.querySelector('meta[name="viewport"]');
+  if (existingVP) {
+    existingVP.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+  } else {
+    const vp = document.createElement('meta');
+    vp.name = 'viewport';
+    vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+    document.head.appendChild(vp);
+  }
+
   type MetaEntry = [string, string];
   const metas: MetaEntry[] = [
     ['theme-color',                       FYND_GREEN],
@@ -148,6 +159,11 @@ export function injectWebGlobalStyles(): void {
     button, [role="button"] {
       user-select: none;
       -webkit-user-select: none;
+    }
+
+    /* ── 9. PERFORMANCE — reduce layout shifts and repaint ──────────────── */
+    img {
+      content-visibility: auto;
     }
   `;
   document.head.appendChild(style);

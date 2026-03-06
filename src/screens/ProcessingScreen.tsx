@@ -194,9 +194,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
   inner: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   animationWrap: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: '65%',
+    maxWidth: 220,
+    aspectRatio: 1,
+    borderRadius: 9999,
     backgroundColor: '#F0FDF4',
     alignItems: 'center',
     justifyContent: 'center',

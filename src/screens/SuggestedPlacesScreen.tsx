@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   countBadgeText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
   list: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 16 },
   card: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 18, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 3, overflow: 'hidden' },
-  cardImage: { width: 115, height: 148 },
+  cardImage: { width: 100, minWidth: 80, height: 148 },
   cardBody: { flex: 1, padding: 12, justifyContent: 'space-between' },
   cardName: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#111827', marginBottom: 3 },
   cardDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18, marginBottom: 6, flex: 1 },

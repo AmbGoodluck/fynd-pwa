@@ -331,7 +331,9 @@ export default function MapScreen({ navigation, route }: Props) {
 
   // Mobile browsers can overlay a bottom toolbar that is not always reported
   // via safe-area insets. Add a conservative cushion on mobile web.
-  const browserBottomCushion = isMobileWeb ? 72 : 0;
+  // Use env(safe-area-inset-bottom) where available; 56px fallback covers
+  // Chrome (~56px) and Safari (~60px) bottom bars.
+  const browserBottomCushion = isMobileWeb ? 56 : 0;
   const navBottomInset = Math.max(insets.bottom, browserBottomCushion);
 
   const stops: Stop[] = route?.params?.stops ?? [];

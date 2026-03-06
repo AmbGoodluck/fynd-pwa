@@ -1,14 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, Dimensions, FlatList, ActivityIndicator
+  ImageBackground, FlatList, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { getRecentItineraries } from '../services/database';
 import AppHeader from '../components/AppHeader';
-
-const { width } = Dimensions.get('window');
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -26,6 +24,7 @@ const SERVICE_ITEMS = [
 type Props = { navigation: any };
 
 export default function HomeScreen({ navigation }: Props) {
+  const { width } = useWindowDimensions();
   const { user } = useAuthStore();
   const [recentItineraries, setRecentItineraries] = useState<any[]>([]);
   const [loadingItineraries, setLoadingItineraries] = useState(true);
@@ -181,7 +180,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scrollContent: { paddingBottom: 20 },
   bannerWrap: { marginHorizontal: 14, marginTop: 8, marginBottom: 16 },
-  banner: { width: width - 28, height: 200, borderRadius: 20, overflow: 'hidden' },
+  banner: { width: '100%', height: 200, borderRadius: 20, overflow: 'hidden' },
   bannerImage: { borderRadius: 20 },
   bannerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 20, padding: 20, justifyContent: 'flex-end' },
   bannerGreeting: { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 4 },

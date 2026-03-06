@@ -31,6 +31,8 @@ export default function FyndScrollContainer({ children, style, contentContainerS
 
   const innerCss: CSSProperties = {
     ...inner,
+    maxWidth: '100%',
+    overflowX: 'hidden',
   };
 
   return (

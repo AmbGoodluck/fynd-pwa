@@ -22,7 +22,7 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const isMobileWeb = Platform.OS === 'web' && width <= 900;
+  const isMobile = Platform.OS === 'web' ? width <= 900 : true;
   // safeBottom: on iOS with home indicator, insets.bottom > 0; elsewhere 0.
   const safeBottom = insets.bottom;
 
@@ -39,13 +39,14 @@ function MainTabs() {
         },
         tabBarActiveTintColor: '#22C55E',
         tabBarInactiveTintColor: 'gray',
-        tabBarStyle: isMobileWeb
+        tabBarStyle: isMobile
           ? {
               // Always pinned to the true bottom of the viewport.
-              // paddingBottom absorbs the iOS home-indicator safe area.
+              // paddingBottom absorbs the iOS home-indicator safe area
+              // and env(safe-area-inset-bottom) on web.
               height: 56 + safeBottom,
               paddingBottom: Math.max(4, safeBottom),
-              position: 'absolute',
+              position: 'absolute' as const,
               left: 0,
               right: 0,
               bottom: 0,
@@ -83,6 +84,7 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   appFrame: {
     flex: 1,
-    paddingHorizontal: 10,
+    maxWidth: '100%',
+    overflow: 'hidden' as const,
   },
 });

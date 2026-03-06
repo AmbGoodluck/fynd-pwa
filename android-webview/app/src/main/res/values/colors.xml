@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fynd_green">#22C55E</color>
+    <color name="fynd_green_dark">#16A34A</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="gray_light">#E5E5EA</color>
+    <color name="splash_background">#FFFFFF</color>
+</resources>

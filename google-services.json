@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "52406028380",
+    "project_id": "fynd-app-42ef4",
+    "storage_bucket": "fynd-app-42ef4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:52406028380:android:replace_with_real_app_id",
+        "android_client_info": {
+          "package_name": "com.anonymous.fyndapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "REPLACE_WITH_REAL_ANDROID_FIREBASE_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
