@@ -1,8 +1,9 @@
 import SuccessToast from '../components/SuccessToast';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Sentry from '@sentry/react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -27,6 +28,7 @@ const VIBES = [
 type Props = { navigation: any };
 
 export default function TravelPreferenceScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user, setUser } = useAuthStore();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
       const docSnap = await getDoc(doc(db, 'users', user.id));
       if (docSnap.exists()) setSelected(docSnap.data().travelPreferences || []);
     } catch (e) {
-      console.error('Load preferences error:', e);
+      Sentry.captureException(e, { tags: { context: 'TravelPreferenceScreen.loadPreferences' } });
     } finally {
       setLoading(false);
     }
@@ -69,7 +71,7 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
       if (setUser) setUser({ ...user, travelPreferences: selected });
       showSuccessToast();
     } catch (e) {
-      console.error('Save preferences error:', e);
+      Sentry.captureException(e, { tags: { context: 'TravelPreferenceScreen.savePreferences' } });
     } finally {
       setSaving(false);
     }
@@ -97,13 +99,12 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <ActivityIndicator size="large" color="#22C55E" style={{ flex: 1 }} />
         <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
-      <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
     </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={32} color="#111827" />
@@ -125,12 +126,13 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
         data={VIBES}
         keyExtractor={item => item.id}
         numColumns={2}
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.grid}
+        contentContainerStyle={[styles.grid, { paddingBottom: 16 }]}
         renderItem={renderVibe}
       />
 
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(12, insets.bottom) }] }>
         <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={savePreferences} disabled={saving}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Preferences</Text>}
         </TouchableOpacity>
@@ -147,7 +149,6 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
         </Animated.View>
       )}
       <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
-      <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
     </SafeAreaView>
   );
 }
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: '#57636C', lineHeight: 20 },
   selectedPill: { marginTop: 8, alignSelf: 'flex-start', backgroundColor: '#F0FDF4', borderRadius: 20, borderWidth: 1, borderColor: '#22C55E', paddingHorizontal: 14, paddingVertical: 4 },
   selectedPillText: { fontSize: 13, color: '#22C55E', fontWeight: '600' },
-  grid: { paddingHorizontal: 14, paddingBottom: 100 },
+  grid: { paddingHorizontal: 14, paddingBottom: 16 },
   vibeCard: { flex: 1, margin: 6, height: 120, borderRadius: 16, overflow: 'hidden', position: 'relative' },
   vibeImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   vibeOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 16 },
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
   vibeBorderSelected: { borderColor: '#22C55E' },
   checkBadge: { position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
   vibeLabel: { position: 'absolute', bottom: 10, left: 10, fontSize: 14, fontWeight: '600', color: '#fff' },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  bottomBar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
   saveBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 50, alignItems: 'center', justifyContent: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   toast: { position: 'absolute', bottom: 90, left: 20, right: 20, alignItems: 'center' },

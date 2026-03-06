@@ -1,9 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-const { width, height } = Dimensions.get('window');
 type Props = { navigation: any };
 export default function Onboarding4Screen({ navigation }: Props) {
+  const { width, height } = useWindowDimensions();
+  const heroWidth = Math.max(260, Math.min(width - 60, 420));
+  const heroHeight = Math.max(260, Math.min(height * 0.45, 460));
+  const buttonWidth = Math.max(260, Math.min(width - 64, 420));
+
   const handleGetStarted = async () => {
     await AsyncStorage.setItem('onboardingComplete', 'true');
     navigation.replace('Register');
@@ -17,7 +21,7 @@ export default function Onboarding4Screen({ navigation }: Props) {
         <View style={styles.dot} />
         <View style={[styles.dot, styles.activeDot]} />
       </View>
-      <View style={styles.imageBox}>
+      <View style={[styles.imageBox, { width: heroWidth, height: heroHeight }]}>
         <ImageBackground
           source={{ uri: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80' }}
           style={styles.image}
@@ -25,7 +29,7 @@ export default function Onboarding4Screen({ navigation }: Props) {
           defaultSource={require('../../assets/splash-icon.png')}
         />
       </View>
-      <TouchableOpacity style={styles.btn} onPress={handleGetStarted}>
+      <TouchableOpacity style={[styles.btn, { width: buttonWidth }]} onPress={handleGetStarted}>
         <Text style={styles.btnText}>Get Started</Text>
       </TouchableOpacity>
     </View>
@@ -37,8 +41,8 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 8, marginTop: 20 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1FAE5' },
   activeDot: { backgroundColor: '#22C55E', width: 20 },
-  imageBox: { width: width - 60, height: height * 0.45, marginTop: 30, borderRadius: 24, backgroundColor: '#F2F2F7', overflow: 'hidden' },
+  imageBox: { marginTop: 30, borderRadius: 24, backgroundColor: '#F2F2F7', overflow: 'hidden' },
   image: { width: '100%', height: '100%' },
-  btn: { position: 'absolute', bottom: 48, width: width - 64, backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center' },
+  btn: { position: 'absolute', bottom: 48, backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });
