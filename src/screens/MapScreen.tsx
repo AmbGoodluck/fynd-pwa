@@ -23,7 +23,9 @@ import { submitFeedback } from '../services/feedbackService';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
-const API_KEY = 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
 const MAP_H = 280;
 const LABELS = '123456789ABCDEFGHIJKLMNOP';
 
@@ -70,7 +72,7 @@ function walkTime(km: number): string {
  * Full interactive Google Maps JS — bakes STOPS into the HTML.
  * User location + activeIdx changes are pushed later via injectJavaScript.
  */
-function buildTripHtml(stops: Stop[]): string {
+function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
   const stopsData = JSON.stringify(
     stops.map((s, i) => ({
       id: s.id,
@@ -248,7 +250,7 @@ function buildTripHtml(stops: Stop[]): string {
     }
   </script>
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async">
+    src="${mapsJsUrl}">
   </script>
 </body>
 </html>`;
@@ -257,7 +259,7 @@ function buildTripHtml(stops: Stop[]): string {
 /**
  * Idle map (Map tab, no active trip) — shows user's location only.
  */
-function buildIdleHtml(): string {
+function buildIdleHtml(mapsJsUrl: string): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -312,7 +314,7 @@ function buildIdleHtml(): string {
     }
   </script>
   <script async
-    src="https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async">
+    src="${mapsJsUrl}">
   </script>
 </body>
 </html>`;
@@ -333,13 +335,31 @@ export default function MapScreen({ navigation, route }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
+  const mapLoadStartRef = useRef<number>(Date.now());
+
+  const mapsJsUrl = useMemo(() => {
+    if (Platform.OS === 'web' && PROXY) {
+      return `${PROXY}/api/maps/js?callback=initMap&loading=async`;
+    }
+    return `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async`;
+  }, []);
 
   // Build HTML once — stops are baked in; user location + activeIdx are pushed via injectJavaScript
   const mapHtml = useMemo(
-    () => (hasStops ? buildTripHtml(stops) : buildIdleHtml()),
+    () => (hasStops ? buildTripHtml(stops, mapsJsUrl) : buildIdleHtml(mapsJsUrl)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasStops]   // intentionally only rebuild if tab vs trip changes
+    [hasStops, mapsJsUrl]   // intentionally only rebuild if mode/script source changes
   );
+
+  useEffect(() => {
+    mapLoadStartRef.current = Date.now();
+    Sentry.addBreadcrumb({
+      category: 'perf.map',
+      message: 'map_html_load_start',
+      level: 'info',
+      data: { hasStops, platform: Platform.OS },
+    });
+  }, [mapHtml, hasStops]);
 
   // Request GPS once on mount
   useEffect(() => {
@@ -398,6 +418,13 @@ export default function MapScreen({ navigation, route }: Props) {
     try {
       const data = JSON.parse(rawData);
       if (data.type === 'mapReady') {
+        const durationMs = Date.now() - mapLoadStartRef.current;
+        Sentry.addBreadcrumb({
+          category: 'perf.map',
+          message: 'map_ready',
+          level: 'info',
+          data: { durationMs, hasStops, platform: Platform.OS },
+        });
         setWebViewReady(true);
         setMapLoading(false);
       } else if (data.type === 'markerTap') {

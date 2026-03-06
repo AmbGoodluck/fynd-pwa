@@ -27,14 +27,18 @@ export default function ProcessingScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const retryCount = useRef(0);
   const cancelledRef = useRef(false);
+  const processingStartedAt = useRef(Date.now());
 
   const lastError = useRef<string | null>(null);
 
   const fetchPlaces = async (): Promise<any[]> => {
     try {
-      console.log(`[Processing] Fetching places for "${destination}" on ${Platform.OS}, attempt ${retryCount.current + 1}`);
-      console.log(`[Processing] vibeKeywords:`, vibeKeywords);
-      console.log(`[Processing] lat=${latitude} lng=${longitude}`);
+      Sentry.addBreadcrumb({
+        category: 'perf.processing',
+        message: 'places_call_start',
+        level: 'info',
+        data: { attempt: retryCount.current + 1, destination, platform: Platform.OS },
+      });
       Sentry.addBreadcrumb({
         category: 'processing',
         message: `Searching places for "${destination}" (attempt ${retryCount.current + 1}/${MAX_RETRIES + 1})`,
@@ -42,12 +46,16 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         data: { destination, vibeKeywords, latitude, longitude, platform: Platform.OS },
       });
       const places = await searchPlacesByVibe(destination || '', vibeKeywords || [], latitude || 0, longitude || 0);
-      console.log(`[Processing] Got ${places?.length || 0} places`);
+      Sentry.addBreadcrumb({
+        category: 'perf.processing',
+        message: 'places_call_end',
+        level: 'info',
+        data: { attempt: retryCount.current + 1, resultCount: places?.length || 0, platform: Platform.OS },
+      });
       lastError.current = null;
       return places;
     } catch (err: any) {
       const msg = err?.message || String(err);
-      console.error('[Processing] searchPlacesByVibe error:', msg);
       lastError.current = msg;
       Sentry.captureException(err, {
         tags: { context: 'ProcessingScreen.searchPlacesByVibe', platform: Platform.OS },
@@ -60,14 +68,15 @@ export default function ProcessingScreen({ navigation, route }: Props) {
   const run = async () => {
     setErrorMsg(null);
     setLoading(true);
+    processingStartedAt.current = Date.now();
     const minDelay = new Promise<void>(res => setTimeout(res, 900));
     let places = await fetchPlaces();
 
-    // Retry up to MAX_RETRIES times if first attempt returns empty
-    while ((!places || places.length === 0) && retryCount.current < MAX_RETRIES && !cancelledRef.current) {
+    // Keep the intentional UX wait, but only retry when a real error occurred.
+    while ((!places || places.length === 0) && !!lastError.current && retryCount.current < MAX_RETRIES && !cancelledRef.current) {
       retryCount.current += 1;
-      console.log(`[Processing] Retry ${retryCount.current}/${MAX_RETRIES} for "${destination}"`);
-      await new Promise(res => setTimeout(res, 700));
+      const retryDelayMs = 450 * retryCount.current;
+      await new Promise(res => setTimeout(res, retryDelayMs));
       places = await fetchPlaces();
     }
 
@@ -97,8 +106,15 @@ export default function ProcessingScreen({ navigation, route }: Props) {
     }
 
     logEvent('places_found', { destination, count: places.length, vibes: (vibeKeywords || []).join(',') });
+    Sentry.addBreadcrumb({
+      category: 'perf.processing',
+      message: 'processing_success',
+      level: 'info',
+      data: { durationMs: Date.now() - processingStartedAt.current, retries: retryCount.current, count: places.length },
+    });
     navigation.replace('SuggestedPlaces', {
       places, destination, vibes, explorationHours, distanceMiles, timeOfDay, latitude, longitude,
+      perfSuggestedNavAt: Date.now(),
     });
   };
 

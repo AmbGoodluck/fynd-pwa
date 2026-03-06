@@ -144,6 +144,31 @@ export default {
       }
     }
 
+    // ── GET /api/maps/js — Google Maps JS proxy (hides API key on web) ─
+    if (method === 'GET' && url.pathname === '/api/maps/js') {
+      const placesKey = env.GOOGLE_PLACES_API_KEY;
+      if (!placesKey) return json({ error: 'GOOGLE_PLACES_API_KEY not configured' }, 500);
+
+      const callback = url.searchParams.get('callback') || 'initMap';
+      const loading = url.searchParams.get('loading') || 'async';
+
+      try {
+        const apiUrl = `https://maps.googleapis.com/maps/api/js?key=${placesKey}&callback=${encodeURIComponent(callback)}&loading=${encodeURIComponent(loading)}`;
+        const r = await fetch(apiUrl);
+        const contentType = r.headers.get('content-type') || 'application/javascript; charset=utf-8';
+        return new Response(r.body, {
+          status: r.status,
+          headers: {
+            'Content-Type': contentType,
+            ...CORS_HEADERS,
+            'Cache-Control': 'public, max-age=3600',
+          },
+        });
+      } catch (e) {
+        return json({ error: 'maps js proxy error', detail: e.message }, 500);
+      }
+    }
+
     return json({ error: 'Not found' }, 404);
   },
 };

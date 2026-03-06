@@ -6,6 +6,7 @@ const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6T
 const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
 const GOOGLE_BASE = 'https://maps.googleapis.com/maps/api/place';
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
+const DEV_LOGS = typeof __DEV__ !== 'undefined' && __DEV__;
 
 // On web, all Google Places requests go through our Cloudflare Worker to avoid CORS.
 // On native (Android/iOS), we call Google directly (no CORS restriction).
@@ -15,8 +16,16 @@ function redactKey(url: string): string {
   return url.replace(/([?&]key=)[^&]+/i, '$1[redacted]');
 }
 
-// Debug: log resolved env at module load so we know the config is wired
-console.log(`[Places] Module loaded: platform=${Platform.OS} isWeb=${isWeb} PROXY="${PROXY}" API_KEY_PRESENT="${API_KEY ? 'yes' : 'no'}"`);
+function debugLog(...args: any[]) {
+  if (DEV_LOGS) console.log(...args);
+}
+
+function debugWarn(...args: any[]) {
+  if (DEV_LOGS) console.warn(...args);
+}
+
+// Debug only in development so production devices are not spammed.
+debugLog(`[Places] Module loaded: platform=${Platform.OS} isWeb=${isWeb} PROXY="${PROXY}" API_KEY_PRESENT="${API_KEY ? 'yes' : 'no'}"`);
 
 export interface PlaceResult {
   placeId: string;
@@ -78,6 +87,14 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
   }
 
   try {
+    const startedAt = Date.now();
+    Sentry.addBreadcrumb({
+      category: 'perf.places',
+      message: 'places_fetch_start',
+      level: 'info',
+      data: { destination, vibesCount: vibes.length, platform: Platform.OS },
+    });
+
     function mapPlace(p: any): PlaceResult {
       const ref = p.photos?.[0]?.photo_reference || '';
       const dist = haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng);
@@ -107,16 +124,16 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
 
     const urls = [textSearchUrl(query1), textSearchUrl(query2)];
 
-    console.log(`[Places] platform=${Platform.OS} proxy=${isWeb && PROXY ? 'yes' : 'no'}`);
-    console.log('[Places] queries:', query1, '|', query2);
-    console.log('[Places] urls:', urls.map(redactKey));
+    debugLog(`[Places] platform=${Platform.OS} proxy=${isWeb && PROXY ? 'yes' : 'no'}`);
+    debugLog('[Places] queries:', query1, '|', query2);
+    debugLog('[Places] urls:', urls.map(redactKey));
 
     const results = await Promise.allSettled(urls.map(async url => {
-      console.log('[Places] fetching:', redactKey(url).substring(0, 160));
+      debugLog('[Places] fetching:', redactKey(url).substring(0, 160));
       const r = await fetch(url);
-      console.log('[Places] response status:', r.status, r.statusText);
+      debugLog('[Places] response status:', r.status, r.statusText);
       const data = await r.json();
-      console.log('[Places] response data status:', data.status, 'results:', data.results?.length || 0);
+      debugLog('[Places] response data status:', data.status, 'results:', data.results?.length || 0);
       return data;
     }));
 
@@ -129,7 +146,7 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       if (result.status === 'fulfilled') {
         const data = result.value;
         if (data.status === 'OK' && data.results) {
-          console.log('[Places] batch count:', data.results.length);
+          debugLog('[Places] batch count:', data.results.length);
           for (const p of data.results) {
             if (!seen.has(p.place_id)) {
               seen.add(p.place_id);
@@ -137,16 +154,16 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
             }
           }
         } else if (data.status && data.status !== 'ZERO_RESULTS') {
-          console.warn('[Places] API status:', data.status, data.error_message);
+          debugWarn('[Places] API status:', data.status, data.error_message);
           Sentry.captureMessage(`Google Places API error: ${data.status}`, {
             level: 'error',
             extra: { status: data.status, error_message: data.error_message, destination, vibes, platform: Platform.OS },
           });
         } else if (data.status === 'ZERO_RESULTS') {
-          console.log('[Places] ZERO_RESULTS for query');
+          debugLog('[Places] ZERO_RESULTS for query');
         }
       } else {
-        console.warn('[Places] fetch rejected:', result.reason);
+        debugWarn('[Places] fetch rejected:', result.reason);
         Sentry.captureException(result.reason, {
           tags: { context: 'searchPlacesByVibe.fetch', platform: Platform.OS },
           extra: { destination, vibes, proxy: PROXY, isWeb },
@@ -155,7 +172,7 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
     }
 
     if (combined.length === 0 && originLat !== 0 && originLng !== 0) {
-      console.log('[Places] Falling back to nearby search by coordinates');
+      debugLog('[Places] Falling back to nearby search by coordinates');
       const nearbyTypes = ['tourist_attraction', 'restaurant', 'cafe'];
       const nearbyResults = await Promise.allSettled(
         nearbyTypes.map(type => fetch(nearbySearchUrl(originLat, originLng, type)).then(r => r.json()))
@@ -172,7 +189,7 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
           }
         }
       }
-      console.log('[Places] nearby fallback count:', combined.length);
+      debugLog('[Places] nearby fallback count:', combined.length);
     }
 
     if (!hadFulfilledResponse) {
@@ -183,10 +200,17 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       throw new Error(`All Places requests failed: ${reasons}`);
     }
 
-    console.log('[Places] total unique results:', combined.length);
+    const durationMs = Date.now() - startedAt;
+    Sentry.addBreadcrumb({
+      category: 'perf.places',
+      message: 'places_fetch_end',
+      level: 'info',
+      data: { durationMs, resultCount: combined.length, platform: Platform.OS },
+    });
+    debugLog('[Places] total unique results:', combined.length);
     return combined.slice(0, 30);
   } catch (e) {
-    console.warn('[Places] searchPlacesByVibe error:', e);
+    debugWarn('[Places] searchPlacesByVibe error:', e);
     Sentry.captureException(e, {
       tags: { context: 'searchPlacesByVibe', platform: Platform.OS },
       extra: { destination, vibes, proxy: PROXY, isWeb },
@@ -225,7 +249,7 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
       };
     });
   } catch (e) {
-    console.warn('[Places] Nearby search error:', e);
+    debugWarn('[Places] Nearby search error:', e);
     Sentry.captureException(e, { tags: { context: 'searchNearby', platform: Platform.OS }, extra: { lat, lng, type } });
     return [];
   }
@@ -250,7 +274,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
     }
     return 'My Location';
   } catch (e) {
-    console.warn('[Places] reverseGeocode error:', e);
+    debugWarn('[Places] reverseGeocode error:', e);
     return 'My Location';
   }
 }

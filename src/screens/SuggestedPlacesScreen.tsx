@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import FyndScrollContainer from '../components/FyndScrollContainer';
@@ -9,6 +10,7 @@ import FyndScrollContainer from '../components/FyndScrollContainer';
 type Props = { navigation: any; route: any };
 
 export default function SuggestedPlacesScreen({ navigation, route }: Props) {
+  const mountAtRef = useRef(Date.now());
   const params = route?.params || {};
   const places: any[] = params.places || [];
   const tripId = params.tripId || null;
@@ -23,6 +25,17 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   // Applied to the CTA bar so its background extends edge-to-edge but content
   // stays above the home bar.  Never hardcode a safe-area guess.
   const { bottom: bottomInset } = useSafeAreaInsets();
+
+  useEffect(() => {
+    const navStart = typeof params.perfSuggestedNavAt === 'number' ? params.perfSuggestedNavAt : mountAtRef.current;
+    const firstRenderMs = Date.now() - navStart;
+    Sentry.addBreadcrumb({
+      category: 'perf.suggested',
+      message: 'suggested_first_render',
+      level: 'info',
+      data: { firstRenderMs, placeCount: places.length },
+    });
+  }, []);
 
   const handleAddToItinerary = (place: any) => {
     const isSelected = selectedForItinerary.find(p => p.placeId === place.placeId);
