@@ -11,8 +11,9 @@ import {
   Linking,
   Alert,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FyndMapView, { FyndMapViewRef } from '../components/FyndMapView';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -324,6 +325,14 @@ function buildIdleHtml(mapsJsUrl: string): string {
 type Props = { navigation: any; route?: any };
 
 export default function MapScreen({ navigation, route }: Props) {
+  const { width: viewportWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  // Mobile browsers can overlay a bottom toolbar that is not always reported
+  // via safe-area insets. Add a conservative cushion on mobile web.
+  const browserBottomCushion = Platform.OS === 'web' && viewportWidth <= 900 ? 56 : 0;
+  const navBottomInset = Math.max(insets.bottom, browserBottomCushion);
+
   const stops: Stop[] = route?.params?.stops ?? [];
   const hasStops = stops.length > 0;
 
@@ -590,7 +599,7 @@ export default function MapScreen({ navigation, route }: Props) {
 
           {/* Close fullscreen button */}
           <TouchableOpacity
-            style={styles.closeFullscreenBtn}
+            style={[styles.closeFullscreenBtn, { bottom: 20 + navBottomInset }]}
             onPress={() => setIsFullscreen(false)}
           >
             <Ionicons name="close" size={24} color="#fff" />
@@ -598,7 +607,7 @@ export default function MapScreen({ navigation, route }: Props) {
         </View>
 
         {/* Bottom panel with stop info in fullscreen */}
-        <View style={styles.fullscreenBottomPanel}>
+        <View style={[styles.fullscreenBottomPanel, { paddingBottom: 16 + navBottomInset }]}>
           {/* Stop navigator bar */}
           <View style={styles.stopBar}>
             <TouchableOpacity
@@ -782,48 +791,49 @@ export default function MapScreen({ navigation, route }: Props) {
       </View>
 
       {/* ── Stop navigator bar ── */}
-      <View style={styles.stopBar}>
-        <TouchableOpacity
-          onPress={() => activeIdx > 0 && selectStop(activeIdx - 1)}
-          disabled={activeIdx === 0}
-          style={[styles.arrowBtn, activeIdx === 0 && styles.arrowBtnDim]}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={22}
-            color={activeIdx === 0 ? '#C7C7CC' : '#111827'}
-          />
-        </TouchableOpacity>
+      <View style={[styles.tripBottomSection, { paddingBottom: navBottomInset }]}>
+        <View style={styles.stopBar}>
+          <TouchableOpacity
+            onPress={() => activeIdx > 0 && selectStop(activeIdx - 1)}
+            disabled={activeIdx === 0}
+            style={[styles.arrowBtn, activeIdx === 0 && styles.arrowBtnDim]}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={activeIdx === 0 ? '#C7C7CC' : '#111827'}
+            />
+          </TouchableOpacity>
 
-        <View style={styles.stopBarCenter}>
-          <Text style={styles.stopBarCount}>
-            Stop{' '}
-            <Text style={styles.stopBarNum}>{activeIdx + 1}</Text>
-            <Text style={styles.stopBarOf}> / {stops.length}</Text>
-          </Text>
-          {activeStop ? (
-            <Text style={styles.stopBarName} numberOfLines={1}>
-              {activeStop.name}
+          <View style={styles.stopBarCenter}>
+            <Text style={styles.stopBarCount}>
+              Stop{' '}
+              <Text style={styles.stopBarNum}>{activeIdx + 1}</Text>
+              <Text style={styles.stopBarOf}> / {stops.length}</Text>
             </Text>
-          ) : null}
+            {activeStop ? (
+              <Text style={styles.stopBarName} numberOfLines={1}>
+                {activeStop.name}
+              </Text>
+            ) : null}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => activeIdx < stops.length - 1 && selectStop(activeIdx + 1)}
+            disabled={activeIdx === stops.length - 1}
+            style={[styles.arrowBtn, activeIdx === stops.length - 1 && styles.arrowBtnDim]}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={22}
+              color={activeIdx === stops.length - 1 ? '#C7C7CC' : '#111827'}
+            />
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          onPress={() => activeIdx < stops.length - 1 && selectStop(activeIdx + 1)}
-          disabled={activeIdx === stops.length - 1}
-          style={[styles.arrowBtn, activeIdx === stops.length - 1 && styles.arrowBtnDim]}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={22}
-            color={activeIdx === stops.length - 1 ? '#C7C7CC' : '#111827'}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Active stop detail card ── */}
-      {activeStop ? (
-        <View style={styles.detailCard}>
+        {/* ── Active stop detail card ── */}
+        {activeStop ? (
+          <View style={styles.detailCard}>
           <Image source={{ uri: activeStop.image }} style={styles.detailImg} />
 
           <View style={styles.detailBody}>
@@ -866,47 +876,48 @@ export default function MapScreen({ navigation, route }: Props) {
             <Ionicons name="navigate-outline" size={20} color="#22C55E" />
             <Text style={styles.goBtnTxt}>Go</Text>
           </TouchableOpacity>
-        </View>
-      ) : null}
+          </View>
+        ) : null}
 
-      {/* ── Horizontal stop thumbnail strip ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.thumbRow}
-        style={styles.thumbScroll}
-      >
-        {stops.map((stop, i) => (
-          <TouchableOpacity
-            key={stop.id}
-            onPress={() => selectStop(i)}
-            style={styles.thumbItem}
-          >
-            <View
-              style={[
-                styles.thumbImgWrap,
-                i === activeIdx && styles.thumbImgWrapActive,
-              ]}
+        {/* ── Horizontal stop thumbnail strip ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.thumbRow}
+          style={styles.thumbScroll}
+        >
+          {stops.map((stop, i) => (
+            <TouchableOpacity
+              key={stop.id}
+              onPress={() => selectStop(i)}
+              style={styles.thumbItem}
             >
-              <Image source={{ uri: stop.image }} style={styles.thumbImg} />
               <View
                 style={[
-                  styles.thumbBadge,
-                  i === activeIdx && styles.thumbBadgeActive,
+                  styles.thumbImgWrap,
+                  i === activeIdx && styles.thumbImgWrapActive,
                 ]}
               >
-                <Text style={styles.thumbBadgeTxt}>{i + 1}</Text>
+                <Image source={{ uri: stop.image }} style={styles.thumbImg} />
+                <View
+                  style={[
+                    styles.thumbBadge,
+                    i === activeIdx && styles.thumbBadgeActive,
+                  ]}
+                >
+                  <Text style={styles.thumbBadgeTxt}>{i + 1}</Text>
+                </View>
               </View>
-            </View>
-            <Text
-              style={[styles.thumbLbl, i === activeIdx && styles.thumbLblActive]}
-              numberOfLines={1}
-            >
-              {stop.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <Text
+                style={[styles.thumbLbl, i === activeIdx && styles.thumbLblActive]}
+                numberOfLines={1}
+              >
+                {stop.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* ── Rating Modal ── */}
       {showRating && (

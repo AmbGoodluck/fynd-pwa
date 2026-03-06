@@ -45,7 +45,13 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         level: 'info',
         data: { destination, vibeKeywords, latitude, longitude, platform: Platform.OS },
       });
-      const places = await searchPlacesByVibe(destination || '', vibeKeywords || [], latitude || 0, longitude || 0);
+      const places = await searchPlacesByVibe(
+        destination || '',
+        vibeKeywords || [],
+        latitude || 0,
+        longitude || 0,
+        typeof distanceMiles === 'number' ? distanceMiles : undefined
+      );
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_end',

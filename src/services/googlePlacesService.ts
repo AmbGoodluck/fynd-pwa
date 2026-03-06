@@ -41,6 +41,7 @@ export interface PlaceResult {
   bookingUrl?: string;
   category?: string;
   city?: string;
+  types?: string[];
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -76,7 +77,13 @@ export function getPhotoUrl(photoRef: string, maxWidth = 320): string {
   return `${GOOGLE_BASE}/photo?maxwidth=${maxWidth}&photo_reference=${encodeURIComponent(photoRef)}&key=${API_KEY}`;
 }
 
-export async function searchPlacesByVibe(destination: string, vibes: string[], originLat = 0, originLng = 0): Promise<PlaceResult[]> {
+export async function searchPlacesByVibe(
+  destination: string,
+  vibes: string[],
+  originLat = 0,
+  originLng = 0,
+  maxDistanceKm?: number
+): Promise<PlaceResult[]> {
   function toErrorMessage(reason: unknown): string {
     if (reason instanceof Error) return reason.message;
     try {
@@ -95,9 +102,13 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       data: { destination, vibesCount: vibes.length, platform: Platform.OS },
     });
 
+    const hasOrigin = originLat !== 0 && originLng !== 0;
+
     function mapPlace(p: any): PlaceResult {
       const ref = p.photos?.[0]?.photo_reference || '';
-      const dist = haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng);
+      const dist = hasOrigin
+        ? haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng)
+        : undefined;
       return {
         placeId: p.place_id,
         name: p.name,
@@ -108,9 +119,10 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
         photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
+        types: Array.isArray(p.types) ? p.types : [],
         city: destination || 'Nearby',
-        distanceKm: dist || Math.floor(Math.random() * 20) + 1,
-        walkMinutes: Math.round((dist || 5) * 12),
+        distanceKm: dist,
+        walkMinutes: typeof dist === 'number' ? Math.round(dist * 12) : undefined,
       };
     }
 
@@ -171,7 +183,7 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       }
     }
 
-    if (combined.length === 0 && originLat !== 0 && originLng !== 0) {
+    if (combined.length === 0 && hasOrigin) {
       debugLog('[Places] Falling back to nearby search by coordinates');
       const nearbyTypes = ['tourist_attraction', 'restaurant', 'cafe'];
       const nearbyResults = await Promise.allSettled(
@@ -200,15 +212,55 @@ export async function searchPlacesByVibe(destination: string, vibes: string[], o
       throw new Error(`All Places requests failed: ${reasons}`);
     }
 
+    // Strict preference filtering:
+    // 1) place must semantically match selected vibe keywords
+    // 2) if origin exists, place must be inside selected distance radius
+    const vibeTokens = Array.from(
+      new Set(
+        (safeVibes || [])
+          .flatMap(v => String(v).toLowerCase().split(/[^a-z0-9]+/g))
+          .filter(t => t.length >= 3)
+      )
+    );
+
+    const filteredByVibe = combined.filter(p => {
+      if (vibeTokens.length === 0) return true;
+      const haystack = [
+        p.name,
+        p.description,
+        p.category,
+        p.address,
+        ...(p.types || []),
+      ]
+        .join(' ')
+        .toLowerCase();
+      return vibeTokens.some(token => haystack.includes(token));
+    });
+
+    const strictDistanceKm = typeof maxDistanceKm === 'number' && maxDistanceKm > 0
+      ? maxDistanceKm
+      : null;
+
+    const strictlyFiltered = hasOrigin && strictDistanceKm
+      ? filteredByVibe.filter(p => typeof p.distanceKm === 'number' && p.distanceKm <= strictDistanceKm)
+      : filteredByVibe;
+
     const durationMs = Date.now() - startedAt;
     Sentry.addBreadcrumb({
       category: 'perf.places',
       message: 'places_fetch_end',
       level: 'info',
-      data: { durationMs, resultCount: combined.length, platform: Platform.OS },
+      data: {
+        durationMs,
+        resultCount: strictlyFiltered.length,
+        preFilterCount: combined.length,
+        hasOrigin,
+        maxDistanceKm: strictDistanceKm,
+        platform: Platform.OS,
+      },
     });
-    debugLog('[Places] total unique results:', combined.length);
-    return combined.slice(0, 30);
+    debugLog('[Places] total unique results:', combined.length, 'strictly filtered:', strictlyFiltered.length);
+    return strictlyFiltered.slice(0, 30);
   } catch (e) {
     debugWarn('[Places] searchPlacesByVibe error:', e);
     Sentry.captureException(e, {
