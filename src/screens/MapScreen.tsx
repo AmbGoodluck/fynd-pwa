@@ -101,6 +101,7 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
     var USER = null;
     var activeIdx = 0;
     var map, markers = [], polyline, userMarker;
+    var directionsService, directionsRenderer;
 
     function pinSvg(label, isActive) {
       var color = isActive ? '#22C55E' : '#EF4444';
@@ -148,6 +149,12 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
       });
 
       renderAll();
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: true,
+        polylineOptions: { strokeColor: '#16A34A', strokeOpacity: 1, strokeWeight: 5 },
+      });
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapReady' }));
       }
@@ -249,6 +256,59 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
       USER = { lat: lat, lng: lng };
       drawUserDot();
     }
+
+    function startInAppNavigation() {
+      if (STOPS.length === 0) return;
+      if (STOPS.length === 1) {
+        map.setCenter({ lat: STOPS[0].lat, lng: STOPS[0].lng });
+        map.setZoom(16);
+        return;
+      }
+      var wpts = STOPS.slice(1, -1).map(function(s) {
+        return { location: new google.maps.LatLng(s.lat, s.lng), stopover: true };
+      });
+      directionsService.route({
+        origin: new google.maps.LatLng(STOPS[0].lat, STOPS[0].lng),
+        destination: new google.maps.LatLng(STOPS[STOPS.length - 1].lat, STOPS[STOPS.length - 1].lng),
+        waypoints: wpts,
+        travelMode: google.maps.TravelMode.WALKING,
+        optimizeWaypoints: false,
+      }, function(result, status) {
+        if (status === 'OK') {
+          if (polyline) { polyline.setMap(null); polyline = null; }
+          directionsRenderer.setDirections(result);
+          var dist = 0, dur = 0;
+          result.routes[0].legs.forEach(function(leg) {
+            dist += leg.distance ? leg.distance.value : 0;
+            dur += leg.duration ? leg.duration.value : 0;
+          });
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'navigationStarted',
+              totalDistanceM: dist,
+              totalDurationS: dur,
+            }));
+          }
+        } else {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigationError', status: status }));
+          }
+        }
+      });
+    }
+
+    function stopNavigation() {
+      if (directionsRenderer) { directionsRenderer.setMap(null); }
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: true,
+        polylineOptions: { strokeColor: '#16A34A', strokeOpacity: 1, strokeWeight: 5 },
+      });
+      renderAll();
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigationStopped' }));
+      }
+    }
   </script>
   <script async
     src="${mapsJsUrl}">
@@ -345,6 +405,8 @@ export default function MapScreen({ navigation, route }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
+  const [navActive, setNavActive] = useState(false);
+  const [navInfo, setNavInfo] = useState<{ distM: number; durS: number } | null>(null);
   const mapLoadStartRef = useRef<number>(Date.now());
 
   const mapsJsUrl = useMemo(() => {
@@ -451,6 +513,14 @@ export default function MapScreen({ navigation, route }: Props) {
       } else if (data.type === 'markerTap') {
         lastInjectedIdx.current = data.index; // prevent echo injection
         setActiveIdx(data.index);
+      } else if (data.type === 'navigationStarted') {
+        setNavActive(true);
+        setNavInfo({ distM: data.totalDistanceM ?? 0, durS: data.totalDurationS ?? 0 });
+      } else if (data.type === 'navigationStopped') {
+        setNavActive(false);
+        setNavInfo(null);
+      } else if (data.type === 'navigationError') {
+        Alert.alert('Navigation', 'Could not calculate route. Please check your internet connection.');
       }
     } catch (_) {}
   };
@@ -523,6 +593,17 @@ export default function MapScreen({ navigation, route }: Props) {
     webViewRef.current?.injectJavaScript(`showOverview(); true;`);
   };
 
+  const startInAppNav = () => {
+    webViewRef.current?.injectJavaScript('startInAppNavigation(); true;');
+    if (!isFullscreen) setIsFullscreen(true);
+  };
+
+  const stopInAppNav = () => {
+    webViewRef.current?.injectJavaScript('stopNavigation(); true;');
+    setNavActive(false);
+    setNavInfo(null);
+  };
+
   const endTrip = () => {
     const doEnd = () => {
       navigation.reset({
@@ -593,10 +674,17 @@ export default function MapScreen({ navigation, route }: Props) {
                 <Text style={styles.endTripBtnTxt}>End Trip</Text>
               </TouchableOpacity>
               <View style={{ flex: 1 }} />
-              <TouchableOpacity style={styles.navigateBtn} onPress={openFullRoute}>
-                <Ionicons name="navigate" size={13} color="#fff" />
-                <Text style={styles.navigateBtnTxt}>Navigate</Text>
-              </TouchableOpacity>
+              {navActive ? (
+                <TouchableOpacity style={styles.stopNavBtn} onPress={stopInAppNav}>
+                  <Ionicons name="stop-circle" size={13} color="#fff" />
+                  <Text style={styles.stopNavBtnTxt}>Stop Nav</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.navigateBtn} onPress={startInAppNav}>
+                  <Ionicons name="navigate" size={13} color="#fff" />
+                  <Text style={styles.navigateBtnTxt}>Navigate</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -611,6 +699,22 @@ export default function MapScreen({ navigation, route }: Props) {
 
         {/* Bottom panel with stop info in fullscreen */}
         <View style={[styles.fullscreenBottomPanel, { paddingBottom: 16 + navBottomInset }]}>
+          {/* Navigation info bar — shown when in-app navigation is active */}
+          {navActive && navInfo && navInfo.distM > 0 && (
+            <View style={styles.navInfoBar}>
+              <Ionicons name="navigate" size={14} color="#22C55E" />
+              <Text style={styles.navInfoTxt}>
+                {navInfo.distM >= 1000
+                  ? `${(navInfo.distM / 1000).toFixed(1)} km`
+                  : `${navInfo.distM} m`}
+                {' · '}{Math.ceil(navInfo.durS / 60)} min walk
+              </Text>
+              <TouchableOpacity onPress={stopInAppNav} style={styles.navStopBar}>
+                <Ionicons name="close-circle" size={16} color="#EF4444" />
+                <Text style={styles.navStopBarTxt}>Stop</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* Stop navigator bar */}
           <View style={styles.stopBar}>
             <TouchableOpacity
@@ -785,10 +889,17 @@ export default function MapScreen({ navigation, route }: Props) {
               <Ionicons name="expand-outline" size={13} color="#fff" />
               <Text style={styles.fullscreenBtnTxt}>Fullscreen</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navigateBtn} onPress={openFullRoute}>
-              <Ionicons name="navigate" size={13} color="#fff" />
-              <Text style={styles.navigateBtnTxt}>Navigate</Text>
-            </TouchableOpacity>
+            {navActive ? (
+              <TouchableOpacity style={styles.stopNavBtn} onPress={stopInAppNav}>
+                <Ionicons name="stop-circle" size={13} color="#fff" />
+                <Text style={styles.stopNavBtnTxt}>Stop Nav</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.navigateBtn} onPress={startInAppNav}>
+                <Ionicons name="navigate" size={13} color="#fff" />
+                <Text style={styles.navigateBtnTxt}>Navigate</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -1090,6 +1201,29 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   navigateBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
+  stopNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EF4444',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  stopNavBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
+  navInfoBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F0FDF4',
+    borderBottomWidth: 1,
+    borderBottomColor: '#BBF7D0',
+  },
+  navInfoTxt: { flex: 1, fontSize: 13, fontFamily: F.medium, color: '#166534' },
+  navStopBar: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  navStopBarTxt: { fontSize: 12, fontFamily: F.semibold, color: '#EF4444' },
 
   // ── Idle card ──
   idleCard: {

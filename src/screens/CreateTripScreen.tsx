@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   StatusBar, Modal, TextInput, Alert, Linking, Platform,
@@ -107,10 +107,11 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
 }
 
 // ── Main Screen ────────────────────────────────────────────────────────
-type Props = { navigation: any };
+type Props = { navigation: any; route?: any };
 
-export default function CreateTripScreen({ navigation }: Props) {
+export default function CreateTripScreen({ navigation, route }: Props) {
   const [step, setStep] = useState(1);
+  const [showPostTripFeedbackModal, setShowPostTripFeedbackModal] = useState(false);
 
   // Reactive safe-area bottom inset for the step-2 bottom bar.
   const { bottom: bottomInset } = useSafeAreaInsets();
@@ -131,6 +132,13 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   const canGoToStep2 = destination.trim().length > 0 && timeOfDay !== '';
   const canFindPlaces = selectedVibes.length > 0;
+
+  useEffect(() => {
+    if (route?.params?.showPostTripFeedbackPrompt) {
+      setShowPostTripFeedbackModal(true);
+      navigation.setParams({ showPostTripFeedbackPrompt: undefined });
+    }
+  }, [route?.params?.showPostTripFeedbackPrompt, navigation]);
 
   const openSettings = () => {
     // Linking.openSettings() is only supported on native platforms
@@ -240,11 +248,12 @@ export default function CreateTripScreen({ navigation }: Props) {
       // Uses the proxy on web, direct API on native — so no CORS issues.
       try {
         const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
-        const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+        const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
         let url: string;
         if (Platform.OS === 'web' && PROXY) {
           url = `${PROXY}/api/places/textsearch?query=${encodeURIComponent(input)}`;
         } else {
+          if (!API_KEY) throw new Error('EXPO_PUBLIC_GOOGLE_PLACES_API_KEY is required on native builds');
           url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(input)}&key=${API_KEY}`;
         }
         const res = await fetch(url);
@@ -421,8 +430,10 @@ export default function CreateTripScreen({ navigation }: Props) {
             <View style={styles.iconCircle}>
               <Ionicons name="sparkles-outline" size={30} color="#fff" />
             </View>
-            <Text style={styles.vibeTitle}>What interests you?</Text>
-            <Text style={styles.vibeSubtitle}>Select activities you would like to experience</Text>
+            <View style={styles.vibeHeaderBlock}>
+              <Text style={styles.vibeTitle}>What interests you?</Text>
+              <Text style={styles.vibeSubtitle}>Select activities you would like to experience</Text>
+            </View>
             <View style={styles.vibeGrid}>
               {VIBES.map(v => (
                 <TouchableOpacity
@@ -489,6 +500,40 @@ export default function CreateTripScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+
+      {/* Post-trip feedback prompt */}
+      <Modal
+        visible={showPostTripFeedbackModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPostTripFeedbackModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Share feedback to help us improve</Text>
+            <Text style={styles.postTripPromptText}>
+              Thanks for completing your trip. Your feedback helps us improve Fynd for everyone.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setShowPostTripFeedbackModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Not now</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={() => {
+                  setShowPostTripFeedbackModal(false);
+                  navigation.navigate('Feedback');
+                }}
+              >
+                <Text style={styles.modalConfirmText}>Give Feedback</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -534,8 +579,9 @@ const styles = StyleSheet.create({
   ctaBtnTextEnabled: { color: '#fff' },
 
   iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  vibeHeaderBlock: { width: '100%', marginBottom: 24, flexDirection: 'column', alignItems: 'flex-start' },
   vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 8, lineHeight: 32 },
-  vibeSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', marginBottom: 24 },
+  vibeSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280' },
   vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 50, paddingVertical: 11, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent' },
   vibeChipActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
@@ -553,6 +599,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
   modalBox: { width: '88%', backgroundColor: '#fff', borderRadius: 20, padding: 24 },
   modalTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 16 },
+  postTripPromptText: { fontSize: 14, fontFamily: F.regular, color: '#4B5563', lineHeight: 20, marginBottom: 18 },
   modalInput: { backgroundColor: '#F3F4F6', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontFamily: F.regular, color: '#111827', marginBottom: 20, borderWidth: 1, borderColor: '#E5E7EB' },
   modalActions: { flexDirection: 'row', gap: 12 },
   modalCancel: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
