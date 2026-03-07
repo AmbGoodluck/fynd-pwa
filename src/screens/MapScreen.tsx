@@ -91,17 +91,66 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body, #map { width: 100%; height: 100%; overflow: hidden; }
+    html, body { width: 100%; height: 100%; overflow: hidden; position: relative; }
+    #map { width: 100%; height: 100%; }
+    #navPanel {
+      display: none; position: absolute; top: 10px; left: 50%;
+      transform: translateX(-50%); background: rgba(17,24,39,0.96);
+      border-radius: 18px; padding: 12px 16px; min-width: 82%; max-width: 340px;
+      z-index: 999; box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    #navPanel.active { display: block; }
+    .nav-top { display: flex; align-items: center; gap: 12px; }
+    .nav-arrow { width: 46px; height: 46px; background: #22C55E; border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; line-height: 1; flex-shrink: 0; color: #fff; }
+    .nav-text { flex: 1; min-width: 0; }
+    .nav-dist { font-size: 22px; font-weight: 700; color: #fff; line-height: 1.1; font-family: -apple-system,sans-serif; }
+    .nav-instr { font-size: 12px; color: #9CA3AF; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: -apple-system,sans-serif; }
+    .nav-footer { display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .nav-eta  { font-size: 11px; color: #6B7280; font-family: -apple-system,sans-serif; }
+    .nav-stop { font-size: 11px; color: #22C55E; font-weight: 600; font-family: -apple-system,sans-serif; }
+    #arrivedBanner {
+      display: none; position: absolute; top: 10px; left: 50%;
+      transform: translateX(-50%); background: rgba(34,197,94,0.97);
+      border-radius: 18px; padding: 14px 22px; min-width: 72%; max-width: 320px;
+      z-index: 999; text-align: center; box-shadow: 0 4px 20px rgba(34,197,94,0.55);
+    }
+    #arrivedBanner.active { display: block; }
+    .arr-title { font-size: 18px; font-weight: 700; color: #fff; font-family: -apple-system,sans-serif; }
+    .arr-sub   { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 5px; font-family: -apple-system,sans-serif; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div id="navPanel">
+    <div class="nav-top">
+      <div class="nav-arrow" id="navArrow">↑</div>
+      <div class="nav-text">
+        <div class="nav-dist" id="navDist">—</div>
+        <div class="nav-instr" id="navInstr">Calculating route…</div>
+      </div>
+    </div>
+    <div class="nav-footer">
+      <span class="nav-eta" id="navEta">— remaining</span>
+      <span class="nav-stop" id="navStop">—</span>
+    </div>
+  </div>
+  <div id="arrivedBanner">
+    <div class="arr-title">🎉 You've arrived!</div>
+    <div class="arr-sub" id="arrivedName">—</div>
+  </div>
   <script>
     var STOPS = ${stopsData};
     var USER = null;
     var activeIdx = 0;
     var map, markers = [], polyline, userMarker;
     var directionsService, directionsRenderer;
+    /* navigation state */
+    var navMode = false, navSteps = [], navCurrentStep = 0;
+    var navTotalDistM = 0, navTotalDurS = 0, navElapsedDistM = 0;
+    var prevLat = null, prevLng = null;
 
     function pinSvg(label, isActive) {
       var color = isActive ? '#22C55E' : '#EF4444';
@@ -252,62 +301,164 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
       fitAll();
     }
 
-    function setUserLocation(lat, lng) {
-      USER = { lat: lat, lng: lng };
-      drawUserDot();
+    /* ── Navigation helpers ──────────────────────────────────────────────── */
+    function haversineM(lt1,ln1,lt2,ln2){
+      var R=6371000,dLat=(lt2-lt1)*Math.PI/180,dLon=(ln2-ln1)*Math.PI/180;
+      var a=Math.sin(dLat/2)*Math.sin(dLat/2)+
+            Math.cos(lt1*Math.PI/180)*Math.cos(lt2*Math.PI/180)*
+            Math.sin(dLon/2)*Math.sin(dLon/2);
+      return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+    function bearingDeg(lt1,ln1,lt2,ln2){
+      var y=Math.sin((ln2-ln1)*Math.PI/180)*Math.cos(lt2*Math.PI/180);
+      var x=Math.cos(lt1*Math.PI/180)*Math.sin(lt2*Math.PI/180)-
+            Math.sin(lt1*Math.PI/180)*Math.cos(lt2*Math.PI/180)*
+            Math.cos((ln2-ln1)*Math.PI/180);
+      return(Math.atan2(y,x)*180/Math.PI+360)%360;
+    }
+    function maneuverArrow(m){
+      var a={'turn-left':'↰','turn-right':'↱','turn-slight-left':'↖','turn-slight-right':'↗',
+             'turn-sharp-left':'↙','turn-sharp-right':'↘','uturn-left':'↩','uturn-right':'↪',
+             'roundabout-left':'↺','roundabout-right':'↻','ramp-left':'↖','ramp-right':'↗',
+             'fork-left':'↖','fork-right':'↗','merge':'↑','ferry':'⛴'};
+      return a[m]||'↑';
+    }
+    function stripHtml(h){return h?h.replace(/<[^>]*>/g,''):''}
+    function fmtDist(m){return m>=1000?((m/1000).toFixed(1)+' km'):(Math.round(m)+' m')}
+    function fmtTime(s){var m=Math.ceil(s/60);return m<60?(m+' min'):(Math.floor(m/60)+'h '+(m%60)+'m')}
+
+    function updateNavPanel(){
+      if(navCurrentStep>=navSteps.length)return;
+      var step=navSteps[navCurrentStep];
+      document.getElementById('navArrow').textContent=maneuverArrow(step.maneuver);
+      document.getElementById('navDist').textContent=fmtDist(step.distM);
+      document.getElementById('navInstr').textContent=stripHtml(step.instr);
+      var remainM=Math.max(0,navTotalDistM-navElapsedDistM);
+      var remainS=navTotalDurS>0&&navTotalDistM>0?navTotalDurS*(remainM/navTotalDistM):0;
+      document.getElementById('navEta').textContent=fmtTime(remainS)+' remaining';
+      document.getElementById('navStop').textContent='Stop '+(step.legIdx+1)+' of '+STOPS.length;
+    }
+    function showNavPanel(){
+      document.getElementById('navPanel').classList.add('active');
+      document.getElementById('arrivedBanner').classList.remove('active');
+    }
+    function hideNavPanel(){
+      document.getElementById('navPanel').classList.remove('active');
+      document.getElementById('arrivedBanner').classList.remove('active');
+    }
+    function showArrived(){
+      navMode=false;
+      hideNavPanel();
+      var last=STOPS[STOPS.length-1];
+      document.getElementById('arrivedName').textContent=last?last.name:'Destination';
+      document.getElementById('arrivedBanner').classList.add('active');
+      try{map.setHeading(0);map.setTilt(0);}catch(e){}
+      if(window.ReactNativeWebView)
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigationArrived'}));
+    }
+    function updateNavigation(lat,lng){
+      if(!navMode||navSteps.length===0)return;
+      /* camera follow with bearing */
+      if(prevLat!==null&&prevLng!==null){
+        var bearing=bearingDeg(prevLat,prevLng,lat,lng);
+        try{map.setHeading(bearing);map.setTilt(45);}catch(e){}
+      }
+      map.setCenter({lat:lat,lng:lng});
+      map.setZoom(18);
+      prevLat=lat;prevLng=lng;
+      /* advance step if close enough to step endpoint */
+      if(navCurrentStep<navSteps.length){
+        var step=navSteps[navCurrentStep];
+        var d=haversineM(lat,lng,step.endLat,step.endLng);
+        if(d<18&&navCurrentStep<navSteps.length-1){
+          navElapsedDistM+=step.distM;
+          navCurrentStep++;
+          updateNavPanel();
+        } else {
+          document.getElementById('navDist').textContent=fmtDist(d);
+        }
+      }
+      /* check arrival at final stop */
+      var last=STOPS[STOPS.length-1];
+      if(last&&haversineM(lat,lng,last.lat,last.lng)<25)showArrived();
     }
 
-    function startInAppNavigation() {
-      if (STOPS.length === 0) return;
-      if (STOPS.length === 1) {
-        map.setCenter({ lat: STOPS[0].lat, lng: STOPS[0].lng });
-        map.setZoom(16);
+    /* ── user location ─────────────────────────────────────────────────── */
+    function setUserLocation(lat,lng){
+      USER={lat:lat,lng:lng};
+      drawUserDot();
+      updateNavigation(lat,lng);
+    }
+
+    /* ── Navigation control ──────────────────────────────────────────── */
+    function startInAppNavigation(){
+      if(STOPS.length===0)return;
+      showNavPanel();
+      document.getElementById('navInstr').textContent='Calculating route…';
+      document.getElementById('navDist').textContent='—';
+      if(STOPS.length===1){
+        navMode=true;navSteps=[];
+        map.setCenter({lat:STOPS[0].lat,lng:STOPS[0].lng});map.setZoom(18);
+        document.getElementById('navInstr').textContent=STOPS[0].name;
+        document.getElementById('navEta').textContent='Head to destination';
+        document.getElementById('navStop').textContent='Stop 1 of 1';
+        if(window.ReactNativeWebView)
+          window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigationStarted',totalDistanceM:0,totalDurationS:0}));
         return;
       }
-      var wpts = STOPS.slice(1, -1).map(function(s) {
-        return { location: new google.maps.LatLng(s.lat, s.lng), stopover: true };
+      var wpts=STOPS.slice(1,-1).map(function(s){
+        return{location:new google.maps.LatLng(s.lat,s.lng),stopover:true};
       });
       directionsService.route({
-        origin: new google.maps.LatLng(STOPS[0].lat, STOPS[0].lng),
-        destination: new google.maps.LatLng(STOPS[STOPS.length - 1].lat, STOPS[STOPS.length - 1].lng),
-        waypoints: wpts,
-        travelMode: google.maps.TravelMode.WALKING,
-        optimizeWaypoints: false,
-      }, function(result, status) {
-        if (status === 'OK') {
-          if (polyline) { polyline.setMap(null); polyline = null; }
+        origin:new google.maps.LatLng(STOPS[0].lat,STOPS[0].lng),
+        destination:new google.maps.LatLng(STOPS[STOPS.length-1].lat,STOPS[STOPS.length-1].lng),
+        waypoints:wpts,travelMode:google.maps.TravelMode.WALKING,optimizeWaypoints:false,
+      },function(result,status){
+        if(status==='OK'){
+          if(polyline){polyline.setMap(null);polyline=null;}
           directionsRenderer.setDirections(result);
-          var dist = 0, dur = 0;
-          result.routes[0].legs.forEach(function(leg) {
-            dist += leg.distance ? leg.distance.value : 0;
-            dur += leg.duration ? leg.duration.value : 0;
+          navSteps=[];navTotalDistM=0;navTotalDurS=0;navElapsedDistM=0;
+          result.routes[0].legs.forEach(function(leg,legIdx){
+            leg.steps.forEach(function(step){
+              navSteps.push({
+                instr:step.instructions||'',
+                maneuver:step.maneuver||'straight',
+                distM:step.distance?step.distance.value:0,
+                durS:step.duration?step.duration.value:0,
+                endLat:step.end_location.lat(),
+                endLng:step.end_location.lng(),
+                legIdx:legIdx,
+              });
+              navTotalDistM+=step.distance?step.distance.value:0;
+              navTotalDurS+=step.duration?step.duration.value:0;
+            });
           });
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'navigationStarted',
-              totalDistanceM: dist,
-              totalDurationS: dur,
-            }));
-          }
-        } else {
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigationError', status: status }));
-          }
+          navCurrentStep=0;navMode=true;prevLat=null;prevLng=null;
+          var start=USER||{lat:STOPS[0].lat,lng:STOPS[0].lng};
+          map.setCenter(start);map.setZoom(18);
+          updateNavPanel();
+          if(window.ReactNativeWebView)
+            window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigationStarted',totalDistanceM:navTotalDistM,totalDurationS:navTotalDurS}));
+        }else{
+          hideNavPanel();
+          if(window.ReactNativeWebView)
+            window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigationError',status:status}));
         }
       });
     }
-
-    function stopNavigation() {
-      if (directionsRenderer) { directionsRenderer.setMap(null); }
-      directionsRenderer = new google.maps.DirectionsRenderer({
-        map: map,
-        suppressMarkers: true,
-        polylineOptions: { strokeColor: '#16A34A', strokeOpacity: 1, strokeWeight: 5 },
+    function stopNavigation(){
+      navMode=false;navSteps=[];navCurrentStep=0;navElapsedDistM=0;prevLat=null;prevLng=null;
+      hideNavPanel();
+      if(directionsRenderer){directionsRenderer.setMap(null);}
+      directionsRenderer=new google.maps.DirectionsRenderer({
+        map:map,suppressMarkers:true,
+        polylineOptions:{strokeColor:'#16A34A',strokeOpacity:1,strokeWeight:5},
       });
+      try{map.setHeading(0);map.setTilt(0);}catch(e){}
+      map.setZoom(13);
       renderAll();
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navigationStopped' }));
-      }
+      if(window.ReactNativeWebView)
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'navigationStopped'}));
     }
   </script>
   <script async
@@ -408,6 +559,7 @@ export default function MapScreen({ navigation, route }: Props) {
   const [navActive, setNavActive] = useState(false);
   const [navInfo, setNavInfo] = useState<{ distM: number; durS: number } | null>(null);
   const mapLoadStartRef = useRef<number>(Date.now());
+  const navWatchRef = useRef<any>(null);
 
   const mapsJsUrl = useMemo(() => {
     if (Platform.OS === 'web' && PROXY) {
@@ -496,6 +648,18 @@ export default function MapScreen({ navigation, route }: Props) {
     return () => clearTimeout(t);
   }, []);
 
+  // Clean up GPS watch on unmount
+  useEffect(() => {
+    return () => {
+      if (Platform.OS === 'web') {
+        const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
+        if (geo && navWatchRef.current !== null) geo.clearWatch(navWatchRef.current);
+      } else {
+        navWatchRef.current?.remove?.();
+      }
+    };
+  }, []);
+
   // Handle messages from the map (Google Maps JS → FyndMapView bridge)
   const onMessage = (rawData: string) => {
     try {
@@ -521,6 +685,16 @@ export default function MapScreen({ navigation, route }: Props) {
         setNavInfo(null);
       } else if (data.type === 'navigationError') {
         Alert.alert('Navigation', 'Could not calculate route. Please check your internet connection.');
+      } else if (data.type === 'navigationArrived') {
+        setNavActive(false);
+        setNavInfo(null);
+        if (Platform.OS === 'web') {
+          const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
+          if (geo && navWatchRef.current !== null) geo.clearWatch(navWatchRef.current);
+        } else {
+          navWatchRef.current?.remove?.();
+        }
+        navWatchRef.current = null;
       }
     } catch (_) {}
   };
@@ -593,12 +767,52 @@ export default function MapScreen({ navigation, route }: Props) {
     webViewRef.current?.injectJavaScript(`showOverview(); true;`);
   };
 
-  const startInAppNav = () => {
+  const startInAppNav = async () => {
+    // Start high-accuracy GPS watch for real-time position updates during navigation
+    if (Platform.OS === 'web') {
+      const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
+      if (geo) {
+        navWatchRef.current = geo.watchPosition(
+          (pos) => {
+            const { latitude, longitude } = pos.coords;
+            setUserLoc({ latitude, longitude });
+            webViewRef.current?.injectJavaScript(
+              `setUserLocation(${latitude}, ${longitude}); true;`
+            );
+          },
+          undefined,
+          { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+        );
+      }
+    } else {
+      try {
+        const sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1500, distanceInterval: 3 },
+          (loc) => {
+            const { latitude, longitude } = loc.coords;
+            setUserLoc({ latitude, longitude });
+            webViewRef.current?.injectJavaScript(
+              `setUserLocation(${latitude}, ${longitude}); true;`
+            );
+          }
+        );
+        navWatchRef.current = sub;
+      } catch (err) {
+        Sentry.captureException(err, { tags: { context: 'MapScreen.startInAppNav' } });
+      }
+    }
     webViewRef.current?.injectJavaScript('startInAppNavigation(); true;');
     if (!isFullscreen) setIsFullscreen(true);
   };
 
   const stopInAppNav = () => {
+    if (Platform.OS === 'web') {
+      const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
+      if (geo && navWatchRef.current !== null) geo.clearWatch(navWatchRef.current);
+    } else {
+      navWatchRef.current?.remove?.();
+    }
+    navWatchRef.current = null;
     webViewRef.current?.injectJavaScript('stopNavigation(); true;');
     setNavActive(false);
     setNavInfo(null);

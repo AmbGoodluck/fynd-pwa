@@ -1,11 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import FyndScrollContainer from '../components/FyndScrollContainer';
+
+const VIBE_LABELS: Record<string, { label: string; icon: string }> = {
+  arts_culture:  { label: 'Arts & Culture',  icon: 'color-palette-outline'   },
+  music:         { label: 'Music',            icon: 'musical-notes-outline'   },
+  festivals:     { label: 'Festivals',        icon: 'sparkles-outline'        },
+  food_dining:   { label: 'Food & Dining',    icon: 'restaurant-outline'      },
+  nature:        { label: 'Nature',           icon: 'leaf-outline'            },
+  adventure:     { label: 'Adventure',        icon: 'compass-outline'         },
+  history:       { label: 'History',          icon: 'library-outline'         },
+  nightlife:     { label: 'Nightlife',        icon: 'moon-outline'            },
+  shopping:      { label: 'Shopping',         icon: 'bag-outline'             },
+  sports:        { label: 'Sports',           icon: 'football-outline'        },
+  wellness:      { label: 'Wellness',         icon: 'heart-outline'           },
+  photography:   { label: 'Photography',      icon: 'camera-outline'          },
+};
 
 type Props = { navigation: any; route: any };
 
@@ -121,6 +136,27 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
+      {tripVibes.length > 0 && (
+        <View style={styles.interestsRow}>
+          <Text style={styles.interestsLabel}>Interests</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.interestsChipList}
+          >
+            {tripVibes.map((vibe: string) => {
+              const v = VIBE_LABELS[vibe];
+              return v ? (
+                <View key={vibe} style={styles.interestChip}>
+                  <Ionicons name={v.icon as any} size={12} color="#22C55E" />
+                  <Text style={styles.interestChipText}>{v.label}</Text>
+                </View>
+              ) : null;
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {places.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="search" size={60} color="#E5E5EA" />
@@ -191,4 +227,9 @@ const styles = StyleSheet.create({
   ctaBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
   ctaBtnDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
+  interestsRow: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  interestsLabel: { fontSize: 10, fontFamily: 'Inter_600SemiBold', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
+  interestsChipList: { gap: 8, paddingBottom: 2 },
+  interestChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#BBF7D0' },
+  interestChipText: { fontSize: 12, fontFamily: 'Inter_500Medium', color: '#166534' },
 });
