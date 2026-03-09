@@ -1,48 +1,114 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, useWindowDimensions } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-type Props = { navigation: any };
-export default function Onboarding4Screen({ navigation }: Props) {
-  const { width, height } = useWindowDimensions();
-  const heroWidth = Math.max(260, Math.min(width - 60, 420));
-  const heroHeight = Math.max(260, Math.min(height * 0.45, 460));
-  const buttonWidth = Math.max(260, Math.min(width - 64, 420));
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  ImageBackground, StatusBar,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useGuestStore } from '../store/useGuestStore';
 
-  const handleGetStarted = async () => {
-    await AsyncStorage.setItem('onboardingComplete', 'true');
-    navigation.replace('Register');
+// Navigate With Confidence: person in city using phone for navigation
+const IMAGE_URI = 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?w=900&q=85';
+
+// Floating service hub icon bubbles (matches Figma reference)
+const SERVICE_BUBBLES = [
+  { icon: 'medkit-outline',  label: 'Clinic',    top: '32%', left: '8%',  size: 56, color: '#EF4444' },
+  { icon: 'cash-outline',    label: 'Forex',     top: '50%', left: '4%',  size: 52, color: '#2A0BBF' },
+  { icon: 'car-outline',     label: 'Transport', top: '36%', right: '6%', size: 56, color: '#047433' },
+  { icon: 'shield-outline',  label: 'Police',    top: '56%', right: '8%', size: 52, color: '#1D3557' },
+];
+
+type Props = { navigation: any };
+
+export default function Onboarding4Screen({ navigation }: Props) {
+  const { setHasSeenOnboarding } = useGuestStore();
+
+  const handleGetStarted = () => {
+    setHasSeenOnboarding(true);
+    navigation.navigate('AuthChoice');
   };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Journey{'\n'}Starts Here</Text>
-      <View style={styles.dots}>
-        <View style={styles.dot} />
-        <View style={styles.dot} />
-        <View style={styles.dot} />
-        <View style={[styles.dot, styles.activeDot]} />
-      </View>
-      <View style={[styles.imageBox, { width: heroWidth, height: heroHeight }]}>
-        <ImageBackground
-          source={{ uri: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&q=80' }}
-          style={styles.image}
-          imageStyle={{ borderRadius: 24 }}
-          defaultSource={require('../../assets/splash-icon.png')}
-        />
-      </View>
-      <TouchableOpacity style={[styles.btn, { width: buttonWidth }]} onPress={handleGetStarted}>
-        <Text style={styles.btnText}>Get Started</Text>
-      </TouchableOpacity>
-    </View>
+    <ImageBackground source={{ uri: IMAGE_URI }} style={styles.bg} resizeMode="cover">
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={styles.scrim} />
+
+      {/* Floating service hub bubbles overlaid on the photo */}
+      {SERVICE_BUBBLES.map((b, i) => (
+        <View
+          key={i}
+          style={[
+            styles.bubble,
+            { top: b.top as any, left: (b as any).left, right: (b as any).right, width: b.size, height: b.size, borderRadius: b.size / 2 },
+          ]}
+        >
+          <Ionicons name={b.icon as any} size={b.size * 0.42} color={b.color} />
+          <Text style={styles.bubbleLabel}>{b.label}</Text>
+        </View>
+      ))}
+
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+
+        <View style={styles.topContent}>
+          <Text style={styles.title}>Navigate{'\n'}With Confidence</Text>
+          <View style={styles.dots}>
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={[styles.dot, styles.dotActive]} />
+          </View>
+        </View>
+
+        <View style={{ flex: 1 }} />
+
+        <View style={styles.bottomContent}>
+          <TouchableOpacity
+            style={styles.getStartedBtn}
+            onPress={handleGetStarted}
+            activeOpacity={0.88}
+          >
+            <Text style={styles.getStartedBtnText}>Get Started</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', paddingTop: 80 },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', color: '#111827', lineHeight: 36, paddingHorizontal: 20 },
-  dots: { flexDirection: 'row', gap: 8, marginTop: 20 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D1FAE5' },
-  activeDot: { backgroundColor: '#22C55E', width: 20 },
-  imageBox: { marginTop: 30, borderRadius: 24, backgroundColor: '#F2F2F7', overflow: 'hidden' },
-  image: { width: '100%', height: '100%' },
-  btn: { position: 'absolute', bottom: 48, backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  bg: { flex: 1 },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+  },
+  safe: { flex: 1, paddingHorizontal: 28 },
+  topContent: { alignItems: 'center', paddingTop: 40 },
+  title: {
+    fontSize: 30, fontWeight: '800', color: '#fff',
+    textAlign: 'center', lineHeight: 38,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  dots: { flexDirection: 'row', gap: 8, marginTop: 16, alignItems: 'center' },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.45)' },
+  dotActive: { backgroundColor: '#22C55E', width: 24 },
+  bubble: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.15,
+    shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+    elevation: 4, gap: 2,
+  },
+  bubbleLabel: { fontSize: 9, fontWeight: '600', color: '#374151', textAlign: 'center' },
+  bottomContent: { paddingBottom: 20, alignItems: 'center' },
+  getStartedBtn: {
+    width: '100%', maxWidth: 340,
+    backgroundColor: '#22C55E', borderRadius: 50,
+    height: 56, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#22C55E', shadowOpacity: 0.45,
+    shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 6,
+  },
+  getStartedBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
 });

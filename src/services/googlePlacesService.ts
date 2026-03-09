@@ -8,6 +8,20 @@ const GOOGLE_BASE = 'https://maps.googleapis.com/maps/api/place';
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
 const DEV_LOGS = typeof __DEV__ !== 'undefined' && __DEV__;
 
+// Place types that typically require advance booking
+const REQUIRES_BOOKING = new Set([
+  'lodging', 'museum', 'amusement_park', 'spa', 'movie_theater',
+  'night_club', 'stadium', 'bowling_alley', 'casino', 'zoo',
+  'aquarium', 'art_gallery', 'campground',
+]);
+
+function getBookingUrl(placeId: string, types: string[]): string | undefined {
+  if (types.some(t => REQUIRES_BOOKING.has(t))) {
+    return `https://www.google.com/maps/place/?q=place_id:${placeId}`;
+  }
+  return undefined;
+}
+
 // On web, all Google Places requests go through our Cloudflare Worker to avoid CORS.
 // On native (Android/iOS), we call Google directly (no CORS restriction).
 const isWeb = Platform.OS === 'web';
@@ -109,6 +123,7 @@ export async function searchPlacesByVibe(
       const dist = hasOrigin
         ? haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng)
         : undefined;
+      const placeTypes = Array.isArray(p.types) ? p.types : [];
       return {
         placeId: p.place_id,
         name: p.name,
@@ -119,10 +134,11 @@ export async function searchPlacesByVibe(
         photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
-        types: Array.isArray(p.types) ? p.types : [],
+        types: placeTypes,
         city: destination || 'Nearby',
         distanceKm: dist,
         walkMinutes: typeof dist === 'number' ? Math.round(dist * 12) : undefined,
+        bookingUrl: getBookingUrl(p.place_id, placeTypes),
       };
     }
 
@@ -279,6 +295,11 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
       'Public Bathrooms': 'point_of_interest',
       Transport: 'transit_station',
       Police: 'police',
+      Embassy: 'embassy',
+      ATM: 'atm',
+      Pharmacy: 'pharmacy',
+      Hotel: 'lodging',
+      'Tourist Info': 'tourist_attraction',
     };
     const googleType = typeMap[type] || 'point_of_interest';
     const url = nearbySearchUrl(lat, lng, googleType);
