@@ -2,6 +2,8 @@ package com.anonymous.fyndapp
 
 import android.os.Build
 import android.os.Bundle
+import com.fynd.app.R
+import com.fynd.app.BuildConfig
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

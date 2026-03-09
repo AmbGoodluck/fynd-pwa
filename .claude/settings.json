@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(adb shell am force-stop host.exp.exponent)",
+      "Bash(adb shell am start -a android.intent.action.VIEW -d \"exp+fynd-app://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081\")",
+      "Bash(adb exec-out screencap -p)",
+      "Bash(\"C:/Users/jalloho/AppData/Local/Temp/fynd_screen7.png\")",
+      "Bash(\"C:/Users/jalloho/AppData/Local/Temp/fynd_screen10.png\")",
+      "Bash(\"C:/Users/jalloho/AppData/Local/Temp/fynd_screen12.png\")",
+      "Bash(adb shell am start -a android.intent.action.VIEW -d \"exp+fynd-app://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A8081\")",
+      "Bash(adb shell am force-stop com.fynd.app)",
+      "Bash(adb shell am start -n com.fynd.app/.MainActivity)",
+      "Bash(\"C:/Users/jalloho/AppData/Local/Temp/fynd_screen14.png\")",
+      "Bash(curl -s -I --max-time 10 \"http://localhost:8081/index.bundle?platform=android&dev=true&hot=true\")",
+      "Bash(adb shell input tap 354 2024)",
+      "Bash(\"C:/Users/jalloho/AppData/Local/Temp/fynd_screen17.png\")"
+    ]
+  }
+}

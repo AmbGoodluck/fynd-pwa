@@ -1,5 +1,6 @@
 package com.anonymous.fyndapp
 
+import com.fynd.app.BuildConfig
 import android.app.Application
 import android.content.res.Configuration
 
