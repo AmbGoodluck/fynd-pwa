@@ -9,7 +9,7 @@ type Props = { navigation: any };
 
 const MENU_ITEMS = [
   { id: 'subscription', label: 'Fynd Plus', icon: 'star', screen: 'Subscription' },
-  { id: 'account', label: 'Account & Setting', icon: 'settings', screen: 'AccountSettings' },
+  { id: 'account', label: 'Account & Settings', icon: 'settings', screen: 'AccountSettings' },
   { id: 'legal', label: 'Legal & Privacy', icon: 'trending-up', screen: 'Legal' },
   { id: 'travel', label: 'Travel Preference', icon: 'heart-outline', screen: 'TravelPreference' },
   { id: 'support', label: 'Support & Feedback', icon: 'person-outline', screen: 'SupportFeedback' },

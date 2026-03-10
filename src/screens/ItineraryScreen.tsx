@@ -281,6 +281,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       <PlacePreviewModal
         visible={showPreview}
         place={previewStop}
+        onViewDetails={() => setShowPreview(false)}
         onClose={() => setShowPreview(false)}
         onRemoveFromItinerary={() => {
           if (previewStop) removePlace(previewStop.placeId);

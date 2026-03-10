@@ -225,6 +225,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         place={previewPlace}
         isInItinerary={previewPlace ? !!selectedForItinerary.find(p => p.placeId === previewPlace.placeId) : false}
         isSaved={previewPlace ? isPlaceSaved(previewPlace.placeId) : false}
+        onViewDetails={() => setShowPreview(false)}
         onClose={() => setShowPreview(false)}
         onAddToItinerary={() => {
           if (previewPlace) {

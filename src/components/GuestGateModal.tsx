@@ -37,15 +37,15 @@ export default function GuestGateModal({
 
               <Text style={styles.title}>Create an Account</Text>
               <Text style={styles.body}>
-                Create an account to save places and access your saved trips from any device, any time.
+                Create an account to save places and access your saved trips.
               </Text>
 
-              <TouchableOpacity style={styles.primaryBtn} onPress={onRegister}>
-                <Text style={styles.primaryBtnText}>Create Account</Text>
+              <TouchableOpacity style={styles.primaryBtn} onPress={onLogin}>
+                <Text style={styles.primaryBtnText}>Login</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.outlineBtn} onPress={onLogin}>
-                <Text style={styles.outlineBtnText}>Log In</Text>
+              <TouchableOpacity style={styles.outlineBtn} onPress={onRegister}>
+                <Text style={styles.outlineBtnText}>Create Account</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.ghostBtn} onPress={onContinueAsGuest}>

@@ -24,6 +24,7 @@ type Props = {
   isInItinerary?: boolean;
   isSaved?: boolean;
   onClose: () => void;
+  onViewDetails?: () => void;
   onAddToItinerary?: () => void;
   onRemoveFromItinerary?: () => void;
   onSave?: () => void;
@@ -32,7 +33,7 @@ type Props = {
 
 export default function PlacePreviewModal({
   visible, place, isInItinerary, isSaved, onClose,
-  onAddToItinerary, onRemoveFromItinerary, onSave, onUnsave,
+  onViewDetails, onAddToItinerary, onRemoveFromItinerary, onSave, onUnsave,
 }: Props) {
   if (!place) return null;
 
@@ -130,24 +131,36 @@ export default function PlacePreviewModal({
 
               {/* Action buttons */}
               <View style={styles.actions}>
-                {/* Add / Remove itinerary */}
-                {onAddToItinerary || onRemoveFromItinerary ? (
+                {/* Row 1: View Details + Add/Remove Itinerary */}
+                <View style={styles.actionsRow}>
+                  {/* View Details */}
                   <TouchableOpacity
-                    style={[styles.actionBtn, isInItinerary && styles.actionBtnRemove]}
-                    onPress={isInItinerary ? onRemoveFromItinerary : onAddToItinerary}
+                    style={styles.viewDetailsBtn}
+                    onPress={onViewDetails ?? onClose}
                   >
-                    <Ionicons
-                      name={isInItinerary ? 'remove-circle-outline' : 'add-circle-outline'}
-                      size={18}
-                      color={isInItinerary ? '#EF4444' : '#fff'}
-                    />
-                    <Text style={[styles.actionBtnText, isInItinerary && styles.actionBtnTextRemove]}>
-                      {isInItinerary ? 'Remove' : 'Add to Itinerary'}
-                    </Text>
+                    <Ionicons name="eye-outline" size={16} color="#22C55E" />
+                    <Text style={styles.viewDetailsBtnText}>View Details</Text>
                   </TouchableOpacity>
-                ) : null}
 
-                {/* Book Now */}
+                  {/* Add / Remove itinerary */}
+                  {onAddToItinerary || onRemoveFromItinerary ? (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, isInItinerary && styles.actionBtnRemove]}
+                      onPress={isInItinerary ? onRemoveFromItinerary : onAddToItinerary}
+                    >
+                      <Ionicons
+                        name={isInItinerary ? 'remove-circle-outline' : 'add-circle-outline'}
+                        size={16}
+                        color={isInItinerary ? '#EF4444' : '#fff'}
+                      />
+                      <Text style={[styles.actionBtnText, isInItinerary && styles.actionBtnTextRemove]}>
+                        {isInItinerary ? 'Remove' : 'Add to Itinerary'}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* Row 2: Book Now (full width, only if available) */}
                 {place.bookingUrl ? (
                   <TouchableOpacity style={styles.bookBtn} onPress={openBooking}>
                     <Ionicons name="calendar" size={16} color="#fff" />
@@ -226,11 +239,21 @@ const styles = StyleSheet.create({
   },
   addressText: { fontSize: 13, color: '#57636C', flex: 1, lineHeight: 18 },
   actions: {
-    flexDirection: 'row', gap: 10,
+    flexDirection: 'column', gap: 10,
     paddingHorizontal: 20, paddingVertical: 14,
     paddingBottom: 32,
     borderTopWidth: 1, borderTopColor: '#F2F2F7',
   },
+  actionsRow: {
+    flexDirection: 'row', gap: 10,
+  },
+  viewDetailsBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: '#22C55E',
+    borderRadius: 14, height: 48,
+  },
+  viewDetailsBtnText: { color: '#22C55E', fontSize: 13, fontWeight: '600' },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 6,
@@ -242,7 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2', borderWidth: 1.5, borderColor: '#FCA5A5',
     shadowOpacity: 0,
   },
-  actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  actionBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   actionBtnTextRemove: { color: '#EF4444' },
   bookBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
