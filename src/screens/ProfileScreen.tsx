@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGuestStore } from '../store/useGuestStore';
 
 type Props = { navigation: any };
 
@@ -17,12 +18,18 @@ const MENU_ITEMS = [
 
 export default function ProfileScreen({ navigation }: Props) {
   const { user } = useAuthStore();
+  const { logout } = useGuestStore();
   const firstName = user?.fullName || 'Anika';
   const email = user?.email || 'wvdiv@anika.com';
 
+  const handleLogout = () => {
+    logout();
+    navigation.reset({ index: 0, routes: [{ name: 'AuthChoice' }] });
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Back button */}
         <View style={styles.topBar}>
@@ -59,6 +66,14 @@ export default function ProfileScreen({ navigation }: Props) {
           ))}
         </View>
 
+        {/* Logout */}
+        <View style={styles.logoutSection}>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" style={{ marginRight: 8 }} />
+            <Text style={styles.logoutBtnText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -66,7 +81,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scroll: { paddingBottom: 40 },
+  scroll: { paddingBottom: 48 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 0, paddingBottom: 8 },
   avatarSection: { alignItems: 'center', paddingBottom: 24, paddingTop: 0 },
   avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
@@ -78,6 +93,18 @@ const styles = StyleSheet.create({
   menuLeft: { flexDirection: 'row', alignItems: 'center' },
   iconWrap: { opacity: 0.6, marginRight: 10 },
   menuLabel: { fontSize: 16, color: '#111827', opacity: 0.6 },
+  logoutSection: { paddingHorizontal: 14, marginTop: 24 },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FFF5F5',
+    height: 52,
+  },
+  logoutBtnText: { fontSize: 16, fontWeight: '600', color: '#EF4444' },
 });
 
 

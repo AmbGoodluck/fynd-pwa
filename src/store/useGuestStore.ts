@@ -31,6 +31,7 @@ interface GuestStore {
   unsavePlace: (placeId: string) => void;
   isPlaceSaved: (placeId: string) => boolean;
   clearSavedPlaces: () => void;
+  logout: () => void;
   reset: () => void;
 }
 
@@ -80,6 +81,15 @@ export const useGuestStore = create<GuestStore>()(
       isPlaceSaved: (placeId) => get().savedPlaces.some(p => p.placeId === placeId),
 
       clearSavedPlaces: () => set({ savedPlaces: [] }),
+
+      // Signs out the current session but keeps onboarding flag intact
+      logout: () => set((state) => ({
+        isGuest: false,
+        hasUsedGuestMode: false,
+        guestItineraryCount: 0,
+        savedPlaces: [],
+        hasSeenOnboarding: state.hasSeenOnboarding,
+      })),
 
       reset: () => set({ isGuest: false, hasSeenOnboarding: false, hasUsedGuestMode: false, guestItineraryCount: 0, savedPlaces: [] }),
     }),
