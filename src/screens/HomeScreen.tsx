@@ -77,7 +77,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
           <View style={{ flex: 1 }} />
           <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.profileInitial}>{displayName[0].toUpperCase()}</Text>
+            <Text style={styles.profileInitial}>{displayName?.[0]?.toUpperCase() ?? '?'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -163,7 +163,7 @@ export default function HomeScreen({ navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.recentTripDest}>{destination}</Text>
                 <Text style={styles.recentTripMeta}>
-                  {explorationHours}h{selectedVibes.length > 0 ? ` · ${selectedVibes.slice(0, 2).join(', ')}` : ''}
+                  {explorationHours}h{(selectedVibes?.length ?? 0) > 0 ? ` · ${selectedVibes.slice(0, 2).join(', ')}` : ''}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />

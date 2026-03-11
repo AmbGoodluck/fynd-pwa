@@ -26,6 +26,19 @@ function getBookingUrl(placeId: string, types: string[]): string | undefined {
 // On native (Android/iOS), we call Google directly (no CORS restriction).
 const isWeb = Platform.OS === 'web';
 
+const FETCH_TIMEOUT_MS = 12000; // 12 s — prevents hanging on slow networks
+
+/** fetch() with a hard timeout; throws AbortError on timeout */
+async function fetchWithTimeout(url: string, ms = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 function redactKey(url: string): string {
   return url.replace(/([?&]key=)[^&]+/i, '$1[redacted]');
 }
@@ -158,7 +171,7 @@ export async function searchPlacesByVibe(
 
     const results = await Promise.allSettled(urls.map(async url => {
       debugLog('[Places] fetching:', redactKey(url).substring(0, 160));
-      const r = await fetch(url);
+      const r = await fetchWithTimeout(url);
       debugLog('[Places] response status:', r.status, r.statusText);
       const data = await r.json();
       debugLog('[Places] response data status:', data.status, 'results:', data.results?.length || 0);
@@ -203,7 +216,7 @@ export async function searchPlacesByVibe(
       debugLog('[Places] Falling back to nearby search by coordinates');
       const nearbyTypes = ['tourist_attraction', 'restaurant', 'cafe'];
       const nearbyResults = await Promise.allSettled(
-        nearbyTypes.map(type => fetch(nearbySearchUrl(originLat, originLng, type)).then(r => r.json()))
+        nearbyTypes.map(type => fetchWithTimeout(nearbySearchUrl(originLat, originLng, type)).then(r => r.json()))
       );
 
       for (const result of nearbyResults) {
@@ -257,9 +270,25 @@ export async function searchPlacesByVibe(
       ? maxDistanceKm
       : null;
 
-    const strictlyFiltered = hasOrigin && strictDistanceKm
+    // Apply distance filter only when we have a real origin + radius
+    const distanceFiltered = hasOrigin && strictDistanceKm
       ? filteredByVibe.filter(p => typeof p.distanceKm === 'number' && p.distanceKm <= strictDistanceKm)
       : filteredByVibe;
+
+    // If the vibe/distance filters are too aggressive and eliminated everything,
+    // fall back progressively so users always see results:
+    //   1. vibe + distance filtered
+    //   2. vibe filtered only (drop distance constraint)
+    //   3. all combined results (drop vibe filter too)
+    let strictlyFiltered = distanceFiltered;
+    if (strictlyFiltered.length === 0 && filteredByVibe.length > 0) {
+      debugLog('[Places] distance filter too strict, falling back to vibe-only filter');
+      strictlyFiltered = filteredByVibe;
+    }
+    if (strictlyFiltered.length === 0 && combined.length > 0) {
+      debugLog('[Places] vibe filter too strict, falling back to all combined results');
+      strictlyFiltered = combined;
+    }
 
     const durationMs = Date.now() - startedAt;
     Sentry.addBreadcrumb({
@@ -303,7 +332,7 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
     };
     const googleType = typeMap[type] || 'point_of_interest';
     const url = nearbySearchUrl(lat, lng, googleType);
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url);
     const data = await res.json();
     if (!data.results) return [];
     return data.results.slice(0, 8).map((p: any) => {
@@ -337,7 +366,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
     } else {
       url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${API_KEY}`;
     }
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, 8000);
     const data = await res.json();
     if (data.results && data.results.length > 0) {
       const comps = data.results[0].address_components || [];
@@ -368,17 +397,23 @@ export async function autocompletePlaces(input: string): Promise<AutocompleteSug
   try {
     let url: string;
     if (isWeb && PROXY) {
-      url = `${PROXY}/api/places/autocomplete?input=${encodeURIComponent(input)}&types=(regions)`;
+      url = `${PROXY}/api/places/autocomplete?input=${encodeURIComponent(input)}&types=%28regions%29`;
     } else {
-      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=(regions)&key=${API_KEY}`;
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=%28regions%29&key=${API_KEY}`;
     }
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, 8000);
     const data = await res.json();
-    if (data.status !== 'OK' || !Array.isArray(data.predictions)) return [];
-    return data.predictions.slice(0, 5).map((p: any) => ({
+    if (data.status === 'ZERO_RESULTS' || !Array.isArray(data.predictions) || data.predictions.length === 0) {
+      return [];
+    }
+    if (data.status !== 'OK') {
+      debugWarn('[Places] autocomplete status:', data.status, data.error_message);
+      return [];
+    }
+    return data.predictions.slice(0, 6).map((p: any) => ({
       placeId: p.place_id,
       description: p.description,
-      mainText: p.structured_formatting?.main_text || p.description.split(',')[0],
+      mainText: p.structured_formatting?.main_text || p.description.split(',')[0] || p.description,
       secondaryText: p.structured_formatting?.secondary_text || '',
     }));
   } catch (e) {
