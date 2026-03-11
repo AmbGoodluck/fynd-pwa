@@ -336,111 +336,117 @@ export default function CreateTripScreen({ navigation }: Props) {
         <Text style={styles.stepLabel}>Step {step} of 2</Text>
       </View>
 
-      {/* ── STEP 1: Preferences summary ── */}
+      {/* ── STEP 1: Preferences ── */}
       {step === 1 && (
-        <FyndScrollContainer
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <Text style={styles.sectionTitle}>Select your preference</Text>
-
-          {/* Location card */}
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>Where are you exploring from?</Text>
-            <View style={styles.locationBtnRow}>
-              <TouchableOpacity
-                style={[styles.locationBtn, styles.locationBtnOutline]}
-                onPress={() => setShowLocationModal(true)}
-              >
-                <Ionicons name="pencil-outline" size={14} color="#57636C" style={{ marginRight: 5 }} />
-                <Text style={styles.locationBtnOutlineText} numberOfLines={1}>Input location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.locationBtn, styles.locationBtnFilled]}
-                onPress={handleUseLocation}
-                disabled={locationLoading}
-              >
-                {locationLoading
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <>
-                      <Ionicons name="locate-outline" size={14} color="#fff" style={{ marginRight: 5 }} />
-                      <Text style={styles.locationBtnFilledText} numberOfLines={1}>Use my location</Text>
-                    </>
-                }
-              </TouchableOpacity>
-            </View>
-            {destination ? (
-              <View style={styles.destinationBadge}>
-                <Ionicons name="location" size={13} color="#22C55E" />
-                <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {/* Time card */}
-          <View style={styles.card}>
-            <View style={styles.cardLabelRow}>
-              <Text style={styles.cardLabel}>How long do you wish to explore for?</Text>
-              <Text style={styles.cardValue}>{explorationHours} hr</Text>
-            </View>
-            <FyndSlider min={1} max={8} value={explorationHours} step={1} onChange={setExplorationHours} />
-            <View style={styles.sliderLabels}>
-              <Text style={styles.sliderLabelText}>1 hr</Text>
-              <Text style={styles.sliderLabelText}>4 hr</Text>
-              <Text style={styles.sliderLabelText}>8 hr</Text>
-            </View>
-          </View>
-
-          {/* Distance card */}
-          <View style={styles.card}>
-            <View style={styles.cardLabelRow}>
-              <Text style={styles.cardLabel}>How far do you wish to go?</Text>
-              <Text style={styles.cardValue}>{distanceMiles} mi</Text>
-            </View>
-            <FyndSlider min={1} max={21} value={distanceMiles} step={1} onChange={setDistanceMiles} />
-            <View style={styles.sliderLabels}>
-              <Text style={styles.sliderLabelText}>1 mile</Text>
-              <Text style={styles.sliderLabelText}>12 miles</Text>
-              <Text style={styles.sliderLabelText}>21+ miles</Text>
-            </View>
-          </View>
-
-          {/* Time of day card */}
-          <View style={styles.card}>
-            <Text style={styles.cardLabel}>What time of the day do you prefer?</Text>
-            <View style={styles.chipRow}>
-              {TIME_OF_DAY.map(t => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={[styles.timeChip, timeOfDay === t.id && styles.timeChipActive]}
-                  onPress={() => setTimeOfDay(t.id)}
-                >
-                  <Ionicons
-                    name={t.icon as any}
-                    size={12}
-                    color={timeOfDay === t.id ? '#fff' : '#57636C'}
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={[styles.timeChipText, timeOfDay === t.id && styles.timeChipTextActive]}>
-                    {t.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* CTA */}
-          <TouchableOpacity
-            style={[styles.ctaBtn, canGoToStep2 && styles.ctaBtnEnabled]}
-            onPress={() => canGoToStep2 && setStep(2)}
-            disabled={!canGoToStep2}
+        <>
+          <FyndScrollContainer
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
           >
-            <Text style={[styles.ctaBtnText, canGoToStep2 && styles.ctaBtnTextEnabled]}>Select Vibe</Text>
-          </TouchableOpacity>
-        </FyndScrollContainer>
+            <Text style={styles.sectionTitle}>Select your preference</Text>
+
+            {/* Location card */}
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>Where are you exploring from?</Text>
+              <View style={styles.locationBtnRow}>
+                <TouchableOpacity
+                  style={[styles.locationBtn, styles.locationBtnOutline]}
+                  onPress={() => setShowLocationModal(true)}
+                >
+                  <Ionicons name="pencil-outline" size={14} color="#57636C" style={{ marginRight: 5 }} />
+                  <Text style={styles.locationBtnOutlineText} numberOfLines={1}>Input location</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.locationBtn, styles.locationBtnFilled]}
+                  onPress={handleUseLocation}
+                  disabled={locationLoading}
+                >
+                  {locationLoading
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <>
+                        <Ionicons name="locate-outline" size={14} color="#fff" style={{ marginRight: 5 }} />
+                        <Text style={styles.locationBtnFilledText} numberOfLines={1}>Use my location</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              </View>
+              {destination ? (
+                <View style={styles.destinationBadge}>
+                  <Ionicons name="location" size={13} color="#22C55E" />
+                  <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Time card */}
+            <View style={styles.card}>
+              <View style={styles.cardLabelRow}>
+                <Text style={styles.cardLabel}>How long do you wish to explore for?</Text>
+                <Text style={styles.cardValue}>{explorationHours} hr</Text>
+              </View>
+              <FyndSlider min={1} max={8} value={explorationHours} step={1} onChange={setExplorationHours} />
+              <View style={styles.sliderLabels}>
+                <Text style={styles.sliderLabelText}>1 hr</Text>
+                <Text style={styles.sliderLabelText}>4 hr</Text>
+                <Text style={styles.sliderLabelText}>8 hr</Text>
+              </View>
+            </View>
+
+            {/* Distance card */}
+            <View style={styles.card}>
+              <View style={styles.cardLabelRow}>
+                <Text style={styles.cardLabel}>How far do you wish to go?</Text>
+                <Text style={styles.cardValue}>{distanceMiles} mi</Text>
+              </View>
+              <FyndSlider min={1} max={21} value={distanceMiles} step={1} onChange={setDistanceMiles} />
+              <View style={styles.sliderLabels}>
+                <Text style={styles.sliderLabelText}>1 mile</Text>
+                <Text style={styles.sliderLabelText}>12 miles</Text>
+                <Text style={styles.sliderLabelText}>21+ miles</Text>
+              </View>
+            </View>
+
+            {/* Time of day card */}
+            <View style={styles.card}>
+              <Text style={styles.cardLabel}>What time of the day do you prefer?</Text>
+              <View style={styles.chipRow}>
+                {TIME_OF_DAY.map(t => (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[styles.timeChip, timeOfDay === t.id && styles.timeChipActive]}
+                    onPress={() => setTimeOfDay(t.id)}
+                  >
+                    <Ionicons
+                      name={t.icon as any}
+                      size={12}
+                      color={timeOfDay === t.id ? '#fff' : '#57636C'}
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={[styles.timeChipText, timeOfDay === t.id && styles.timeChipTextActive]}>
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </FyndScrollContainer>
+
+          {/* Always-visible bottom bar — Select Vibe CTA */}
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(14, bottomInset) }]}>
+            <TouchableOpacity
+              style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
+              onPress={() => canGoToStep2 && setStep(2)}
+              disabled={!canGoToStep2}
+            >
+              <Text style={[styles.findBtnText, canGoToStep2 && styles.findBtnTextEnabled]}>
+                Select Vibe
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
       )}
 
-      {/* ── STEP 2: Vibes (existing step 5, design unchanged) ── */}
+      {/* ── STEP 2: Vibes ── */}
       {step === 2 && (
         <>
           <FyndScrollContainer
@@ -472,6 +478,8 @@ export default function CreateTripScreen({ navigation }: Props) {
               ))}
             </View>
           </FyndScrollContainer>
+
+          {/* Always-visible bottom bar — Back + Find My Places */}
           <View style={[styles.bottomBar, { paddingBottom: Math.max(14, bottomInset) }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>
@@ -569,7 +577,7 @@ const styles = StyleSheet.create({
   progressActive: { backgroundColor: '#22C55E' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 40 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 20 },
   sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 16, marginTop: 6 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
