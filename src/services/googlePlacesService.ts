@@ -361,16 +361,16 @@ export interface AutocompleteSuggestion {
 
 /**
  * Returns location auto-complete suggestions as user types.
- * Uses (cities) type filter to return cities, regions, and countries.
+ * Uses (regions) type filter to return cities, states/regions, and countries.
  */
 export async function autocompletePlaces(input: string): Promise<AutocompleteSuggestion[]> {
   if (!input || input.trim().length < 2) return [];
   try {
     let url: string;
     if (isWeb && PROXY) {
-      url = `${PROXY}/api/places/autocomplete?input=${encodeURIComponent(input)}&types=(cities)`;
+      url = `${PROXY}/api/places/autocomplete?input=${encodeURIComponent(input)}&types=(regions)`;
     } else {
-      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=(cities)&key=${API_KEY}`;
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=(regions)&key=${API_KEY}`;
     }
     const res = await fetch(url);
     const data = await res.json();

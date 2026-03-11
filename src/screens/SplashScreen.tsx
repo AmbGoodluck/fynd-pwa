@@ -40,7 +40,7 @@ export default function SplashScreen({ navigation }: Props) {
       <Image
         source={require('../../assets/find-splash.jpg')}
         style={styles.splashImage}
-        resizeMode="contain"
+        resizeMode="cover"
       />
     </View>
   );
@@ -49,7 +49,7 @@ export default function SplashScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },

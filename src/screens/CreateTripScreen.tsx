@@ -263,40 +263,44 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   const handleConfirmLocation = async () => {
     const input = locationInput.trim();
-    if (input) {
-      setDestination(input);
-      // Geocode the text location to get lat/lng for accurate distance calculations.
-      // Uses the proxy on web, direct API on native — so no CORS issues.
-      try {
-        const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
-        const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
-        let url: string;
-        if (Platform.OS === 'web' && PROXY) {
-          url = `${PROXY}/api/places/textsearch?query=${encodeURIComponent(input)}`;
-        } else {
-          url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(input)}&key=${API_KEY}`;
-        }
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
-          const loc = data.results[0].geometry.location;
-          setLatitude(loc.lat);
-          setLongitude(loc.lng);
-        } else {
-          setLatitude(null);
-          setLongitude(null);
-        }
-      } catch (err: any) {
-        setLatitude(null);
-        setLongitude(null);
-        Sentry.captureException(err, {
-          tags: { context: 'CreateTripScreen.handleConfirmLocation', platform: Platform.OS },
-          extra: { input, destination, proxyConfigured: !!PROXY },
-        });
-      }
-    }
+
+    // Close modal immediately so the user can continue without waiting
     setShowLocationModal(false);
     setLocationInput('');
+    setSuggestions([]);
+
+    if (!input) return;
+
+    setDestination(input);
+
+    // Geocode in background — lat/lng used only for distance sorting, not blocking
+    try {
+      const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
+      const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+      let url: string;
+      if (Platform.OS === 'web' && PROXY) {
+        url = `${PROXY}/api/places/textsearch?query=${encodeURIComponent(input)}`;
+      } else {
+        url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(input)}&key=${API_KEY}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
+        const loc = data.results[0].geometry.location;
+        setLatitude(loc.lat);
+        setLongitude(loc.lng);
+      } else {
+        setLatitude(null);
+        setLongitude(null);
+      }
+    } catch (err: any) {
+      setLatitude(null);
+      setLongitude(null);
+      Sentry.captureException(err, {
+        tags: { context: 'CreateTripScreen.handleConfirmLocation', platform: Platform.OS },
+        extra: { input, destination, proxyConfigured: !!WEB_PROXY_FALLBACK },
+      });
+    }
   };
 
   const toggleVibe = (id: string) => {

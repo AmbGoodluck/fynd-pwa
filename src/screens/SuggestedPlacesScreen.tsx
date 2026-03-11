@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
   },
   ctaBtn: {
-    backgroundColor: '#22C55E', borderRadius: 16, height: 54,
+    backgroundColor: '#22C55E', borderRadius: 16, height: 58,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 4,
