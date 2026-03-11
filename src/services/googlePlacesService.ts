@@ -351,3 +351,38 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
     return 'My Location';
   }
 }
+
+export interface AutocompleteSuggestion {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+}
+
+/**
+ * Returns location auto-complete suggestions as user types.
+ * Uses (cities) type filter to return cities, regions, and countries.
+ */
+export async function autocompletePlaces(input: string): Promise<AutocompleteSuggestion[]> {
+  if (!input || input.trim().length < 2) return [];
+  try {
+    let url: string;
+    if (isWeb && PROXY) {
+      url = `${PROXY}/api/places/autocomplete?input=${encodeURIComponent(input)}&types=(cities)`;
+    } else {
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=(cities)&key=${API_KEY}`;
+    }
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status !== 'OK' || !Array.isArray(data.predictions)) return [];
+    return data.predictions.slice(0, 5).map((p: any) => ({
+      placeId: p.place_id,
+      description: p.description,
+      mainText: p.structured_formatting?.main_text || p.description.split(',')[0],
+      secondaryText: p.structured_formatting?.secondary_text || '',
+    }));
+  } catch (e) {
+    debugWarn('[Places] autocomplete error:', e);
+    return [];
+  }
+}

@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   StatusBar, Modal, TextInput, Alert, Linking, Platform,
-  PanResponder, ActivityIndicator,
+  PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ import * as Sentry from '@sentry/react-native';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import FyndScrollContainer from '../components/FyndScrollContainer';
-import { reverseGeocode } from '../services/googlePlacesService';
+import { reverseGeocode, autocompletePlaces, AutocompleteSuggestion } from '../services/googlePlacesService';
 import { logEvent } from '../services/firebase';
 
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
@@ -125,6 +125,35 @@ export default function CreateTripScreen({ navigation }: Props) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+
+  // Autosuggest state
+  const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    if (!locationInput.trim() || locationInput.trim().length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    setSuggestionsLoading(true);
+    suggestDebounceRef.current = setTimeout(async () => {
+      const results = await autocompletePlaces(locationInput);
+      setSuggestions(results);
+      setSuggestionsLoading(false);
+    }, 350);
+    return () => {
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    };
+  }, [locationInput]);
+
+  const handleSelectSuggestion = (suggestion: AutocompleteSuggestion) => {
+    setDestination(suggestion.mainText || suggestion.description);
+    setSuggestions([]);
+    setShowLocationModal(false);
+    setLocationInput('');
+  };
 
   // Step 2 state
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
@@ -465,20 +494,58 @@ export default function CreateTripScreen({ navigation }: Props) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Enter your location</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. New York City, London, Tokyo"
-              placeholderTextColor="#8E8E93"
-              value={locationInput}
-              onChangeText={setLocationInput}
-              autoFocus
-              onSubmitEditing={handleConfirmLocation}
-              returnKeyType="done"
-            />
+
+            {/* Search input with icon */}
+            <View style={styles.searchInputWrap}>
+              <Ionicons name="search-outline" size={16} color="#8E8E93" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.modalInput}
+                placeholder="City, state or country…"
+                placeholderTextColor="#8E8E93"
+                value={locationInput}
+                onChangeText={setLocationInput}
+                autoFocus
+                onSubmitEditing={handleConfirmLocation}
+                returnKeyType="search"
+              />
+              {suggestionsLoading && (
+                <ActivityIndicator size="small" color="#22C55E" style={{ marginLeft: 6 }} />
+              )}
+            </View>
+
+            {/* Autocomplete suggestion list */}
+            {suggestions.length > 0 && (
+              <ScrollView
+                style={styles.suggestionList}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {suggestions.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.placeId}
+                    style={[
+                      styles.suggestionItem,
+                      index < suggestions.length - 1 && styles.suggestionItemBorder,
+                    ]}
+                    onPress={() => handleSelectSuggestion(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="location-outline" size={14} color="#22C55E" style={{ marginRight: 8 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.suggestionMain} numberOfLines={1}>{item.mainText}</Text>
+                      {item.secondaryText ? (
+                        <Text style={styles.suggestionSecondary} numberOfLines={1}>{item.secondaryText}</Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancel}
-                onPress={() => { setShowLocationModal(false); setLocationInput(''); }}
+                onPress={() => { setShowLocationModal(false); setLocationInput(''); setSuggestions([]); }}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
@@ -551,10 +618,41 @@ const styles = StyleSheet.create({
   findBtnTextEnabled: { color: '#fff' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-  modalBox: { width: '88%', backgroundColor: '#fff', borderRadius: 20, padding: 24 },
-  modalTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 16 },
-  modalInput: { backgroundColor: '#F3F4F6', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontFamily: F.regular, color: '#111827', marginBottom: 20, borderWidth: 1, borderColor: '#E5E7EB' },
-  modalActions: { flexDirection: 'row', gap: 12 },
+  modalBox: { width: '90%', backgroundColor: '#fff', borderRadius: 20, padding: 24, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 14 },
+  searchInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  modalInput: { flex: 1, paddingVertical: 12, fontSize: 15, fontFamily: F.regular, color: '#111827' },
+  suggestionList: {
+    maxHeight: 200,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 14,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  suggestionItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  suggestionMain: { fontSize: 14, fontFamily: F.semibold, color: '#111827' },
+  suggestionSecondary: { fontSize: 12, fontFamily: F.regular, color: '#6B7280', marginTop: 1 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 6 },
   modalCancel: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
   modalCancelText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
   modalConfirm: { flex: 1, height: 44, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
