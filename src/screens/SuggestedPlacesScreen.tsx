@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
-  Linking, Platform, Alert,
+  Linking, Platform, Alert, Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,10 +30,13 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const { bottom: bottomInset } = useSafeAreaInsets();
   const { isGuest, savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
 
+  const GUEST_MAX_PLACES = 4;
+
   const [selectedForItinerary, setSelectedForItinerary] = useState<any[]>([]);
   const [previewPlace, setPreviewPlace] = useState<PreviewPlace | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showGate, setShowGate] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     const navStart = typeof params.perfSuggestedNavAt === 'number' ? params.perfSuggestedNavAt : mountAtRef.current;
@@ -50,6 +53,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     if (isSelected) {
       setSelectedForItinerary(prev => prev.filter(p => p.placeId !== place.placeId));
     } else {
+      if (isGuest && selectedForItinerary.length >= GUEST_MAX_PLACES) {
+        setShowUpgradeModal(true);
+        return;
+      }
       setSelectedForItinerary(prev => [...prev, place]);
     }
   };
@@ -259,6 +266,49 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         onRegister={() => { setShowGate(false); navigation.navigate('Register'); }}
         onContinueAsGuest={() => setShowGate(false)}
       />
+
+      {/* Guest Itinerary Limit Modal */}
+      <Modal
+        visible={showUpgradeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowUpgradeModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowUpgradeModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={styles.modalIconWrap}>
+                  <Text style={styles.modalEmoji}>🔒</Text>
+                </View>
+                <Text style={styles.modalTitle}>Upgrade Your Access</Text>
+                <Text style={styles.modalBody}>
+                  Create an account to add more places and unlock unlimited trip planning.
+                </Text>
+                <TouchableOpacity
+                  style={styles.modalPrimaryBtn}
+                  onPress={() => { setShowUpgradeModal(false); navigation.navigate('Register'); }}
+                >
+                  <Text style={styles.modalPrimaryBtnText}>Create Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalOutlineBtn}
+                  onPress={() => { setShowUpgradeModal(false); navigation.navigate('Login'); }}
+                >
+                  <Text style={styles.modalOutlineBtnText}>Sign In</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalGhostBtn}
+                  onPress={() => setShowUpgradeModal(false)}
+                >
+                  <Text style={styles.modalGhostBtnText}>Continue as Guest</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -339,4 +389,40 @@ const styles = StyleSheet.create({
   },
   ctaBtnDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E5EA', marginBottom: 20,
+  },
+  modalIconWrap: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEF9C3',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  modalEmoji: { fontSize: 28 },
+  modalTitle: {
+    fontSize: 22, fontFamily: F.bold, color: '#111827',
+    marginBottom: 10, textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
+  modalPrimaryBtn: {
+    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
+  modalOutlineBtn: {
+    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.semibold },
+  modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
+  modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.semibold },
 });

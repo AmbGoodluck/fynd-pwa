@@ -20,9 +20,13 @@ export interface SavedPlace {
 interface GuestStore {
   isGuest: boolean;
   hasSeenOnboarding: boolean;
+  hasUsedGuestMode: boolean;
+  guestItineraryCount: number;
   savedPlaces: SavedPlace[];
   setGuest: (isGuest: boolean) => void;
   setHasSeenOnboarding: (seen: boolean) => void;
+  markGuestModeUsed: () => void;
+  incrementGuestItineraryCount: () => void;
   savePlace: (place: PlaceResult) => void;
   unsavePlace: (placeId: string) => void;
   isPlaceSaved: (placeId: string) => boolean;
@@ -51,11 +55,18 @@ export const useGuestStore = create<GuestStore>()(
     (set, get) => ({
       isGuest: false,
       hasSeenOnboarding: false,
+      hasUsedGuestMode: false,
+      guestItineraryCount: 0,
       savedPlaces: [],
 
       setGuest: (isGuest) => set({ isGuest }),
 
       setHasSeenOnboarding: (seen) => set({ hasSeenOnboarding: seen }),
+
+      markGuestModeUsed: () => set({ hasUsedGuestMode: true }),
+
+      incrementGuestItineraryCount: () =>
+        set((state) => ({ guestItineraryCount: state.guestItineraryCount + 1 })),
 
       savePlace: (place) => {
         const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
@@ -70,7 +81,7 @@ export const useGuestStore = create<GuestStore>()(
 
       clearSavedPlaces: () => set({ savedPlaces: [] }),
 
-      reset: () => set({ isGuest: false, hasSeenOnboarding: false, savedPlaces: [] }),
+      reset: () => set({ isGuest: false, hasSeenOnboarding: false, hasUsedGuestMode: false, guestItineraryCount: 0, savedPlaces: [] }),
     }),
     {
       name: 'fynd-guest-store',

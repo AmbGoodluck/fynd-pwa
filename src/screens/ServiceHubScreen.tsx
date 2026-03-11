@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   Image, ActivityIndicator, Alert, Linking, Platform, ScrollView,
+  Modal, TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '@sentry/react-native';
 import { searchNearby, PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
+import { useGuestStore } from '../store/useGuestStore';
 
 const CATEGORIES = [
   { id: 'Medical',           label: 'Medical',        icon: 'medkit',              color: '#EF4444' },
@@ -30,8 +32,14 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const { isGuest } = useGuestStore();
 
   useEffect(() => {
+    if (isGuest) {
+      setShowGuestModal(true);
+      return;
+    }
     fetchNearbyForCategory(selectedCategory);
   }, []);
 
@@ -188,12 +196,12 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
 
       {/* Results */}
       {loadingResults ? (
-        <View style={styles.loadingWrap}>
+        <ScrollView contentContainerStyle={styles.loadingWrap} showsVerticalScrollIndicator={false}>
           <ActivityIndicator color="#22C55E" />
           <Text style={styles.loadingText}>Finding nearby services…</Text>
-        </View>
+        </ScrollView>
       ) : results.length === 0 ? (
-        <View style={styles.emptyState}>
+        <ScrollView contentContainerStyle={styles.emptyState} showsVerticalScrollIndicator={false}>
           <Ionicons name="search" size={48} color="#E5E5EA" />
           <Text style={styles.emptyTitle}>No results found</Text>
           <Text style={styles.emptyText}>
@@ -205,7 +213,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
           >
             <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={results}
@@ -215,6 +223,49 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Guest Restriction Modal */}
+      <Modal
+        visible={showGuestModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => { setShowGuestModal(false); navigation.goBack(); }}
+      >
+        <TouchableWithoutFeedback onPress={() => { setShowGuestModal(false); navigation.goBack(); }}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={styles.modalIconWrap}>
+                  <Ionicons name="compass-outline" size={32} color="#22C55E" />
+                </View>
+                <Text style={styles.modalTitle}>Account Required</Text>
+                <Text style={styles.modalBody}>
+                  Create an account to access nearby services like medical help, transport, and emergency locations.
+                </Text>
+                <TouchableOpacity
+                  style={styles.modalPrimaryBtn}
+                  onPress={() => { setShowGuestModal(false); navigation.navigate('Login'); }}
+                >
+                  <Text style={styles.modalPrimaryBtnText}>Sign In</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalOutlineBtn}
+                  onPress={() => { setShowGuestModal(false); navigation.navigate('Register'); }}
+                >
+                  <Text style={styles.modalOutlineBtnText}>Create Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalGhostBtn}
+                  onPress={() => { setShowGuestModal(false); navigation.goBack(); }}
+                >
+                  <Text style={styles.modalGhostBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -263,10 +314,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8,
   },
   routeBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  loadingWrap: { alignItems: 'center', paddingTop: 40, gap: 10 },
+  loadingWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 10 },
   loadingText: { fontSize: 14, color: '#57636C' },
   emptyState: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40,
+    flexGrow: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 40, paddingVertical: 40,
   },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: '#111827', marginTop: 14, marginBottom: 6 },
   emptyText: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
@@ -275,4 +327,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28, paddingVertical: 12,
   },
   retryBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E5EA', marginBottom: 20,
+  },
+  modalIconWrap: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0FDF4',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22, fontWeight: '700', color: '#111827',
+    marginBottom: 10, textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
+  modalPrimaryBtn: {
+    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  modalOutlineBtn: {
+    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
+  modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
+  modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
 });

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Image, ImageBackground, StatusBar,
+  Image, ImageBackground, StatusBar, Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,9 +11,21 @@ import { useGuestStore } from '../store/useGuestStore';
 type Props = { navigation: any };
 
 export default function AuthChoiceScreen({ navigation }: Props) {
-  const { setGuest, setHasSeenOnboarding } = useGuestStore();
+  const { setGuest, setHasSeenOnboarding, hasUsedGuestMode, markGuestModeUsed } = useGuestStore();
+  const [showGuestInfoModal, setShowGuestInfoModal] = useState(false);
+  const [showAlreadyUsedModal, setShowAlreadyUsedModal] = useState(false);
 
   const handleGuest = () => {
+    if (hasUsedGuestMode) {
+      setShowAlreadyUsedModal(true);
+    } else {
+      setShowGuestInfoModal(true);
+    }
+  };
+
+  const confirmGuestEntry = () => {
+    setShowGuestInfoModal(false);
+    markGuestModeUsed();
     setGuest(true);
     setHasSeenOnboarding(true);
     navigation.replace('MainTabs');
@@ -80,6 +93,84 @@ export default function AuthChoiceScreen({ navigation }: Props) {
           </Text>
         </View>
       </SafeAreaView>
+
+      {/* Guest Access Info Modal */}
+      <Modal
+        visible={showGuestInfoModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGuestInfoModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowGuestInfoModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={styles.modalIconWrap}>
+                  <Ionicons name="person-outline" size={32} color="#22C55E" />
+                </View>
+                <Text style={styles.modalTitle}>Guest Access</Text>
+                <Text style={styles.modalBody}>
+                  You are using Fynd in guest mode. Guest access is limited. You can explore the map and create a trip, but some features require an account.
+                </Text>
+                <View style={styles.modalPermissions}>
+                  <Text style={styles.permissionHeader}>Allowed:</Text>
+                  {['Create Trip', 'View Suggested Places', 'Generate Itinerary', 'Use Map Navigation'].map(item => (
+                    <View key={item} style={styles.permissionRow}>
+                      <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                      <Text style={styles.permissionText}>{item}</Text>
+                    </View>
+                  ))}
+                  <Text style={[styles.permissionHeader, { marginTop: 10 }]}>Restricted:</Text>
+                  {['Saved Places', 'ServiceHub', 'Profile Features', 'Account Settings'].map(item => (
+                    <View key={item} style={styles.permissionRow}>
+                      <Ionicons name="close-circle" size={16} color="#EF4444" />
+                      <Text style={[styles.permissionText, { color: '#6B7280' }]}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity style={styles.modalPrimaryBtn} onPress={confirmGuestEntry}>
+                  <Text style={styles.modalPrimaryBtnText}>Continue as Guest</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalOutlineBtn} onPress={() => { setShowGuestInfoModal(false); navigation.navigate('Register'); }}>
+                  <Text style={styles.modalOutlineBtnText}>Create Account Instead</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Guest Already Used Modal */}
+      <Modal
+        visible={showAlreadyUsedModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAlreadyUsedModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowAlreadyUsedModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={[styles.modalIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+                </View>
+                <Text style={styles.modalTitle}>Guest Access Already Used</Text>
+                <Text style={styles.modalBody}>
+                  Guest mode is available only once. Please create an account or sign in to continue using Fynd.
+                </Text>
+                <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => { setShowAlreadyUsedModal(false); navigation.navigate('Register'); }}>
+                  <Text style={styles.modalPrimaryBtnText}>Create Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalOutlineBtn} onPress={() => { setShowAlreadyUsedModal(false); navigation.navigate('Login'); }}>
+                  <Text style={styles.modalOutlineBtnText}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -128,4 +219,41 @@ const styles = StyleSheet.create({
     textAlign: 'center', lineHeight: 16,
     paddingHorizontal: 12,
   },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E5EA', marginBottom: 20,
+  },
+  modalIconWrap: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0FDF4',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22, fontWeight: '700', color: '#111827',
+    marginBottom: 10, textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 16, paddingHorizontal: 4,
+  },
+  modalPermissions: { width: '100%', marginBottom: 20 },
+  permissionHeader: { fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 6 },
+  permissionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  permissionText: { fontSize: 13, color: '#374151' },
+  modalPrimaryBtn: {
+    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  modalOutlineBtn: {
+    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center',
+  },
+  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
 });

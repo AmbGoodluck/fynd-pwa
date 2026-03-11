@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, FlatList, useWindowDimensions, Image,
+  ImageBackground, FlatList, useWindowDimensions, Image, Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,11 +29,12 @@ type Props = { navigation: any };
 export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const { user } = useAuthStore();
-  const { isGuest, savedPlaces } = useGuestStore();
+  const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
 
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
+  const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
 
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
 
@@ -55,6 +57,10 @@ export default function HomeScreen({ navigation }: Props) {
   const hasSessionTrip = !!destination;
 
   const handleServicePress = (id: string) => {
+    if (isGuest) {
+      setShowServiceHubGuestModal(true);
+      return;
+    }
     if (id === 'seeAll') {
       navigation.navigate('ServiceHub');
     } else {
@@ -116,10 +122,12 @@ export default function HomeScreen({ navigation }: Props) {
             <Ionicons name="compass-outline" size={18} color="#111827" />
             <Text style={styles.sectionTitle}>ServiceHub</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('ServiceHub')} style={styles.seeAllBtn}>
-            <Text style={styles.seeAllText}>See All</Text>
-            <Ionicons name="chevron-forward" size={15} color="#22C55E" />
-          </TouchableOpacity>
+          {!isGuest && (
+            <TouchableOpacity onPress={() => navigation.navigate('ServiceHub')} style={styles.seeAllBtn}>
+              <Text style={styles.seeAllText}>See All</Text>
+              <Ionicons name="chevron-forward" size={15} color="#22C55E" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceRow}>
@@ -134,43 +142,6 @@ export default function HomeScreen({ navigation }: Props) {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        {/* ── Saved Places ─────────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionLeft}>
-            <Ionicons name="bookmark-outline" size={18} color="#111827" />
-            <Text style={styles.sectionTitle}>Saved Places</Text>
-          </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Saved')} style={styles.seeAllBtn}>
-            <Text style={styles.seeAllText}>See All</Text>
-            <Ionicons name="chevron-forward" size={15} color="#22C55E" />
-          </TouchableOpacity>
-        </View>
-
-        {savedPlaces.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="bookmark-outline" size={36} color="#E5E5EA" />
-            <Text style={styles.emptyTitle}>No saved places yet</Text>
-            <Text style={styles.emptySubtitle}>Heart a place while browsing to save it here</Text>
-          </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.savedRow}>
-            {savedPlaces.slice(0, 8).map(place => (
-              <TouchableOpacity key={place.placeId} style={styles.savedCard}>
-                <ImageBackground
-                  source={{ uri: place.photoUrl || BANNER_IMAGES[0] }}
-                  style={styles.savedCardBg}
-                  imageStyle={{ borderRadius: 16 }}
-                >
-                  <View style={styles.savedCardOverlay}>
-                    <Text style={styles.savedCardName} numberOfLines={1}>{place.name}</Text>
-                    {place.city ? <Text style={styles.savedCardCity}>{place.city}</Text> : null}
-                  </View>
-                </ImageBackground>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
 
         {/* ── Recent Trip (session-based) ───────────────────── */}
         <View style={styles.sectionHeader}>
@@ -214,6 +185,49 @@ export default function HomeScreen({ navigation }: Props) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ServiceHub Guest Restriction Modal */}
+      <Modal
+        visible={showServiceHubGuestModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowServiceHubGuestModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowServiceHubGuestModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.modalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={styles.modalIconWrap}>
+                  <Ionicons name="compass-outline" size={32} color="#22C55E" />
+                </View>
+                <Text style={styles.modalTitle}>Account Required</Text>
+                <Text style={styles.modalBody}>
+                  Create an account to access nearby services like medical help, transport, and emergency locations.
+                </Text>
+                <TouchableOpacity
+                  style={styles.modalPrimaryBtn}
+                  onPress={() => { setShowServiceHubGuestModal(false); navigation.navigate('Login'); }}
+                >
+                  <Text style={styles.modalPrimaryBtnText}>Sign In</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalOutlineBtn}
+                  onPress={() => { setShowServiceHubGuestModal(false); navigation.navigate('Register'); }}
+                >
+                  <Text style={styles.modalOutlineBtnText}>Create Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalGhostBtn}
+                  onPress={() => setShowServiceHubGuestModal(false)}
+                >
+                  <Text style={styles.modalGhostBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -297,4 +311,39 @@ const styles = StyleSheet.create({
   },
   recentTripDest: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 2 },
   recentTripMeta: { fontSize: 13, color: '#57636C' },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
+  },
+  modalHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E5EA', marginBottom: 20,
+  },
+  modalIconWrap: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0FDF4',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22, fontWeight: '700', color: '#111827',
+    marginBottom: 10, textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
+  modalPrimaryBtn: {
+    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  modalOutlineBtn: {
+    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
+  modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
+  modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
 });
