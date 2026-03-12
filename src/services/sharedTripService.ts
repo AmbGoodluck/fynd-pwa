@@ -13,6 +13,11 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { SharedTrip, TripMember, SharedTripPlace, MemberRole } from '../types/sharedTrip';
+import {
+  trackTripCreated,
+  trackTripShared,
+  trackTripJoined,
+} from './eventTrackingService';
 
 const TRIPS_COL = 'shared_trips';
 const MEMBERS_COL = 'trip_members';
@@ -69,6 +74,11 @@ export async function createSharedTrip(params: {
     joined_at: now,
   };
   await setDoc(doc(db, MEMBERS_COL, ownerMember.member_id), ownerMember);
+
+  trackTripCreated(params.owner_id, trip_id, {
+    trip_name: params.trip_name,
+    place_count: params.places.length,
+  });
 
   return trip;
 }
@@ -131,6 +141,8 @@ export async function joinSharedTrip(params: {
     member_count: (trip.member_count || 1) + 1,
   });
 
+  trackTripJoined(params.user_id, params.trip_id);
+
   return member;
 }
 
@@ -185,4 +197,9 @@ export async function getJoinedTrips(user_id: string): Promise<SharedTrip[]> {
 // ── Generate share link ───────────────────────────────────────────────────────
 export function buildShareLink(trip_id: string): string {
   return `fynd.app/trip/${trip_id}`;
+}
+
+// ── Track trip shared (call after share link is presented to user) ────────────
+export function recordTripShared(owner_id: string, trip_id: string): void {
+  trackTripShared(owner_id, trip_id);
 }
