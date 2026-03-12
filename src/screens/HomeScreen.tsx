@@ -9,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
+import { usePremiumStore } from '../store/usePremiumStore';
+import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -31,10 +33,12 @@ export default function HomeScreen({ navigation }: Props) {
   const { user } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
+  const { isPremium } = usePremiumStore();
 
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
+  const [showServiceHubPremiumModal, setShowServiceHubPremiumModal] = useState(false);
 
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
 
@@ -61,6 +65,10 @@ export default function HomeScreen({ navigation }: Props) {
       setShowServiceHubGuestModal(true);
       return;
     }
+    if (!isPremium) {
+      setShowServiceHubPremiumModal(true);
+      return;
+    }
     if (id === 'seeAll') {
       navigation.navigate('ServiceHub');
     } else {
@@ -75,6 +83,12 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── Top bar ──────────────────────────────────────── */}
         <View style={styles.topBar}>
           <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
+          {isPremium && (
+            <View style={styles.premiumBadge}>
+              <Ionicons name="star" size={10} color="#fff" />
+              <Text style={styles.premiumBadgeText}>Plus</Text>
+            </View>
+          )}
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             style={styles.sharedTripsBtn}
@@ -129,10 +143,16 @@ export default function HomeScreen({ navigation }: Props) {
             <Ionicons name="compass-outline" size={18} color="#111827" />
             <Text style={styles.sectionTitle}>ServiceHub</Text>
           </View>
-          {!isGuest && (
+          {!isGuest && isPremium && (
             <TouchableOpacity onPress={() => navigation.navigate('ServiceHub')} style={styles.seeAllBtn}>
               <Text style={styles.seeAllText}>See All</Text>
               <Ionicons name="chevron-forward" size={15} color="#22C55E" />
+            </TouchableOpacity>
+          )}
+          {!isGuest && !isPremium && (
+            <TouchableOpacity onPress={() => setShowServiceHubPremiumModal(true)} style={styles.seeAllBtn}>
+              <Ionicons name="lock-closed-outline" size={13} color="#9CA3AF" />
+              <Text style={[styles.seeAllText, { color: '#9CA3AF' }]}>Plus</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -193,6 +213,16 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      {/* ServiceHub FyndPlus Upgrade Modal */}
+      <FyndPlusUpgradeModal
+        visible={showServiceHubPremiumModal}
+        onClose={() => setShowServiceHubPremiumModal(false)}
+        onUpgrade={() => { setShowServiceHubPremiumModal(false); navigation.navigate('Subscription'); }}
+        icon="compass-outline"
+        title="Unlock ServiceHub"
+        message="Get instant access to nearby medical help, transport, currency exchange, and emergency services with FyndPlus."
+      />
+
       {/* ServiceHub Guest Restriction Modal */}
       <Modal
         visible={showServiceHubGuestModal}
@@ -248,6 +278,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   logo: { width: 50, height: 44, resizeMode: 'contain' },
+  premiumBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#22C55E', borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 3, marginLeft: 6,
+  },
+  premiumBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   sharedTripsBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',

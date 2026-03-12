@@ -12,6 +12,8 @@ import { logEvent } from '../services/firebase';
 import { createSharedTrip, buildShareLink } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
+import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
+import { usePremiumStore } from '../store/usePremiumStore';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -74,7 +76,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [bookingTitle, setBookingTitle] = useState('');
 
   const { sessionUserId, sessionUserName, addMyTrip } = useSharedTripStore();
+  const { isPremium } = usePremiumStore();
   const { bottom: bottomInset } = useSafeAreaInsets();
+  const [showShareUpgradeModal, setShowShareUpgradeModal] = useState(false);
 
   useEffect(() => {
     logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
@@ -267,11 +271,12 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         <Text style={styles.headerTitle} numberOfLines={1}>Itinerary</Text>
         <TouchableOpacity
           style={styles.shareHeaderBtn}
-          onPress={() => setShowShareModal(true)}
+          onPress={() => isPremium ? setShowShareModal(true) : setShowShareUpgradeModal(true)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Ionicons name="share-outline" size={20} color="#22C55E" />
-          <Text style={styles.shareHeaderBtnText}>Share</Text>
+          {!isPremium && <Ionicons name="lock-closed" size={13} color="#9CA3AF" />}
+          {isPremium && <Ionicons name="share-outline" size={20} color="#22C55E" />}
+          <Text style={[styles.shareHeaderBtnText, !isPremium && { color: '#9CA3AF' }]}>Share</Text>
         </TouchableOpacity>
       </View>
 
@@ -444,6 +449,16 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         url={bookingUrl ?? ''}
         title={bookingTitle}
         onClose={() => setBookingUrl(null)}
+      />
+
+      {/* Share Trip — FyndPlus upgrade prompt for free users */}
+      <FyndPlusUpgradeModal
+        visible={showShareUpgradeModal}
+        onClose={() => setShowShareUpgradeModal(false)}
+        onUpgrade={() => { setShowShareUpgradeModal(false); navigation.navigate('Subscription'); }}
+        icon="people-outline"
+        title="Share Trips with Your Team"
+        message="Create a shareable trip link so friends and teammates can join, explore, and save your itinerary together."
       />
     </SafeAreaView>
   );

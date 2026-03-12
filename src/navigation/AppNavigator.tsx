@@ -9,6 +9,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
+import { usePremiumStore } from '../store/usePremiumStore';
+import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 
 // ── Core flow ──────────────────────────────────────────────────────────────────
 import LogoScreen from '../screens/LogoScreen';
@@ -68,8 +70,10 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
   const isMobile = Platform.OS === 'web' ? width <= 900 : true;
   const safeBottom = insets.bottom;
   const { isGuest } = useGuestStore();
+  const { isPremium } = usePremiumStore();
   const [showGuestServiceHubModal, setShowGuestServiceHubModal] = useState(false);
   const [showGuestSavedModal, setShowGuestSavedModal] = useState(false);
+  const [showPremiumServiceHubModal, setShowPremiumServiceHubModal] = useState(false);
 
   return (
     <>
@@ -121,6 +125,9 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
             if (isGuest) {
               e.preventDefault();
               setShowGuestServiceHubModal(true);
+            } else if (!isPremium) {
+              e.preventDefault();
+              setShowPremiumServiceHubModal(true);
             }
           },
         }}
@@ -178,6 +185,16 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ServiceHub FyndPlus Upgrade Modal */}
+      <FyndPlusUpgradeModal
+        visible={showPremiumServiceHubModal}
+        onClose={() => setShowPremiumServiceHubModal(false)}
+        onUpgrade={() => { setShowPremiumServiceHubModal(false); stackNavigation?.navigate('Subscription'); }}
+        icon="compass-outline"
+        title="Unlock ServiceHub"
+        message="Get instant access to nearby medical help, transport, currency exchange, and emergency services with FyndPlus."
+      />
 
       {/* Saved Tab Guest Modal */}
       <Modal

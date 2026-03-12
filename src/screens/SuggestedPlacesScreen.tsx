@@ -12,7 +12,14 @@ import FyndScrollContainer from '../components/FyndScrollContainer';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import GuestGateModal from '../components/GuestGateModal';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
+import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { useGuestStore } from '../store/useGuestStore';
+import {
+  usePremiumStore,
+  FREE_MAX_PLACES_PER_ITINERARY,
+  FREE_MAX_SAVED_PLACES,
+  GUEST_MAX_PLACES_PER_ITINERARY,
+} from '../store/usePremiumStore';
 
 type Props = { navigation: any; route: any };
 
@@ -29,15 +36,24 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const userLongitude: number | null = params.longitude ?? null;
 
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const { isGuest, savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
+  const { isGuest, savePlace, unsavePlace, isPlaceSaved, savedPlaces } = useGuestStore();
+  const { isPremium, canCreateItinerary, incrementItineraryCount } = usePremiumStore();
 
-  const GUEST_MAX_PLACES = 4;
+  // Tiered place limits: guest=4, free=5, premium=unlimited
+  const maxPlaces = isGuest
+    ? GUEST_MAX_PLACES_PER_ITINERARY
+    : isPremium
+    ? Infinity
+    : FREE_MAX_PLACES_PER_ITINERARY;
 
   const [selectedForItinerary, setSelectedForItinerary] = useState<any[]>([]);
   const [previewPlace, setPreviewPlace] = useState<PreviewPlace | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showPlaceLimitModal, setShowPlaceLimitModal] = useState(false);
+  const [showWeeklyLimitModal, setShowWeeklyLimitModal] = useState(false);
+  const [showSaveLimitModal, setShowSaveLimitModal] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
 
@@ -56,8 +72,12 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     if (isSelected) {
       setSelectedForItinerary(prev => prev.filter(p => p.placeId !== place.placeId));
     } else {
-      if (isGuest && selectedForItinerary.length >= GUEST_MAX_PLACES) {
-        setShowUpgradeModal(true);
+      if (selectedForItinerary.length >= maxPlaces) {
+        if (isGuest) {
+          setShowUpgradeModal(true);
+        } else {
+          setShowPlaceLimitModal(true);
+        }
         return;
       }
       setSelectedForItinerary(prev => [...prev, place]);
@@ -68,9 +88,13 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     if (isGuest) { setShowGate(true); return; }
     if (isPlaceSaved(place.placeId)) {
       unsavePlace(place.placeId);
-    } else {
-      savePlace(place);
+      return;
     }
+    if (!isPremium && savedPlaces.length >= FREE_MAX_SAVED_PLACES) {
+      setShowSaveLimitModal(true);
+      return;
+    }
+    savePlace(place);
   };
 
   const handleLongPress = (place: any) => {
@@ -98,6 +122,13 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   const handleGenerateItinerary = () => {
     if (selectedForItinerary.length === 0) return;
+    if (!isGuest && !canCreateItinerary()) {
+      setShowWeeklyLimitModal(true);
+      return;
+    }
+    if (!isGuest) {
+      incrementItineraryCount();
+    }
     navigation.navigate('Itinerary', {
       places: selectedForItinerary,
       tripId, destination, vibes: tripVibes,
@@ -278,6 +309,36 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         url={bookingUrl ?? ''}
         title={bookingTitle}
         onClose={() => setBookingUrl(null)}
+      />
+
+      {/* Free user: place-per-itinerary limit (5 places) */}
+      <FyndPlusUpgradeModal
+        visible={showPlaceLimitModal}
+        onClose={() => setShowPlaceLimitModal(false)}
+        onUpgrade={() => { setShowPlaceLimitModal(false); navigation.navigate('Subscription'); }}
+        icon="map-outline"
+        title="Unlock More Places"
+        message={`You can add up to ${FREE_MAX_PLACES_PER_ITINERARY} places per itinerary. Upgrade to FyndPlus for unlimited places on every trip.`}
+      />
+
+      {/* Free user: weekly itinerary limit (3/week) */}
+      <FyndPlusUpgradeModal
+        visible={showWeeklyLimitModal}
+        onClose={() => setShowWeeklyLimitModal(false)}
+        onUpgrade={() => { setShowWeeklyLimitModal(false); navigation.navigate('Subscription'); }}
+        icon="calendar-outline"
+        title="Weekly Limit Reached"
+        message="You've created 3 itineraries this week. Upgrade to FyndPlus for unlimited trip planning every day."
+      />
+
+      {/* Free user: saved places limit (10) */}
+      <FyndPlusUpgradeModal
+        visible={showSaveLimitModal}
+        onClose={() => setShowSaveLimitModal(false)}
+        onUpgrade={() => { setShowSaveLimitModal(false); navigation.navigate('Subscription'); }}
+        icon="bookmark-outline"
+        title="Saved Places Limit Reached"
+        message={`You've saved ${FREE_MAX_SAVED_PLACES} places, the free plan maximum. Upgrade to FyndPlus to save unlimited places.`}
       />
 
       {/* Guest Gate Modal */}

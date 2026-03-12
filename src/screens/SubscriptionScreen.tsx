@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { usePremiumStore } from '../store/usePremiumStore';
 
 type Props = { navigation: any };
 
@@ -14,6 +15,17 @@ const FEATURES = [
 ];
 
 export default function SubscriptionScreen({ navigation }: Props) {
+  const { setIsPremium, isPremium } = usePremiumStore();
+
+  const handleStartTrial = () => {
+    setIsPremium(true);
+    Alert.alert(
+      'Welcome to FyndPlus! 🎉',
+      'Your 7-day free trial has started. Enjoy unlimited places, itineraries, and ServiceHub access.',
+      [{ text: 'Explore Now', onPress: () => navigation.goBack() }]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -43,8 +55,8 @@ export default function SubscriptionScreen({ navigation }: Props) {
           <Text style={styles.price}>Then $9.99/Month</Text>
           <Text style={styles.cancelText}>Cancel anytime</Text>
 
-          <TouchableOpacity style={styles.trialBtn}>
-            <Text style={styles.trialBtnText}>Start Free Trial</Text>
+          <TouchableOpacity style={styles.trialBtn} onPress={handleStartTrial} disabled={isPremium}>
+            <Text style={styles.trialBtnText}>{isPremium ? 'Already FyndPlus ✓' : 'Start Free Trial'}</Text>
           </TouchableOpacity>
 
           <Text style={styles.termsNote}>
