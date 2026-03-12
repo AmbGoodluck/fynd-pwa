@@ -62,6 +62,7 @@ export interface PlaceResult {
   description: string;
   photoRef: string;
   photoUrl: string;
+  photoUrls?: string[];
   coordinates: { lat: number; lng: number };
   distanceKm?: number;
   walkMinutes?: number;
@@ -133,6 +134,7 @@ export async function searchPlacesByVibe(
 
     function mapPlace(p: any): PlaceResult {
       const ref = p.photos?.[0]?.photo_reference || '';
+      const refs = (p.photos || []).slice(0, 4).map((ph: any) => ph.photo_reference).filter(Boolean);
       const dist = hasOrigin
         ? haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng)
         : undefined;
@@ -145,6 +147,7 @@ export async function searchPlacesByVibe(
         description: p.editorial_summary?.overview || p.types?.[0]?.replace(/_/g, ' ') || '',
         photoRef: ref,
         photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
+        photoUrls: refs.length > 0 ? refs.map((r: string) => getPhotoUrl(r, 400)) : undefined,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
         types: placeTypes,
@@ -337,6 +340,7 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
     if (!data.results) return [];
     return data.results.slice(0, 8).map((p: any) => {
       const ref = p.photos?.[0]?.photo_reference || '';
+      const photoRefs = (p.photos || []).slice(0, 4).map((ph: any) => ph.photo_reference).filter(Boolean);
       return {
         placeId: p.place_id,
         name: p.name,
@@ -345,6 +349,7 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
         description: '',
         photoRef: ref,
         photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
+        photoUrls: photoRefs.length > 0 ? photoRefs.map((r: string) => getPhotoUrl(r, 400)) : undefined,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: type,
         city: '',

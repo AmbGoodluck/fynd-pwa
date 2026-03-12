@@ -11,7 +11,7 @@ import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import { logEvent } from '../services/firebase';
 
-const ITEM_HEIGHT = 148;
+const ITEM_HEIGHT = 118;
 
 function mapPlaceToStop(p: any, index: number) {
   return {
@@ -50,6 +50,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const tripData = route?.params || {};
   const userLat: number | null = route?.params?.userLatitude ?? null;
   const userLng: number | null = route?.params?.userLongitude ?? null;
+  const tripVibes: string[] = route?.params?.vibes ?? [];
 
   const rawStops: Stop[] = rawPlaces.map(mapPlaceToStop);
   const initialStops: Stop[] =
@@ -123,8 +124,10 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           description: item.description,
           rating: parseFloat(item.rating),
           photoUrl: item.image,
+          photoUrls: (item as any).photoUrls,
           bookingUrl: item.bookingUrl,
           address: item.distance,
+          vibes: tripVibes,
         });
         setShowPreview(true);
       }}
@@ -213,7 +216,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           itemHeight={ITEM_HEIGHT}
           onReorder={setStops}
           renderItem={renderStop}
-          contentContainerStyle={{ paddingVertical: 4, paddingBottom: 16 }}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingVertical: 4, paddingBottom: 100 }}
         />
       )}
 
@@ -311,8 +315,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
     minHeight: ITEM_HEIGHT,
   },
-  imageContainer: { width: 100, alignSelf: 'stretch' },
-  placeImage: { width: 100, height: '100%', minHeight: ITEM_HEIGHT, resizeMode: 'cover' },
+  imageContainer: { width: 80, alignSelf: 'stretch' },
+  placeImage: { width: 80, height: '100%', minHeight: ITEM_HEIGHT, resizeMode: 'cover' },
   indexBadge: {
     position: 'absolute', top: 8, left: 8,
     width: 26, height: 26, borderRadius: 13,

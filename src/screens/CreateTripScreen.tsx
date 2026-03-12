@@ -5,6 +5,7 @@ import {
   PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '@sentry/react-native';
@@ -114,6 +115,7 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   // Reactive safe-area bottom inset for the step-2 bottom bar.
   const { bottom: bottomInset } = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   // Step 1 state
   const [destination, setDestination] = useState('');
@@ -322,7 +324,7 @@ export default function CreateTripScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { paddingBottom: tabBarHeight }]} edges={['top']}>
       <StatusBar barStyle="dark-content" />
 
       <AppHeader
@@ -342,7 +344,7 @@ export default function CreateTripScreen({ navigation }: Props) {
 
       {/* ── STEP 1: Preferences ── */}
       {step === 1 && (
-        <>
+        <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
             contentContainerStyle={styles.scrollContent}
@@ -440,19 +442,19 @@ export default function CreateTripScreen({ navigation }: Props) {
             <TouchableOpacity
               style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
               onPress={() => canGoToStep2 && setStep(2)}
-              disabled={!canGoToStep2}
+              activeOpacity={canGoToStep2 ? 0.8 : 1}
             >
               <Text style={[styles.findBtnText, canGoToStep2 && styles.findBtnTextEnabled]}>
                 Select Vibe
               </Text>
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       )}
 
       {/* ── STEP 2: Vibes ── */}
       {step === 2 && (
-        <>
+        <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
@@ -490,15 +492,15 @@ export default function CreateTripScreen({ navigation }: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.findBtn, canFindPlaces && styles.findBtnEnabled]}
-              onPress={handleFindPlaces}
-              disabled={!canFindPlaces}
+              onPress={() => canFindPlaces && handleFindPlaces()}
+              activeOpacity={canFindPlaces ? 0.8 : 1}
             >
               <Text style={[styles.findBtnText, canFindPlaces && styles.findBtnTextEnabled]}>
-                Find My Places
+                Fynd Places
               </Text>
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       )}
 
       {/* Input Location Modal */}

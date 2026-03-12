@@ -8,7 +8,6 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
-  Linking,
   Alert,
   Platform,
   useWindowDimensions,
@@ -101,6 +100,7 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
     var USER = null;
     var activeIdx = 0;
     var map, markers = [], polyline, userMarker;
+    var directionsRenderer = null;
 
     function pinSvg(label, isActive) {
       var color = isActive ? '#22C55E' : '#EF4444';
@@ -249,6 +249,47 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
       USER = { lat: lat, lng: lng };
       drawUserDot();
     }
+
+    function showDirections(uLat, uLng, dLat, dLng) {
+      if (!map) return;
+      if (directionsRenderer) { directionsRenderer.setMap(null); directionsRenderer = null; }
+      directionsRenderer = new google.maps.DirectionsRenderer({
+        map: map,
+        suppressMarkers: true,
+        polylineOptions: { strokeColor: '#3B82F6', strokeWeight: 5, strokeOpacity: 0.9 }
+      });
+      var ds = new google.maps.DirectionsService();
+      ds.route({
+        origin: { lat: uLat, lng: uLng },
+        destination: { lat: dLat, lng: dLng },
+        travelMode: google.maps.TravelMode.WALKING
+      }, function(result, status) {
+        if (status === 'OK') {
+          directionsRenderer.setDirections(result);
+          var leg = result.routes[0].legs[0];
+          map.fitBounds(result.routes[0].bounds, { top: 60, right: 30, bottom: 30, left: 30 });
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'navInfo',
+              distance: leg.distance ? leg.distance.text : '',
+              duration: leg.duration ? leg.duration.text : ''
+            }));
+          }
+        } else {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navError', status: status }));
+          }
+        }
+      });
+    }
+
+    function clearDirections() {
+      if (directionsRenderer) { directionsRenderer.setMap(null); directionsRenderer = null; }
+      renderAll();
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'navCleared' }));
+      }
+    }
   </script>
   <script async
     src="${mapsJsUrl}">
@@ -347,6 +388,8 @@ export default function MapScreen({ navigation, route }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [navInfo, setNavInfo] = useState<{ distance: string; duration: string } | null>(null);
   const mapLoadStartRef = useRef<number>(Date.now());
 
   const mapsJsUrl = useMemo(() => {
@@ -453,6 +496,16 @@ export default function MapScreen({ navigation, route }: Props) {
       } else if (data.type === 'markerTap') {
         lastInjectedIdx.current = data.index; // prevent echo injection
         setActiveIdx(data.index);
+      } else if (data.type === 'navInfo') {
+        setIsNavigating(true);
+        setNavInfo({ distance: data.distance, duration: data.duration });
+      } else if (data.type === 'navCleared') {
+        setIsNavigating(false);
+        setNavInfo(null);
+      } else if (data.type === 'navError') {
+        setIsNavigating(false);
+        setNavInfo(null);
+        Alert.alert('Navigation', 'Could not calculate route. Make sure location is enabled.');
       }
     } catch (_) {}
   };
@@ -490,35 +543,24 @@ export default function MapScreen({ navigation, route }: Props) {
     setActiveIdx(i);
   };
 
-  const openStopInGMaps = (stop: Stop) => {
-    const { latitude, longitude } = stop.coordinate;
-    const url = `https://maps.google.com/maps?q=${latitude},${longitude}`;
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+  const navigateToStop = (stop: Stop) => {
+    if (!userLoc) {
+      Alert.alert('Location needed', 'Enable location access to get directions.');
+      return;
     }
+    const { latitude: dLat, longitude: dLng } = stop.coordinate;
+    webViewRef.current?.injectJavaScript(
+      `showDirections(${userLoc.latitude}, ${userLoc.longitude}, ${dLat}, ${dLng}); true;`
+    );
+  };
+
+  const stopNavigation = () => {
+    webViewRef.current?.injectJavaScript(`clearDirections(); true;`);
   };
 
   const openFullRoute = () => {
-    if (!hasStops) return;
-    if (stops.length === 1) { openStopInGMaps(stops[0]); return; }
-    const o = stops[0].coordinate;
-    const d = stops[stops.length - 1].coordinate;
-    const wp = stops
-      .slice(1, -1)
-      .map(s => `${s.coordinate.latitude},${s.coordinate.longitude}`)
-      .join('|');
-    let url =
-      `https://www.google.com/maps/dir/?api=1` +
-      `&origin=${o.latitude},${o.longitude}` +
-      `&destination=${d.latitude},${d.longitude}`;
-    if (wp) url += `&waypoints=${encodeURIComponent(wp)}`;
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } else {
-      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
-    }
+    // Show overview of all stops on in-app map
+    showOverview();
   };
 
   const showOverview = () => {
@@ -653,6 +695,17 @@ export default function MapScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
 
+          {/* Navigation info bar */}
+          {isNavigating && navInfo ? (
+            <View style={styles.navBar}>
+              <Ionicons name="navigate" size={16} color="#3B82F6" style={{ marginRight: 6 }} />
+              <Text style={styles.navBarText}>{navInfo.duration} · {navInfo.distance}</Text>
+              <TouchableOpacity style={styles.navStopBtn} onPress={stopNavigation}>
+                <Text style={styles.navStopBtnText}>End Nav</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           {/* Active stop detail card */}
           {activeStop ? (
             <View style={[styles.detailCard, styles.detailCardFullscreen]}>
@@ -693,7 +746,7 @@ export default function MapScreen({ navigation, route }: Props) {
 
               <TouchableOpacity
                 style={styles.goBtn}
-                onPress={() => openStopInGMaps(activeStop)}
+                onPress={() => navigateToStop(activeStop)}
               >
                 <Ionicons name="navigate-outline" size={20} color="#22C55E" />
                 <Text style={styles.goBtnTxt}>Go</Text>
@@ -1092,6 +1145,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   navigateBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
+
+  navBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#EFF6FF', borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 8,
+    marginBottom: 8, marginHorizontal: 4,
+    borderWidth: 1, borderColor: '#BFDBFE',
+  },
+  navBarText: { flex: 1, fontSize: 13, fontFamily: F.semibold, color: '#1D4ED8' },
+  navStopBtn: {
+    backgroundColor: '#EF4444', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  navStopBtnText: { fontSize: 11, fontFamily: F.semibold, color: '#fff' },
 
   // ── Idle card ──
   idleCard: {

@@ -9,27 +9,9 @@ type Props = { navigation: any };
 
 export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
-    const timer = setTimeout(async () => {
-      try {
-        const raw = await AsyncStorage.getItem(GUEST_STORE_KEY);
-        const state = raw ? (JSON.parse(raw)?.state ?? {}) : {};
-        const hasSeenOnboarding = !!state.hasSeenOnboarding;
-        const isGuest = !!state.isGuest;
-
-        if (!hasSeenOnboarding) {
-          // First launch — show full onboarding flow
-          navigation.replace('Onboarding1');
-        } else if (isGuest) {
-          // Returning guest — skip straight into the app
-          navigation.replace('MainTabs');
-        } else {
-          // Returning registered user — show auth choice
-          // (Login screen will redirect to MainTabs on success)
-          navigation.replace('AuthChoice');
-        }
-      } catch {
-        navigation.replace('Onboarding1');
-      }
+    // DEV: auth disabled — always go straight to MainTabs
+    const timer = setTimeout(() => {
+      navigation.replace('MainTabs');
     }, SPLASH_DELAY);
 
     return () => clearTimeout(timer);

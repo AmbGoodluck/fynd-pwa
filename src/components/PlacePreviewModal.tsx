@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity,
   TouchableWithoutFeedback, Image, Linking, Platform, Alert,
-  ScrollView,
+  ScrollView, NativeSyntheticEvent, NativeScrollEvent, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600';
 
 export type PreviewPlace = {
   placeId: string;
@@ -13,6 +16,8 @@ export type PreviewPlace = {
   rating: number;
   distanceKm?: number;
   photoUrl: string;
+  photoUrls?: string[];
+  vibes?: string[];
   bookingUrl?: string;
   category?: string;
   address?: string;
@@ -37,6 +42,12 @@ export default function PlacePreviewModal({
 }: Props) {
   if (!place) return null;
 
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const photos = place.photoUrls?.length
+    ? place.photoUrls
+    : [place.photoUrl || FALLBACK_IMAGE];
+
   const openBooking = () => {
     if (!place.bookingUrl) return;
     const url = place.bookingUrl;
@@ -47,6 +58,13 @@ export default function PlacePreviewModal({
         Alert.alert('Error', 'Could not open booking page.')
       );
     }
+  };
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(
+      e.nativeEvent.contentOffset.x / e.nativeEvent.layoutMeasurement.width
+    );
+    setCurrentPage(page);
   };
 
   const stars = Math.round(place.rating);
@@ -64,11 +82,34 @@ export default function PlacePreviewModal({
             <View style={styles.sheet}>
               <View style={styles.handle} />
 
-              {/* Hero image */}
-              <Image
-                source={{ uri: place.photoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600' }}
-                style={styles.heroImage}
-              />
+              {/* Image slider */}
+              <View style={styles.sliderContainer}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  scrollEventThrottle={16}
+                  onScroll={handleScroll}
+                >
+                  {photos.map((uri, index) => (
+                    <Image
+                      key={index}
+                      source={{ uri }}
+                      style={styles.heroImage}
+                    />
+                  ))}
+                </ScrollView>
+                {photos.length > 1 && (
+                  <View style={styles.dotsRow}>
+                    {photos.map((_, index) => (
+                      <View
+                        key={index}
+                        style={[styles.dot, index === currentPage && styles.dotActive]}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
 
               <ScrollView showsVerticalScrollIndicator={false} style={styles.content}>
                 {/* Name + save */}
@@ -126,20 +167,33 @@ export default function PlacePreviewModal({
                   </View>
                 ) : null}
 
+                {/* Interest Match */}
+                {place.vibes && place.vibes.length > 0 && (
+                  <View style={styles.interestMatchSection}>
+                    <Text style={styles.interestMatchLabel}>Interest Match</Text>
+                    <View style={styles.vibesRow}>
+                      {place.vibes.map((vibe, index) => (
+                        <View key={index} style={styles.vibeChip}>
+                          <Text style={styles.vibeChipText}>{vibe}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
                 <View style={{ height: 8 }} />
               </ScrollView>
 
               {/* Action buttons */}
               <View style={styles.actions}>
-                {/* Row 1: View Details + Add/Remove Itinerary */}
+                {/* Row 1: Cancel + Add/Remove Itinerary */}
                 <View style={styles.actionsRow}>
-                  {/* View Details */}
+                  {/* Cancel */}
                   <TouchableOpacity
                     style={styles.viewDetailsBtn}
-                    onPress={onViewDetails ?? onClose}
+                    onPress={onClose}
                   >
-                    <Ionicons name="eye-outline" size={16} color="#22C55E" />
-                    <Text style={styles.viewDetailsBtnText}>View Details</Text>
+                    <Text style={styles.viewDetailsBtnText}>Cancel</Text>
                   </TouchableOpacity>
 
                   {/* Add / Remove itinerary */}
@@ -194,9 +248,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E5EA',
     alignSelf: 'center', marginTop: 10, marginBottom: 4,
   },
-  heroImage: {
-    width: '100%', height: 200,
+  // Image slider
+  sliderContainer: {
+    position: 'relative',
   },
+  heroImage: {
+    width: SCREEN_WIDTH, height: 200,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  dot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: '#D1D5DB',
+  },
+  dotActive: {
+    backgroundColor: '#22C55E',
+    width: 8, height: 8, borderRadius: 4,
+  },
+  // Content
   content: {
     paddingHorizontal: 20, paddingTop: 16, flexGrow: 0,
     maxHeight: 280,
@@ -238,6 +312,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginBottom: 4,
   },
   addressText: { fontSize: 13, color: '#57636C', flex: 1, lineHeight: 18 },
+  // Interest Match
+  interestMatchSection: {
+    marginTop: 12, marginBottom: 4,
+  },
+  interestMatchLabel: {
+    fontSize: 12, color: '#9CA3AF', fontWeight: '600',
+    marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
+  },
+  vibesRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+  },
+  vibeChip: {
+    backgroundColor: '#F0FDF4', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: '#BBF7D0',
+  },
+  vibeChipText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
+  // Actions
   actions: {
     flexDirection: 'column', gap: 10,
     paddingHorizontal: 20, paddingVertical: 14,

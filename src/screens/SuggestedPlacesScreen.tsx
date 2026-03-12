@@ -78,9 +78,11 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       rating: place.rating || 4.0,
       distanceKm: place.distanceKm,
       photoUrl: place.photoUrl,
+      photoUrls: place.photoUrls,   // ADD THIS
       bookingUrl: place.bookingUrl,
       category: place.category,
       address: place.address,
+      vibes: tripVibes,             // ADD THIS
     });
     setShowPreview(true);
   };
@@ -190,6 +192,17 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           <View style={styles.countBadge}>
             <Text style={styles.countBadgeText}>{places.length} places</Text>
           </View>
+        </View>
+      ) : null}
+
+      {tripVibes && tripVibes.length > 0 ? (
+        <View style={styles.interestsRow}>
+          <Text style={styles.interestsLabel}>Interests: </Text>
+          <Text style={styles.interestsText} numberOfLines={1}>
+            {tripVibes.map((v: string) =>
+              v.split(' ')[0].charAt(0).toUpperCase() + v.split(' ')[0].slice(1)
+            ).join(' • ')}
+          </Text>
         </View>
       ) : null}
 
@@ -335,7 +348,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 }, elevation: 3, overflow: 'hidden',
   },
-  cardImage: { width: 100, minWidth: 80, height: 160 },
+  cardImage: { width: 80, minWidth: 64, height: 128 },
   heartBtn: {
     position: 'absolute', top: 8, left: 8,
     width: 32, height: 32, borderRadius: 16,
@@ -425,4 +438,12 @@ const styles = StyleSheet.create({
   modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.semibold },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.semibold },
+  interestsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 7,
+    backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
+    flexWrap: 'wrap',
+  },
+  interestsLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
+  interestsText: { fontSize: 12, color: '#22C55E', fontWeight: '600', flex: 1 },
 });

@@ -34,10 +34,11 @@ interface Props<T> {
   renderItem: RenderFn<T>;
   onReorder: (newData: T[]) => void;
   contentContainerStyle?: object;
+  style?: object;
 }
 
 export default function DraggableList<T>({
-  data, keyExtractor, itemHeight, renderItem, onReorder, contentContainerStyle,
+  data, keyExtractor, itemHeight, renderItem, onReorder, contentContainerStyle, style,
 }: Props<T>) {
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [targetIndex, setTargetIndex] = useState<number | null>(null);
@@ -115,6 +116,7 @@ export default function DraggableList<T>({
       scrollEnabled={scrollEnabled}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={contentContainerStyle}
+      style={style}
     >
       {liveData.map((item, index) => {
         const key = keyExtractor(item);
