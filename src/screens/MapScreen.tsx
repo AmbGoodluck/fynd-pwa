@@ -929,7 +929,7 @@ export default function MapScreen({ navigation, route }: Props) {
 
           <TouchableOpacity
             style={styles.goBtn}
-            onPress={() => openStopInGMaps(activeStop)}
+            onPress={() => navigateToStop(activeStop)}
           >
             <Ionicons name="navigate-outline" size={20} color="#22C55E" />
             <Text style={styles.goBtnTxt}>Go</Text>
