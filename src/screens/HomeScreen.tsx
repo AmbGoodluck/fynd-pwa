@@ -76,6 +76,13 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.topBar}>
           <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
           <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={styles.sharedTripsBtn}
+            onPress={() => navigation.navigate('SharedTrips')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="people-outline" size={22} color="#22C55E" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
             <Text style={styles.profileInitial}>{displayName?.[0]?.toUpperCase() ?? '?'}</Text>
           </TouchableOpacity>
@@ -241,6 +248,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   logo: { width: 50, height: 44, resizeMode: 'contain' },
+  sharedTripsBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
+    marginRight: 8,
+  },
   profileBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',

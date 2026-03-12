@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Linking,
-  Alert, Modal, Image, Platform,
+  Alert, Modal, Image, Platform, Share,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
-import AppHeader from '../components/AppHeader';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import { logEvent } from '../services/firebase';
+import { createSharedTrip, buildShareLink } from '../services/sharedTripService';
+import { useSharedTripStore } from '../store/useSharedTripStore';
 
 const ITEM_HEIGHT = 118;
 
@@ -65,7 +66,10 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [showMapModal, setShowMapModal] = useState(false);
   const [previewStop, setPreviewStop] = useState<PreviewPlace | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
+  const { sessionUserId, sessionUserName, addMyTrip } = useSharedTripStore();
   const { bottom: bottomInset } = useSafeAreaInsets();
 
   useEffect(() => {
@@ -111,6 +115,69 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     setShowMapModal(false);
     logEvent('map_opened', { type: 'in_app', destination, stop_count: stops.length });
     navigation.navigate('TripMap', { stops });
+  };
+
+  const handleShareViaSheet = async (link: string, tripName: string) => {
+    try {
+      await Share.share({
+        message: `Join my trip "${tripName}" on Fynd! ${link}`,
+        title: tripName,
+      });
+    } catch {
+      // user cancelled or share unavailable
+    }
+  };
+
+  const handleShareTrip = async () => {
+    if (stops.length === 0) return;
+    if (stops.length > 4) {
+      Alert.alert(
+        'Trip Limit Reached',
+        'Trips in this version support up to 4 places per day.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setSharing(true);
+    try {
+      const today = new Date().toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric',
+      });
+      const places = stops.map((s) => ({
+        placeId: s.id,
+        name: s.name,
+        description: s.description,
+        photoUrl: s.image,
+        rating: parseFloat(s.rating) || undefined,
+        distanceKm: s.distance ? parseFloat(s.distance) : undefined,
+        walkMinutes: s.time ? parseInt(s.time) : undefined,
+        coordinates: s.coordinate.latitude !== 0
+          ? { lat: s.coordinate.latitude, lng: s.coordinate.longitude }
+          : undefined,
+      }));
+
+      const trip = await createSharedTrip({
+        owner_id: sessionUserId,
+        owner_name: sessionUserName,
+        trip_name: destination,
+        trip_date: today,
+        places,
+      });
+
+      addMyTrip(trip);
+      const link = buildShareLink(trip.trip_id);
+      setShowShareModal(false);
+      await handleShareViaSheet(link, destination);
+      logEvent('trip_shared', { destination, stop_count: stops.length });
+    } catch (e: any) {
+      if (e?.message?.includes('TRIP_LIMIT')) {
+        Alert.alert('Trip Limit Reached', 'Trips in this version support up to 4 places per day.');
+      } else {
+        Alert.alert('Error', 'Could not share trip. Please try again.');
+      }
+    } finally {
+      setSharing(false);
+    }
   };
 
   // Render each stop card for the DraggableList
@@ -186,7 +253,25 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Itinerary" onBack={() => navigation.goBack()} />
+      {/* Custom header with Share button */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={26} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>Itinerary</Text>
+        <TouchableOpacity
+          style={styles.shareHeaderBtn}
+          onPress={() => setShowShareModal(true)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="share-outline" size={20} color="#22C55E" />
+          <Text style={styles.shareHeaderBtnText}>Share</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.headerSection}>
         <Text style={styles.title}>Itinerary for {destination}</Text>
@@ -293,12 +378,126 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         }}
         isInItinerary
       />
+
+      {/* Share Trip Modal */}
+      <Modal
+        visible={showShareModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareModal(false)}
+        >
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Share Trip</Text>
+            <Text style={styles.modalSubtitle}>
+              Invite your team to explore this itinerary together
+            </Text>
+
+            {stops.length > 4 && (
+              <View style={styles.limitWarning}>
+                <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+                <Text style={styles.limitWarningText}>
+                  Only the first 4 places will be shared (V1 limit).
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.shareOption, sharing && { opacity: 0.6 }]}
+              onPress={handleShareTrip}
+              disabled={sharing}
+            >
+              <View style={styles.shareOptionIcon}>
+                <Ionicons name="share-social-outline" size={24} color="#22C55E" />
+              </View>
+              <View style={styles.shareOptionText}>
+                <Text style={styles.shareOptionLabel}>
+                  {sharing ? 'Creating link…' : 'Share via…'}
+                </Text>
+                <Text style={styles.shareOptionDesc}>
+                  WhatsApp, Messages, Email & more
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancel}
+              onPress={() => setShowShareModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
+
+  // Custom header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+    minHeight: 54,
+  },
+  headerBack: { width: 36, alignItems: 'flex-start', justifyContent: 'center', padding: 2 },
+  headerTitle: { flex: 1, fontSize: 18, fontFamily: F.bold, color: '#111827', letterSpacing: 0.1 },
+  shareHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  shareHeaderBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
+
+  // Share modal extras
+  limitWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    width: '100%',
+  },
+  limitWarningText: { fontSize: 12, color: '#92400E', flex: 1 },
+  shareOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+    width: '100%',
+  },
+  shareOptionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  shareOptionText: { flex: 1 },
+  shareOptionLabel: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 2 },
+  shareOptionDesc: { fontSize: 13, color: '#57636C' },
   headerSection: {
     paddingHorizontal: 20, paddingVertical: 10,
     backgroundColor: '#fff',

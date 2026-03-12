@@ -46,6 +46,11 @@ import TravelPreferenceScreen from '../screens/TravelPreferenceScreen';
 import SupportFeedbackScreen from '../screens/SupportFeedbackScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 
+// ── Shared Trips ─────────────────────────────────────────────────────────────
+import SharedTripsScreen from '../screens/SharedTripsScreen';
+import JoinTripScreen from '../screens/JoinTripScreen';
+import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -257,6 +262,11 @@ export default function AppNavigator() {
 
           {/* ── Legacy compat (Feedback tab used in V1) ──────── */}
           <Stack.Screen name="Feedback" component={SupportFeedbackScreen} />
+
+          {/* ── Shared Trips ──────────────────────────────────── */}
+          <Stack.Screen name="SharedTrips"       component={SharedTripsScreen} />
+          <Stack.Screen name="JoinTrip"          component={JoinTripScreen} />
+          <Stack.Screen name="SharedTripDetail"  component={SharedTripDetailScreen} />
         </Stack.Navigator>
       </View>
     </NavigationContainer>
