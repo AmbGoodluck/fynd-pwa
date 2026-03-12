@@ -1,11 +1,11 @@
 {
-  "name": "Fynd – Discover Amazing Places",
+  "name": "Fynd",
   "short_name": "Fynd",
   "description": "Your AI-powered trip builder. Find and explore amazing places near you.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#22C55E",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
   "orientation": "portrait-primary",
   "lang": "en",
   "icons": [

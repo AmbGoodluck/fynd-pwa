@@ -6,12 +6,14 @@ import {
   useFonts,
 } from '@expo-google-fonts/inter';
 import AppNavigator from './src/navigation/AppNavigator';
-import { injectWebGlobalStyles } from './src/web/globalStyles';
+import { injectWebGlobalStyles, registerServiceWorker } from './src/web/globalStyles';
 import WebAppViewport from './src/web/WebAppViewport';
 
 // Inject 440 px max-width container, one-finger scroll, and PWA meta tags
 // before anything renders. Safe no-op on native.
 injectWebGlobalStyles();
+// Register service worker for offline support and PWA installability.
+registerServiceWorker();
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,

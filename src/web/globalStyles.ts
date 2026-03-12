@@ -15,6 +15,27 @@ import { Platform } from 'react-native';
 const FYND_GREEN = '#22C55E';
 const BACKDROP   = '#0F172A';  // deep navy — visible on desktop sides
 
+export function registerServiceWorker(): void {
+  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return;
+  if (!('serviceWorker' in navigator)) return;
+
+  const register = () => {
+    navigator.serviceWorker
+      .register('/service-worker.js', { scope: '/' })
+      .catch(() => {
+        // Silent — service worker is a progressive enhancement
+      });
+  };
+
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'complete') {
+      register();
+    } else {
+      window.addEventListener('load', register, { once: true });
+    }
+  }
+}
+
 export function injectWebGlobalStyles(): void {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
   if (document.getElementById('fynd-web-styles')) return;   // idempotent
