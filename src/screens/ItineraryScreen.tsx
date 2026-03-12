@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Linking,
-  Alert, Modal, Image, Platform, Share,
+  Alert, Modal, Image, Platform, Share, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,8 +11,10 @@ import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreview
 import { logEvent } from '../services/firebase';
 import { createSharedTrip, buildShareLink } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';
+import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 
-const ITEM_HEIGHT = 118;
+// Matches the image height used in SuggestedPlacesScreen for visual consistency
+const ITEM_HEIGHT = 128;
 
 function mapPlaceToStop(p: any, index: number) {
   return {
@@ -68,6 +70,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [showPreview, setShowPreview] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [bookingUrl, setBookingUrl] = useState<string | null>(null);
+  const [bookingTitle, setBookingTitle] = useState('');
 
   const { sessionUserId, sessionUserName, addMyTrip } = useSharedTripStore();
   const { bottom: bottomInset } = useSafeAreaInsets();
@@ -79,12 +83,10 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const removePlace = (id: string) =>
     setStops(prev => prev.filter(s => s.id !== id));
 
-  const openBookingUrl = (url: string) => {
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank');
-    } else {
-      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open booking page.'));
-    }
+  const openBookingUrl = (url: string, name?: string) => {
+    if (!isValidBookingUrl(url)) return;
+    setBookingTitle(name || 'Book Now');
+    setBookingUrl(url);
   };
 
   const openGoogleMaps = () => {
@@ -232,10 +234,10 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.cardActions}>
-            {item.bookingUrl ? (
+            {isValidBookingUrl(item.bookingUrl) ? (
               <TouchableOpacity
                 style={styles.bookBtn}
-                onPress={() => openBookingUrl(item.bookingUrl!)}
+                onPress={() => openBookingUrl(item.bookingUrl!, item.name)}
               >
                 <Ionicons name="calendar-outline" size={12} color="#fff" />
                 <Text style={styles.bookBtnText}>BOOK NOW</Text>
@@ -435,6 +437,14 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* In-app booking WebView */}
+      <BookingWebViewModal
+        visible={!!bookingUrl}
+        url={bookingUrl ?? ''}
+        title={bookingTitle}
+        onClose={() => setBookingUrl(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -507,15 +517,14 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 13, color: '#6B7280' },
   dragHint: { fontSize: 12, color: '#9CA3AF' },
   card: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: 14, marginVertical: 5,
+    flexDirection: 'row',
+    marginHorizontal: 14, marginBottom: 12,
     borderRadius: 18, backgroundColor: '#fff', overflow: 'hidden',
     shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
-    minHeight: ITEM_HEIGHT,
   },
-  imageContainer: { width: 80, alignSelf: 'stretch' },
-  placeImage: { width: 80, height: '100%', minHeight: ITEM_HEIGHT, resizeMode: 'cover' },
+  imageContainer: { width: 80 },
+  placeImage: { width: 80, height: ITEM_HEIGHT, resizeMode: 'cover' },
   indexBadge: {
     position: 'absolute', top: 8, left: 8,
     width: 26, height: 26, borderRadius: 13,
@@ -524,16 +533,16 @@ const styles = StyleSheet.create({
     shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
   },
   indexBadgeText: { color: '#fff', fontSize: 12, fontFamily: F.bold },
-  cardContent: { flex: 1, padding: 10, justifyContent: 'space-between' },
-  placeName: { fontSize: 13, fontFamily: F.semibold, color: '#111827' },
-  placeDesc: { fontSize: 11, color: '#6B7280', lineHeight: 16, flex: 1, marginVertical: 3 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  statText: { fontSize: 11, color: '#57636C', marginLeft: 2 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
+  placeName: { fontSize: 15, fontFamily: F.semibold, color: '#111827' },
+  placeDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18, flex: 1, marginVertical: 3 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
+  statText: { fontSize: 12, color: '#57636C', marginLeft: 2 },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   bookBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#1D4ED8', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 5,
+    backgroundColor: '#1D4ED8', borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 8,
   },
   bookBtnText: { fontSize: 10, color: '#fff', fontWeight: '700', letterSpacing: 0.3 },
   removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },

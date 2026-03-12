@@ -11,6 +11,7 @@ import AppHeader from '../components/AppHeader';
 import FyndScrollContainer from '../components/FyndScrollContainer';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import GuestGateModal from '../components/GuestGateModal';
+import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import { useGuestStore } from '../store/useGuestStore';
 
 type Props = { navigation: any; route: any };
@@ -37,6 +38,8 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const [showPreview, setShowPreview] = useState(false);
   const [showGate, setShowGate] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [bookingUrl, setBookingUrl] = useState<string | null>(null);
+  const [bookingTitle, setBookingTitle] = useState('');
 
   useEffect(() => {
     const navStart = typeof params.perfSuggestedNavAt === 'number' ? params.perfSuggestedNavAt : mountAtRef.current;
@@ -87,12 +90,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     setShowPreview(true);
   };
 
-  const openBookingUrl = (url: string) => {
-    if (Platform.OS === 'web') {
-      window.open(url, '_blank');
-    } else {
-      Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open booking page.'));
-    }
+  const openBookingUrl = (url: string, name?: string) => {
+    if (!isValidBookingUrl(url)) return;
+    setBookingTitle(name || 'Book Now');
+    setBookingUrl(url);
   };
 
   const handleGenerateItinerary = () => {
@@ -165,10 +166,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              {item.bookingUrl ? (
+              {isValidBookingUrl(item.bookingUrl) ? (
                 <TouchableOpacity
                   style={styles.bookBtn}
-                  onPress={() => openBookingUrl(item.bookingUrl)}
+                  onPress={() => openBookingUrl(item.bookingUrl, item.name)}
                 >
                   <Ionicons name="calendar-outline" size={13} color="#fff" />
                   <Text style={styles.bookBtnText}>BOOK NOW</Text>
@@ -269,6 +270,14 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         onUnsave={() => {
           if (previewPlace) unsavePlace(previewPlace.placeId);
         }}
+      />
+
+      {/* In-app Booking WebView */}
+      <BookingWebViewModal
+        visible={!!bookingUrl}
+        url={bookingUrl ?? ''}
+        title={bookingTitle}
+        onClose={() => setBookingUrl(null)}
       />
 
       {/* Guest Gate Modal */}

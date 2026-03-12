@@ -17,6 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import {
   getSharedTrip,
@@ -36,23 +37,14 @@ function PlaceCard({
   index,
   isOwner,
   onNavigate,
+  onBook,
 }: {
   place: SharedTripPlace;
   index: number;
   isOwner: boolean;
   onNavigate: () => void;
+  onBook: (url: string, name: string) => void;
 }) {
-  const openBooking = () => {
-    if (!place.bookingUrl) return;
-    if (Platform.OS === 'web') {
-      (window as any).open(place.bookingUrl, '_blank');
-    } else {
-      Linking.openURL(place.bookingUrl).catch(() =>
-        Alert.alert('Error', 'Could not open booking page.')
-      );
-    }
-  };
-
   return (
     <View style={placeStyles.card}>
       <Image
@@ -96,8 +88,11 @@ function PlaceCard({
         </View>
 
         <View style={placeStyles.actions}>
-          {place.bookingUrl ? (
-            <TouchableOpacity style={placeStyles.bookBtn} onPress={openBooking}>
+          {isValidBookingUrl(place.bookingUrl) ? (
+            <TouchableOpacity
+              style={placeStyles.bookBtn}
+              onPress={() => onBook(place.bookingUrl!, place.name)}
+            >
               <Ionicons name="calendar-outline" size={12} color="#fff" />
               <Text style={placeStyles.bookBtnText}>Book</Text>
             </TouchableOpacity>
@@ -165,6 +160,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [removedFromTrip, setRemovedFromTrip] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [bookingUrl, setBookingUrl] = useState<string | null>(null);
+  const [bookingTitle, setBookingTitle] = useState('');
 
   const { bottom: bottomInset } = useSafeAreaInsets();
 
@@ -453,6 +450,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               index={i}
               isOwner={isOwner}
               onNavigate={() => navigateToPlace(p)}
+              onBook={(url, name) => { setBookingTitle(name); setBookingUrl(url); }}
             />
           ))}
         </View>
@@ -503,6 +501,14 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* In-app Booking WebView */}
+      <BookingWebViewModal
+        visible={!!bookingUrl}
+        url={bookingUrl ?? ''}
+        title={bookingTitle}
+        onClose={() => setBookingUrl(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -520,9 +526,8 @@ const placeStyles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
-    minHeight: 110,
   },
-  image: { width: 90, height: '100%', minHeight: 110, resizeMode: 'cover' },
+  image: { width: 80, height: 128, resizeMode: 'cover' },
   badge: {
     position: 'absolute',
     top: 8,
@@ -548,9 +553,9 @@ const placeStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#1D4ED8',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 8,
   },
   bookBtnText: { fontSize: 11, color: '#fff', fontFamily: F.semibold },
   navBtn: {
