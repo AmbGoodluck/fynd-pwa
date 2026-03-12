@@ -50,7 +50,8 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         vibeKeywords || [],
         latitude || 0,
         longitude || 0,
-        typeof distanceMiles === 'number' ? distanceMiles : undefined
+        typeof distanceMiles === 'number' ? distanceMiles : undefined,
+        timeOfDay || undefined
       );
       Sentry.addBreadcrumb({
         category: 'perf.processing',

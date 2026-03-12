@@ -167,6 +167,14 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
             <Text style={styles.cardDesc} numberOfLines={2}>
               {item.description || item.category || 'A great place to visit'}
             </Text>
+            {item.matchedTags && item.matchedTags.length > 0 ? (
+              <View style={styles.matchRow}>
+                <Ionicons name="checkmark-circle" size={11} color="#22C55E" />
+                <Text style={styles.matchText} numberOfLines={1}>
+                  {' '}{item.matchedTags.join(' • ')}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.cardMeta}>
               <View style={styles.metaItem}>
                 <Ionicons name="star" size={13} color="#F59E0B" />
@@ -227,14 +235,26 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
-      {tripVibes && tripVibes.length > 0 ? (
+      {(tripVibes && tripVibes.length > 0) || timeOfDay ? (
         <View style={styles.interestsRow}>
-          <Text style={styles.interestsLabel}>Interests: </Text>
-          <Text style={styles.interestsText} numberOfLines={1}>
-            {tripVibes.map((v: string) =>
-              v.split(' ')[0].charAt(0).toUpperCase() + v.split(' ')[0].slice(1)
-            ).join(' • ')}
-          </Text>
+          <Text style={styles.interestsLabel}>Filters: </Text>
+          {timeOfDay ? (
+            <View style={styles.todChip}>
+              <Ionicons
+                name={timeOfDay === 'morning' ? 'sunny-outline' : timeOfDay === 'afternoon' ? 'partly-sunny-outline' : timeOfDay === 'evening' ? 'moon-outline' : 'star-outline'}
+                size={10}
+                color="#fff"
+              />
+              <Text style={styles.todChipText}>{timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1)}</Text>
+            </View>
+          ) : null}
+          {tripVibes && tripVibes.length > 0 ? (
+            <Text style={styles.interestsText} numberOfLines={1}>
+              {(timeOfDay ? ' • ' : '') + tripVibes.map((v: string) =>
+                v.split(' ')[0].charAt(0).toUpperCase() + v.split(' ')[0].slice(1)
+              ).join(' • ')}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -516,4 +536,15 @@ const styles = StyleSheet.create({
   },
   interestsLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
   interestsText: { fontSize: 12, color: '#22C55E', fontWeight: '600', flex: 1 },
+  todChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#22C55E', borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  todChipText: { fontSize: 11, color: '#fff', fontWeight: '600' },
+  matchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: 5,
+  },
+  matchText: { fontSize: 11, color: '#22C55E', fontWeight: '600', flex: 1 },
 });

@@ -15,6 +15,21 @@ const REQUIRES_BOOKING = new Set([
   'aquarium', 'art_gallery', 'campground',
 ]);
 
+// Place types and keywords that align with each time of day
+const TIME_OF_DAY_TYPES: Record<string, string[]> = {
+  morning: ['cafe', 'bakery', 'park', 'museum', 'tourist_attraction', 'gym', 'garden', 'market', 'breakfast'],
+  afternoon: ['restaurant', 'shopping_mall', 'museum', 'tourist_attraction', 'park', 'store', 'amusement_park', 'zoo', 'aquarium', 'art_gallery', 'market'],
+  evening: ['restaurant', 'bar', 'theater', 'art_gallery', 'cafe', 'movie_theater', 'point_of_interest'],
+  night: ['night_club', 'bar', 'casino', 'restaurant', 'entertainment', 'bowling_alley', 'stadium', 'live_music_venue'],
+};
+
+const TIME_OF_DAY_KEYWORDS: Record<string, string[]> = {
+  morning: ['morning', 'breakfast', 'coffee', 'brunch'],
+  afternoon: ['afternoon', 'lunch', 'daytime'],
+  evening: ['evening', 'dinner', 'sunset'],
+  night: ['nightlife', 'late night', 'open late'],
+};
+
 function getBookingUrl(placeId: string, types: string[]): string | undefined {
   if (types.some(t => REQUIRES_BOOKING.has(t))) {
     return `https://www.google.com/maps/place/?q=place_id:${placeId}`;
@@ -70,6 +85,7 @@ export interface PlaceResult {
   category?: string;
   city?: string;
   types?: string[];
+  matchedTags?: string[];
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -110,7 +126,8 @@ export async function searchPlacesByVibe(
   vibes: string[],
   originLat = 0,
   originLng = 0,
-  maxDistanceKm?: number
+  maxDistanceKm?: number,
+  timeOfDay?: string
 ): Promise<PlaceResult[]> {
   function toErrorMessage(reason: unknown): string {
     if (reason instanceof Error) return reason.message;
@@ -131,6 +148,19 @@ export async function searchPlacesByVibe(
     });
 
     const hasOrigin = originLat !== 0 && originLng !== 0;
+    const safeDestination = destination?.trim() || 'near me';
+    const safeVibes = vibes.length > 0 ? vibes : ['attractions', 'landmarks', 'food'];
+    const todTypes: string[] = timeOfDay ? (TIME_OF_DAY_TYPES[timeOfDay] || []) : [];
+    const todKeywords: string[] = timeOfDay ? (TIME_OF_DAY_KEYWORDS[timeOfDay] || []) : [];
+
+    // Pre-compute vibe tokens (shared between mapPlace and post-filter)
+    const vibeTokens = Array.from(
+      new Set(
+        safeVibes
+          .flatMap(v => String(v).toLowerCase().split(/[^a-z0-9]+/g))
+          .filter(t => t.length >= 3)
+      )
+    );
 
     function mapPlace(p: any): PlaceResult {
       const ref = p.photos?.[0]?.photo_reference || '';
@@ -139,6 +169,29 @@ export async function searchPlacesByVibe(
         ? haversineKm(originLat, originLng, p.geometry.location.lat, p.geometry.location.lng)
         : undefined;
       const placeTypes = Array.isArray(p.types) ? p.types : [];
+
+      // Compute which vibes/time-of-day matched this place
+      const placeHaystack = [
+        p.name,
+        p.editorial_summary?.overview || '',
+        p.types?.[0] || '',
+        p.formatted_address || p.vicinity || '',
+        ...placeTypes,
+      ].join(' ').toLowerCase();
+
+      const matchedTags: string[] = [];
+      if (timeOfDay && todTypes.length > 0 && todTypes.some(t => placeHaystack.includes(t.replace(/_/g, ' ')))) {
+        matchedTags.push(timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1));
+      }
+      safeVibes.forEach(vibe => {
+        const tokens = String(vibe).toLowerCase().split(/[^a-z0-9]+/g).filter(t => t.length >= 3);
+        if (tokens.some(t => placeHaystack.includes(t))) {
+          const label = String(vibe).split(' ')[0];
+          const capitalized = label.charAt(0).toUpperCase() + label.slice(1);
+          if (!matchedTags.includes(capitalized)) matchedTags.push(capitalized);
+        }
+      });
+
       return {
         placeId: p.place_id,
         name: p.name,
@@ -155,12 +208,12 @@ export async function searchPlacesByVibe(
         distanceKm: dist,
         walkMinutes: typeof dist === 'number' ? Math.round(dist * 12) : undefined,
         bookingUrl: getBookingUrl(p.place_id, placeTypes),
+        matchedTags: matchedTags.length > 0 ? matchedTags : undefined,
       };
     }
 
-    const safeDestination = destination?.trim() || 'near me';
-    const safeVibes = vibes.length > 0 ? vibes : ['attractions', 'landmarks', 'food'];
-    const keywords1 = safeVibes.slice(0, 3).join(' ');
+    const todKeywordStr = todKeywords.length > 0 ? ` ${todKeywords[0]}` : '';
+    const keywords1 = safeVibes.slice(0, 3).join(' ') + todKeywordStr;
     const keywords2 = safeVibes.length > 3 ? safeVibes.slice(3, 6).join(' ') : 'attractions';
 
     const query1 = `${keywords1} in ${safeDestination}`;
@@ -246,15 +299,8 @@ export async function searchPlacesByVibe(
 
     // Strict preference filtering:
     // 1) place must semantically match selected vibe keywords
-    // 2) if origin exists, place must be inside selected distance radius
-    const vibeTokens = Array.from(
-      new Set(
-        (safeVibes || [])
-          .flatMap(v => String(v).toLowerCase().split(/[^a-z0-9]+/g))
-          .filter(t => t.length >= 3)
-      )
-    );
-
+    // 2) time-of-day filter: place types must align with selected time
+    // 3) if origin exists, place must be inside selected distance radius
     const filteredByVibe = combined.filter(p => {
       if (vibeTokens.length === 0) return true;
       const haystack = [
@@ -269,23 +315,42 @@ export async function searchPlacesByVibe(
       return vibeTokens.some(token => haystack.includes(token));
     });
 
+    // Time-of-day filter: prefer places whose types align with the selected time
+    let filteredByTime = filteredByVibe;
+    if (timeOfDay && todTypes.length > 0) {
+      const todStrict = filteredByVibe.filter(p => {
+        const typeStr = [...(p.types || []), p.category || ''].join(' ').toLowerCase();
+        return todTypes.some(t => typeStr.includes(t.replace(/_/g, ' ')));
+      });
+      if (todStrict.length > 0) {
+        debugLog('[Places] time-of-day filter applied, count:', todStrict.length);
+        filteredByTime = todStrict;
+      } else {
+        debugLog('[Places] time-of-day filter too strict, skipping');
+      }
+    }
+
     const strictDistanceKm = typeof maxDistanceKm === 'number' && maxDistanceKm > 0
       ? maxDistanceKm
       : null;
 
     // Apply distance filter only when we have a real origin + radius
     const distanceFiltered = hasOrigin && strictDistanceKm
-      ? filteredByVibe.filter(p => typeof p.distanceKm === 'number' && p.distanceKm <= strictDistanceKm)
-      : filteredByVibe;
+      ? filteredByTime.filter(p => typeof p.distanceKm === 'number' && p.distanceKm <= strictDistanceKm)
+      : filteredByTime;
 
-    // If the vibe/distance filters are too aggressive and eliminated everything,
-    // fall back progressively so users always see results:
-    //   1. vibe + distance filtered
-    //   2. vibe filtered only (drop distance constraint)
-    //   3. all combined results (drop vibe filter too)
+    // Progressive fallback so users always see results:
+    //   1. vibe + time + distance filtered
+    //   2. vibe + time filtered (drop distance)
+    //   3. vibe filtered only (drop time)
+    //   4. all combined results
     let strictlyFiltered = distanceFiltered;
+    if (strictlyFiltered.length === 0 && filteredByTime.length > 0) {
+      debugLog('[Places] distance filter too strict, falling back to time-filtered');
+      strictlyFiltered = filteredByTime;
+    }
     if (strictlyFiltered.length === 0 && filteredByVibe.length > 0) {
-      debugLog('[Places] distance filter too strict, falling back to vibe-only filter');
+      debugLog('[Places] time filter too strict, falling back to vibe-only filter');
       strictlyFiltered = filteredByVibe;
     }
     if (strictlyFiltered.length === 0 && combined.length > 0) {
@@ -304,6 +369,7 @@ export async function searchPlacesByVibe(
         preFilterCount: combined.length,
         hasOrigin,
         maxDistanceKm: strictDistanceKm,
+        timeOfDay,
         platform: Platform.OS,
       },
     });

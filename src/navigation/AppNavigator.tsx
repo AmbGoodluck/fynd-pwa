@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import {
   Platform, StyleSheet, View, useWindowDimensions,
   Modal, Text, TouchableOpacity, TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -30,18 +31,21 @@ import AuthChoiceScreen from '../screens/AuthChoiceScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
-// ── Bottom Tabs ─────────────────────────────────────────────────────────────────
+// ── Bottom Tabs (eagerly loaded — critical path) ────────────────────────────────
 import HomeScreen from '../screens/HomeScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
-import MapScreen from '../screens/MapScreen';
-import ServiceHubScreen from '../screens/ServiceHubScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+
+// ── Lazy-loaded screens (heavy / not on critical path) ─────────────────────────
+// MapScreen embeds Google Maps JS API via WebView/iframe — defer until needed
+const MapScreen        = React.lazy(() => import('../screens/MapScreen'));
+const ServiceHubScreen = React.lazy(() => import('../screens/ServiceHubScreen'));
+const ItineraryScreen  = React.lazy(() => import('../screens/ItineraryScreen'));
 
 // ── Stack (trip flow) ───────────────────────────────────────────────────────────
 import ProcessingScreen from '../screens/ProcessingScreen';
 import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
-import ItineraryScreen from '../screens/ItineraryScreen';
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
@@ -55,6 +59,15 @@ import SubscriptionScreen from '../screens/SubscriptionScreen';
 import SharedTripsScreen from '../screens/SharedTripsScreen';
 import JoinTripScreen from '../screens/JoinTripScreen';
 import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
+
+// Minimal fullscreen loader shown while lazy chunks are fetching
+function LazyFallback() {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
+      <ActivityIndicator size="large" color="#22C55E" />
+    </View>
+  );
+}
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -135,7 +148,9 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
       >
         <Tab.Screen name="Home"        component={HomeScreen} />
         <Tab.Screen name="Create Trip" component={CreateTripScreen} />
-        <Tab.Screen name="Map"         component={MapScreen} />
+        <Tab.Screen name="Map">
+          {(props) => <Suspense fallback={<LazyFallback />}><MapScreen {...props} /></Suspense>}
+        </Tab.Screen>
         <Tab.Screen
           name="Saved"
           component={SavedScreen}
@@ -242,11 +257,17 @@ export default function AppNavigator() {
           {/* ── Trip flow ─────────────────────────────── */}
           <Stack.Screen name="Processing"      component={ProcessingScreen} />
           <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
-          <Stack.Screen name="Itinerary"       component={ItineraryScreen} />
-          <Stack.Screen name="TripMap"         component={MapScreen} />
+          <Stack.Screen name="Itinerary">
+            {(props) => <Suspense fallback={<LazyFallback />}><ItineraryScreen {...props} /></Suspense>}
+          </Stack.Screen>
+          <Stack.Screen name="TripMap">
+            {(props) => <Suspense fallback={<LazyFallback />}><MapScreen {...props} /></Suspense>}
+          </Stack.Screen>
 
           {/* ── Premium-gated ServiceHub ──────────────── */}
-          <Stack.Screen name="ServiceHub" component={ServiceHubScreen} />
+          <Stack.Screen name="ServiceHub">
+            {(props) => <Suspense fallback={<LazyFallback />}><ServiceHubScreen {...props} /></Suspense>}
+          </Stack.Screen>
 
           {/* ── Profile / settings ────────────────────── */}
           <Stack.Screen name="Profile"          component={ProfileScreen} />
