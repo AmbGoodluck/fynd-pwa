@@ -1,19 +1,15 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Image, StyleSheet } from 'react-native';
 
-const SPLASH_DELAY = Platform.OS === 'web' ? 1600 : 2800;
-const GUEST_STORE_KEY = 'fynd-guest-store';
-
+// SplashScreen is no longer in the active launch flow.
+// LogoScreen now handles session restoration and routing.
+// This file is kept for backwards compatibility only.
 type Props = { navigation: any };
 
 export default function SplashScreen({ navigation }: Props) {
   useEffect(() => {
-    // DEV: auth disabled — always go straight to MainTabs
-    const timer = setTimeout(() => {
-      navigation.replace('MainTabs');
-    }, SPLASH_DELAY);
-
+    // Fallback: redirect to AuthChoice if somehow navigated here
+    const timer = setTimeout(() => navigation.replace('AuthChoice'), 300);
     return () => clearTimeout(timer);
   }, [navigation]);
 
@@ -29,14 +25,6 @@ export default function SplashScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  splashImage: {
-    width: '100%',
-    height: '100%',
-  },
+  container: { ...StyleSheet.absoluteFillObject, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  splashImage: { width: '100%', height: '100%' },
 });
