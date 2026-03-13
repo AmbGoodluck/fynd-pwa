@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Sentry from '@sentry/react-native';
@@ -51,6 +51,14 @@ const fontSources = {
 
 function App() {
   const [fontsLoaded, fontError] = useFonts(fontSources);
+  // Safety valve: if fonts neither load nor error within 4 s (e.g. SPA redirect
+  // returns HTML instead of a TTF file), proceed anyway so the app is not blank.
+  const [fontTimeout, setFontTimeout] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setFontTimeout(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (fontError) {
@@ -60,10 +68,9 @@ function App() {
     }
   }, [fontError]);
 
-  // Block render until fonts are ready. If loading fails (fontError), render
-  // anyway so the app is not permanently stuck — icons may be invisible but
-  // the rest of the UI stays functional.
-  if (!fontsLoaded && !fontError) return null;
+  // Block render until fonts are ready. If loading fails (fontError) or times
+  // out (fontTimeout), render anyway — icons may be missing but app is functional.
+  if (!fontsLoaded && !fontError && !fontTimeout) return null;
 
   return (
     <SafeAreaProvider>
