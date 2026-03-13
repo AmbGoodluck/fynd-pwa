@@ -465,7 +465,7 @@ export default function CreateTripScreen({ navigation }: Props) {
               <Text style={styles.vibeTitle}>What Interests You?</Text>
             </View>
             <View style={styles.vibeSubtitleRow}>
-              <Text style={styles.vibeSubtitle}>Select Activities</Text>
+              <Text style={styles.vibeSubtitle}>Select activities you wish to explore</Text>
             </View>
             <View style={styles.vibeGrid}>
               {VIBES.map(v => (
