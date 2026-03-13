@@ -71,6 +71,16 @@ function LazyFallback() {
   );
 }
 
+// Wrapper components for lazy screens — required so Tab.Screen can use both
+// `component` prop and `listeners` prop at the same time (children render fn
+// + listeners is not supported by React Navigation v6).
+const MapTabScreen = (props: any) => (
+  <Suspense fallback={<LazyFallback />}><MapScreen {...props} /></Suspense>
+);
+const ServiceHubTabScreen = (props: any) => (
+  <Suspense fallback={<LazyFallback />}><ServiceHubScreen {...props} /></Suspense>
+);
+
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
 
@@ -142,11 +152,10 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} />
-        <Tab.Screen name="Map">
-          {(props) => <Suspense fallback={<LazyFallback />}><MapScreen {...props} /></Suspense>}
-        </Tab.Screen>
+        <Tab.Screen name="Map" component={MapTabScreen} />
         <Tab.Screen
           name="ServiceHub"
+          component={ServiceHubTabScreen}
           listeners={{
             tabPress: (e) => {
               if (isGuest || !isAuthenticated) {
@@ -160,9 +169,7 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
               }
             },
           }}
-        >
-          {(props) => <Suspense fallback={<LazyFallback />}><ServiceHubScreen {...props} /></Suspense>}
-        </Tab.Screen>
+        />
         <Tab.Screen
           name="Saved"
           component={SavedScreen}
