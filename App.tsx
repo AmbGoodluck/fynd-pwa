@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View, Text, ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Sentry from './src/services/sentry';
 import {
@@ -50,6 +50,30 @@ const fontSources = {
       require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
 };
 
+// Catches React render errors so we see the message instead of blank screen.
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 20 }}>
+          <Text style={{ color: 'red', fontSize: 14, fontWeight: 'bold', marginBottom: 8 }}>
+            App crashed — open DevTools console for full trace
+          </Text>
+          <Text style={{ color: '#333', fontSize: 12, fontFamily: 'monospace' }}>
+            {String(this.state.error)}
+          </Text>
+        </ScrollView>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   const [fontsLoaded, fontError] = useFonts(fontSources);
   // Safety valve: if fonts neither load nor error within 4 s (e.g. SPA redirect
@@ -74,11 +98,13 @@ function App() {
   if (!fontsLoaded && !fontError && !fontTimeout) return null;
 
   return (
-    <SafeAreaProvider>
-      <WebAppViewport>
-        <AppNavigator />
-      </WebAppViewport>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <WebAppViewport>
+          <AppNavigator />
+        </WebAppViewport>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
