@@ -6,8 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-// Woman traveller with world-travel backdrop — matches onb2 reference
-const IMAGE_URI = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=900&q=85';
+// Phone mockup showing Active Itinerary screen against travel backdrop
+const IMAGE_URI = 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=900&q=85';
 
 type Props = { navigation: any };
 
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 28,
     padding: 28,
-    marginBottom: 12,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },

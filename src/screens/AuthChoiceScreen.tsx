@@ -49,11 +49,9 @@ export default function AuthChoiceScreen({ navigation }: Props) {
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {/* Logo + brand */}
+        {/* Logo */}
         <View style={styles.header}>
           <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-          <Text style={styles.brand}>Fynd</Text>
-          <Text style={styles.tagline}>Your world, your way.</Text>
         </View>
 
         {/* Feature highlights */}
@@ -63,6 +61,7 @@ export default function AuthChoiceScreen({ navigation }: Props) {
             { icon: 'calendar-outline', text: 'Build flexible, curated itineraries' },
             { icon: 'navigate-outline', text: 'Navigate with live turn-by-turn' },
             { icon: 'heart-outline', text: 'Save places across all your devices' },
+            { icon: 'share-social-outline', text: 'Create and Share Trip as a group' },
           ].map((f, i) => (
             <View key={i} style={styles.featureRow}>
               <View style={styles.featureIcon}>
@@ -183,9 +182,7 @@ const styles = StyleSheet.create({
   },
   safe: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 28 },
   header: { alignItems: 'center', paddingTop: 32 },
-  logo: { width: 72, height: 72, resizeMode: 'contain', marginBottom: 10 },
-  brand: { fontSize: 38, fontWeight: '800', color: '#fff', letterSpacing: 1 },
-  tagline: { fontSize: 16, color: 'rgba(255,255,255,0.75)', marginTop: 4, fontWeight: '400' },
+  logo: { width: 72, height: 72, resizeMode: 'contain', marginBottom: 10, borderRadius: 12 },
   features: { gap: 14 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   featureIcon: {

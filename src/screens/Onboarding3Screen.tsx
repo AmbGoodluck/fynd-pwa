@@ -6,8 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-// Travel planning backdrop — matches onb3 reference (phone with itinerary)
-const IMAGE_URI = 'https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?w=900&q=85';
+// Two people walking on a scenic nature path
+const IMAGE_URI = 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=900&q=85';
 
 // Mock itinerary stops matching the reference screenshot
 const ITINERARY_STOPS = [
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 28,
     padding: 28,
-    marginBottom: 12,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },

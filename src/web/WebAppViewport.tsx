@@ -31,9 +31,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     maxWidth: MAX_WIDTH,
-    minHeight: 0,
+    minHeight: '100vh',
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     flexDirection: 'column',
+    // Ensure content is never clipped by iOS home indicator / Android nav bar
+    ...(Platform.OS === 'web'
+      ? ({ paddingBottom: 'env(safe-area-inset-bottom, 0px)' } as any)
+      : {}),
   },
 });

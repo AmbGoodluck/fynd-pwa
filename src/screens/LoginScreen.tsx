@@ -5,7 +5,6 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/aut
 import { auth } from '../services/firebase';
 import { getUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
-import { signInWithGoogle } from '../services/authService';
 
 type Props = { navigation: any };
 
@@ -100,34 +99,6 @@ export default function LoginScreen({ navigation }: Props) {
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Log In</Text>}
       </TouchableOpacity>
 
-      <Text style={styles.orText}>or</Text>
-
-      <TouchableOpacity
-        style={styles.googleBtn}
-        onPress={async () => {
-          setLoading(true);
-          setError('');
-          try {
-            const { uid, doc: userDoc } = await signInWithGoogle();
-            login({
-              id: uid,
-              email: userDoc?.email || '',
-              fullName: userDoc?.fullName || '',
-              isPremium: userDoc?.isPremium || false,
-              travelPreferences: userDoc?.travelPreferences || [],
-            });
-            navigation.replace('MainTabs');
-          } catch (e: any) {
-            console.error('Google sign-in error', e);
-            setError('Google sign-in failed.');
-          } finally {
-            setLoading(false);
-          }
-        }}
-      >
-        <Text style={styles.googleBtnText}>G  Continue with Google</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.registerWrap}>
         <Text style={styles.registerText}>Don't have an account? <Text style={styles.registerLink}>Sign up</Text></Text>
       </TouchableOpacity>
@@ -150,9 +121,6 @@ const styles = StyleSheet.create({
   forgotText: { fontSize: 13, color: '#22C55E', fontWeight: '500' },
   loginBtn: { width: '100%', backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  orText: { color: '#8E8E93', marginBottom: 16, fontSize: 14 },
-  googleBtn: { width: '100%', backgroundColor: '#F2F2F7', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  googleBtnText: { fontSize: 15, color: '#111827', fontWeight: '500' },
   registerWrap: { marginTop: 8 },
   registerText: { fontSize: 14, color: '#57636C' },
   registerLink: { color: '#22C55E', fontWeight: '600' },

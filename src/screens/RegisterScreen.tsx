@@ -5,7 +5,6 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { useAuthStore } from '../store/useAuthStore';
-import { signInWithGoogle } from '../services/authService';
 
 type Props = { navigation: any };
 
@@ -133,34 +132,6 @@ export default function RegisterScreen({ navigation }: Props) {
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerBtnText}>Create Account</Text>}
       </TouchableOpacity>
 
-      <Text style={styles.orText}>or</Text>
-
-      <TouchableOpacity
-        style={styles.googleBtn}
-        onPress={async () => {
-          setLoading(true);
-          setError('');
-          try {
-            const { uid, doc: userDoc } = await signInWithGoogle();
-            login({
-              id: uid,
-              email: userDoc?.email || '',
-              fullName: userDoc?.fullName || '',
-              isPremium: userDoc?.isPremium || false,
-              travelPreferences: userDoc?.travelPreferences || [],
-            });
-            navigation.replace('MainTabs');
-          } catch (e: any) {
-            console.error('Google sign-up error', e);
-            setError('Google sign-in failed.');
-          } finally {
-            setLoading(false);
-          }
-        }}
-      >
-        <Text style={styles.googleBtnText}>G  Continue with Google</Text>
-      </TouchableOpacity>
-
       <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginWrap}>
         <Text style={styles.loginText}>Already have an account? <Text style={styles.loginLink}>Log in</Text></Text>
       </TouchableOpacity>
@@ -181,9 +152,6 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, color: '#111827' },
   registerBtn: { width: '100%', backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: 8 },
   registerBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  orText: { color: '#8E8E93', marginBottom: 16, fontSize: 14 },
-  googleBtn: { width: '100%', backgroundColor: '#F2F2F7', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  googleBtnText: { fontSize: 15, color: '#111827', fontWeight: '500' },
   loginWrap: { marginTop: 8 },
   loginText: { fontSize: 14, color: '#57636C' },
   loginLink: { color: '#22C55E', fontWeight: '600' },

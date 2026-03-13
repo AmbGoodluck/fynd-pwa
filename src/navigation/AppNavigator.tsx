@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
 import { usePremiumStore } from '../store/usePremiumStore';
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
-import PWATopBar from '../components/PWATopBar';
 import PWAInstallModal from '../components/PWAInstallModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
@@ -25,6 +24,7 @@ import Onboarding1Screen from '../screens/Onboarding1Screen';
 import Onboarding2Screen from '../screens/Onboarding2Screen';
 import Onboarding3Screen from '../screens/Onboarding3Screen';
 import Onboarding4Screen from '../screens/Onboarding4Screen';
+import Onboarding5Screen from '../screens/Onboarding5Screen';
 import AuthChoiceScreen from '../screens/AuthChoiceScreen';
 
 // ── Auth ────────────────────────────────────────────────────────────────────────
@@ -72,14 +72,13 @@ function LazyFallback() {
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// PWA bottom nav: Home | Create Trip | Map | Saved | Profile
-// ServiceHub is NOT in the bottom nav (premium-gated, accessed via HomeScreen)
+// PWA bottom nav: Home | Create Trip | Map | Saved | ServiceHub
 const TAB_ICONS: Record<string, { default: string; active: string }> = {
   Home:          { default: 'home-outline',        active: 'home' },
   'Create Trip': { default: 'add-circle-outline',  active: 'add-circle' },
   Map:           { default: 'map-outline',          active: 'map' },
   Saved:         { default: 'bookmark-outline',     active: 'bookmark' },
-  Profile:       { default: 'person-outline',       active: 'person' },
+  ServiceHub:    { default: 'compass-outline',      active: 'compass' },
 };
 
 function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
@@ -105,12 +104,6 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* PWA-only persistent top bar (web only, renders null on native) */}
-      <PWATopBar
-        onSharedTripsPress={() => stackNavigation?.navigate('SharedTrips')}
-        onProfilePress={()     => stackNavigation?.navigate('Profile')}
-      />
-
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ color, focused }) => {
@@ -164,9 +157,18 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
           }}
         />
         <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
-        />
+          name="ServiceHub"
+          listeners={{
+            tabPress: (e) => {
+              if (!isPremium) {
+                e.preventDefault();
+                setShowPremiumServiceHubModal(true);
+              }
+            },
+          }}
+        >
+          {(props) => <Suspense fallback={<LazyFallback />}><ServiceHubScreen {...props} /></Suspense>}
+        </Tab.Screen>
       </Tab.Navigator>
 
       {/* ServiceHub FyndPlus Upgrade Modal (triggered from HomeScreen) */}
@@ -243,6 +245,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Onboarding2" component={Onboarding2Screen} />
           <Stack.Screen name="Onboarding3" component={Onboarding3Screen} />
           <Stack.Screen name="Onboarding4" component={Onboarding4Screen} />
+          <Stack.Screen name="Onboarding5" component={Onboarding5Screen} />
           <Stack.Screen name="AuthChoice"  component={AuthChoiceScreen} />
 
           {/* ── Auth ──────────────────────────────────── */}

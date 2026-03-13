@@ -6,8 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-// Urban traveller / photographer backdrop — matches onb1 reference (man with camera)
-const IMAGE_URI = 'https://images.unsplash.com/photo-1452491977765-ba8d03b12ad3?w=900&q=85';
+// Woman traveller with phone against world-map backdrop
+const IMAGE_URI = 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=900&q=85';
 
 const SERVICE_BUBBLES = [
   { icon: 'medkit-outline',  label: 'Clinic',    top: '30%', left: '6%',  size: 60, color: '#EF4444' },
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     borderRadius: 28,
     padding: 28,
-    marginBottom: 12,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },

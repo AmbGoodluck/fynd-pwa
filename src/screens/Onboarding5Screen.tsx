@@ -7,16 +7,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useGuestStore } from '../store/useGuestStore';
 
-// Man with phone, professional services backdrop
-const IMAGE_URI = 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=900&q=85';
+// Group of friends travelling together — shared trips backdrop
+const IMAGE_URI = 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=900&q=85';
 
 type Props = { navigation: any };
 
-export default function Onboarding4Screen({ navigation }: Props) {
+export default function Onboarding5Screen({ navigation }: Props) {
   const { setHasSeenOnboarding } = useGuestStore();
 
   const handleGetStarted = () => {
-    navigation.navigate('Onboarding5');
+    setHasSeenOnboarding(true);
+    navigation.navigate('AuthChoice');
   };
 
   return (
@@ -29,21 +30,21 @@ export default function Onboarding4Screen({ navigation }: Props) {
 
         <View style={styles.bottomCard}>
           <View style={styles.featurePill}>
-            <Ionicons name="navigate-outline" size={14} color="#22C55E" />
-            <Text style={styles.featurePillText}>Navigate & Explore</Text>
+            <Ionicons name="share-social-outline" size={14} color="#22C55E" />
+            <Text style={styles.featurePillText}>Shared Trips</Text>
           </View>
 
-          <Text style={styles.title}>Start Your{'\n'}Adventure</Text>
+          <Text style={styles.title}>Explore{'\n'}Together</Text>
           <Text style={styles.subtitle}>
-            Navigate with confidence and discover unforgettable experiences around every corner of the world.
+            Create and share trips with friends and family. Plan together, travel together, and make memories that last.
           </Text>
 
           <View style={styles.dots}>
             <View style={styles.dot} />
             <View style={styles.dot} />
             <View style={styles.dot} />
-            <View style={[styles.dot, styles.dotActive]} />
             <View style={styles.dot} />
+            <View style={[styles.dot, styles.dotActive]} />
           </View>
 
           <TouchableOpacity
@@ -51,7 +52,7 @@ export default function Onboarding4Screen({ navigation }: Props) {
             onPress={handleGetStarted}
             activeOpacity={0.88}
           >
-            <Text style={styles.getStartedBtnText}>Next</Text>
+            <Text style={styles.getStartedBtnText}>Get Started</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   bg: { flex: 1 },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(0,0,0,0.48)',
   },
   safe: { flex: 1, paddingHorizontal: 20 },
   bottomCard: {
