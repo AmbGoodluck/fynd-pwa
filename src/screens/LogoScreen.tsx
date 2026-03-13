@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGuestStore } from '../store/useGuestStore';
 
 // Short brand display -- just enough to feel polished, not a loading gate
 const LOGO_DELAY = Platform.OS === 'web' ? 800 : 1000;
@@ -50,6 +51,8 @@ export default function LogoScreen({ navigation }: Props) {
       const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
         unsub();
         if (firebaseUser) {
+          // Clear any stale persisted guest state for authenticated users
+          useGuestStore.getState().logout();
           // Restore session state from Firestore
           try {
             const userDoc = await getUserDoc(firebaseUser.uid);

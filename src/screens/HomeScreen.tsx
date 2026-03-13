@@ -32,7 +32,7 @@ type Props = { navigation: any };
 
 export default function HomeScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
   const { isPremium } = usePremiumStore();
@@ -63,7 +63,7 @@ export default function HomeScreen({ navigation }: Props) {
   const hasSessionTrip = !!destination;
 
   const handleServicePress = (id: string) => {
-    if (isGuest) {
+    if (isGuest || !isAuthenticated) {
       setShowServiceHubGuestModal(true);
       return;
     }
@@ -145,13 +145,13 @@ export default function HomeScreen({ navigation }: Props) {
             <Ionicons name="compass-outline" size={18} color="#111827" />
             <Text style={styles.sectionTitle}>ServiceHub</Text>
           </View>
-          {!isGuest && isPremium && (
+          {!isGuest && isAuthenticated && isPremium && (
             <TouchableOpacity onPress={() => navigation.navigate('ServiceHub')} style={styles.seeAllBtn}>
               <Text style={styles.seeAllText}>See All</Text>
               <Ionicons name="chevron-forward" size={15} color="#22C55E" />
             </TouchableOpacity>
           )}
-          {!isGuest && !isPremium && (
+          {!isGuest && isAuthenticated && !isPremium && (
             <TouchableOpacity onPress={() => setShowServiceHubPremiumModal(true)} style={styles.seeAllBtn}>
               <Ionicons name="lock-closed-outline" size={13} color="#9CA3AF" />
               <Text style={[styles.seeAllText, { color: '#9CA3AF' }]}>Plus</Text>
