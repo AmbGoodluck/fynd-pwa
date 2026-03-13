@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
 import { usePremiumStore } from '../store/usePremiumStore';
+import { useAuthStore } from '../store/useAuthStore';
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import PWAInstallModal from '../components/PWAInstallModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
@@ -36,6 +37,7 @@ import HomeScreen from '../screens/HomeScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+// Note: CreateTripScreen kept as stack screen accessible from HomeScreen banner
 
 // ── Lazy-loaded screens (heavy / not on critical path) ─────────────────────────
 // MapScreen embeds Google Maps JS API via WebView/iframe — defer until needed
@@ -72,21 +74,21 @@ function LazyFallback() {
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// PWA bottom nav: Home | Create Trip | Map | Saved | ServiceHub
+// PWA bottom nav: Home | Map | ServiceHub | Saved
 const TAB_ICONS: Record<string, { default: string; active: string }> = {
-  Home:          { default: 'home-outline',        active: 'home' },
-  'Create Trip': { default: 'add-circle-outline',  active: 'add-circle' },
-  Map:           { default: 'map-outline',          active: 'map' },
-  Saved:         { default: 'bookmark-outline',     active: 'bookmark' },
-  ServiceHub:    { default: 'compass-outline',      active: 'compass' },
+  Home:       { default: 'home-outline',    active: 'home' },
+  Map:        { default: 'map-outline',     active: 'map' },
+  ServiceHub: { default: 'compass-outline', active: 'compass' },
+  Saved:      { default: 'bookmark-outline', active: 'bookmark' },
 };
 
 function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
   const { width } = useWindowDimensions();
   const insets    = useSafeAreaInsets();
   const isMobile  = Platform.OS === 'web' ? width <= 900 : true;
-  const { isGuest }   = useGuestStore();
-  const { isPremium } = usePremiumStore();
+  const { isGuest }         = useGuestStore();
+  const { isPremium }       = usePremiumStore();
+  const { isAuthenticated } = useAuthStore();
 
   const [showGuestSavedModal,     setShowGuestSavedModal]     = useState(false);
   const [showPremiumServiceHubModal, setShowPremiumServiceHubModal] = useState(false);
@@ -139,27 +141,19 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
           headerShown: false,
         })}
       >
-        <Tab.Screen name="Home"        component={HomeScreen} />
-        <Tab.Screen name="Create Trip" component={CreateTripScreen} />
+        <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen name="Map">
           {(props) => <Suspense fallback={<LazyFallback />}><MapScreen {...props} /></Suspense>}
         </Tab.Screen>
         <Tab.Screen
-          name="Saved"
-          component={SavedScreen}
-          listeners={{
-            tabPress: (e) => {
-              if (isGuest) {
-                e.preventDefault();
-                setShowGuestSavedModal(true);
-              }
-            },
-          }}
-        />
-        <Tab.Screen
           name="ServiceHub"
           listeners={{
             tabPress: (e) => {
+              if (isGuest || !isAuthenticated) {
+                e.preventDefault();
+                setShowGuestSavedModal(true);
+                return;
+              }
               if (!isPremium) {
                 e.preventDefault();
                 setShowPremiumServiceHubModal(true);
@@ -169,6 +163,18 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
         >
           {(props) => <Suspense fallback={<LazyFallback />}><ServiceHubScreen {...props} /></Suspense>}
         </Tab.Screen>
+        <Tab.Screen
+          name="Saved"
+          component={SavedScreen}
+          listeners={{
+            tabPress: (e) => {
+              if (isGuest || !isAuthenticated) {
+                e.preventDefault();
+                setShowGuestSavedModal(true);
+              }
+            },
+          }}
+        />
       </Tab.Navigator>
 
       {/* ServiceHub FyndPlus Upgrade Modal (triggered from HomeScreen) */}
@@ -258,6 +264,7 @@ export default function AppNavigator() {
           </Stack.Screen>
 
           {/* ── Trip flow ─────────────────────────────── */}
+          <Stack.Screen name="Create Trip"     component={CreateTripScreen} />
           <Stack.Screen name="Processing"      component={ProcessingScreen} />
           <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
           <Stack.Screen name="Itinerary">

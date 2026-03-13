@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
   progressActive: { backgroundColor: '#22C55E' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 20 },
+  scrollContent: { paddingHorizontal: 8, paddingTop: 4, paddingBottom: 4 },
   sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 16, marginTop: 6 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
@@ -615,15 +615,15 @@ const styles = StyleSheet.create({
   ctaBtnTextEnabled: { color: '#fff' },
 
   iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 8, lineHeight: 32 },
-  vibeSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', marginBottom: 24 },
+  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 4, lineHeight: 32 },
+  vibeSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', marginBottom: 20, marginTop: 4 },
   vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 50, paddingVertical: 11, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent' },
   vibeChipActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
   vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
   vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
 
-  bottomBar: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 14, paddingTop: 16, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
+  bottomBar: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 10, paddingTop: 2, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
   findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },

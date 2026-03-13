@@ -165,11 +165,17 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* Header: back (left) | title (center) | logo (right) */}
       <View style={styles.topBar}>
-        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="chevron-back" size={26} color="#111827" />
+        </TouchableOpacity>
         <Text style={styles.topBarTitle}>ServiceHub</Text>
-        <View style={{ width: 55 }} />
+        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
       </View>
 
       <Text style={styles.subtitle}>Find essential services near your current location</Text>
@@ -276,8 +282,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6,
   },
-  logo: { width: 55, height: 48, resizeMode: 'contain' },
-  topBarTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 50, height: 44, resizeMode: 'contain' },
+  topBarTitle: { fontSize: 20, fontWeight: '700', color: '#111827', flex: 1, textAlign: 'center' },
   subtitle: { fontSize: 13, color: '#57636C', paddingHorizontal: 14, marginBottom: 10 },
   categoryGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
