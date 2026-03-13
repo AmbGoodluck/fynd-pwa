@@ -16,7 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FyndMapView, { FyndMapViewRef } from '../components/FyndMapView';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import * as Sentry from '@sentry/react-native';
+import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import { submitFeedback } from '../services/feedbackService';

@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Sentry from '@sentry/react-native';
+import * as Sentry from './sentry';
 
 const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';

@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/react-native';
+import * as Sentry from './sentry';
 import Constants from 'expo-constants';
 
 let initialized = false;

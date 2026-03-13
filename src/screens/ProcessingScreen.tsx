@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Sentry from '@sentry/react-native';
+import * as Sentry from '../services/sentry';
 import { searchPlacesByVibe } from '../services/googlePlacesService';
 import { logEvent } from '../services/firebase';
 
