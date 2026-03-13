@@ -60,6 +60,7 @@ export default function Onboarding3Screen({ navigation }: Props) {
             <View style={styles.dot} />
             <View style={[styles.dot, styles.dotActive]} />
             <View style={styles.dot} />
+            <View style={styles.dot} />
           </View>
 
           <TouchableOpacity
