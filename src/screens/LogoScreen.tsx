@@ -64,7 +64,15 @@ export default function LogoScreen({ navigation }: Props) {
               travelPreferences: userDoc?.travelPreferences ?? [],
             });
           } catch {
-            // Firestore unavailable -- enter app with minimal profile
+            // Firestore unavailable -- log in with minimal Firebase profile so
+            // isAuthenticated is still set to true and auth gates don't block the user
+            login({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              fullName: firebaseUser.displayName || '',
+              isPremium: false,
+              travelPreferences: [],
+            });
           }
           resolve('MainTabs');
         } else {
