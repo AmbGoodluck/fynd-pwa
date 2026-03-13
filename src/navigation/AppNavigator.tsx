@@ -37,7 +37,6 @@ import HomeScreen from '../screens/HomeScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-// Note: CreateTripScreen kept as stack screen accessible from HomeScreen banner
 
 // ── Lazy-loaded screens (heavy / not on critical path) ─────────────────────────
 // MapScreen embeds Google Maps JS API via WebView/iframe — defer until needed
@@ -84,12 +83,13 @@ const ServiceHubTabScreen = (props: any) => (
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// PWA bottom nav: Home | Map | ServiceHub | Saved
+// PWA bottom nav: Home | Create Trip | Map | ServiceHub | Saved
 const TAB_ICONS: Record<string, { default: string; active: string }> = {
-  Home:       { default: 'home-outline',    active: 'home' },
-  Map:        { default: 'map-outline',     active: 'map' },
-  ServiceHub: { default: 'compass-outline', active: 'compass' },
-  Saved:      { default: 'bookmark-outline', active: 'bookmark' },
+  Home:           { default: 'home-outline',         active: 'home' },
+  'Create Trip':  { default: 'add-circle-outline',   active: 'add-circle' },
+  Map:            { default: 'map-outline',           active: 'map' },
+  ServiceHub:     { default: 'compass-outline',       active: 'compass' },
+  Saved:          { default: 'bookmark-outline',      active: 'bookmark' },
 };
 
 function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
@@ -152,6 +152,7 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Create Trip" component={CreateTripScreen} />
         <Tab.Screen name="Map" component={MapTabScreen} />
         <Tab.Screen
           name="ServiceHub"

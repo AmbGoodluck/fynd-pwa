@@ -5,7 +5,6 @@ import {
   PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
@@ -115,7 +114,6 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   // Reactive safe-area bottom inset for the step-2 bottom bar.
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
 
   // Step 1 state
   const [destination, setDestination] = useState('');
@@ -324,7 +322,7 @@ export default function CreateTripScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingBottom: tabBarHeight }]} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
 
       <AppHeader
