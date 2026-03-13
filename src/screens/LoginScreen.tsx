@@ -5,11 +5,13 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/aut
 import { auth } from '../services/firebase';
 import { getUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGuestStore } from '../store/useGuestStore';
 
 type Props = { navigation: any };
 
 export default function LoginScreen({ navigation }: Props) {
   const { login } = useAuthStore();
+  const { logout: clearGuest } = useGuestStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,6 +28,7 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const userDoc = await getUserDoc(cred.user.uid);
+      clearGuest(); // ensure guest state is cleared on sign-in
       login({
         id: cred.user.uid,
         email: cred.user.email || '',

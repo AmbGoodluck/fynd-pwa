@@ -5,11 +5,13 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGuestStore } from '../store/useGuestStore';
 
 type Props = { navigation: any };
 
 export default function RegisterScreen({ navigation }: Props) {
   const { login } = useAuthStore();
+  const { logout: clearGuest } = useGuestStore();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -67,6 +69,7 @@ export default function RegisterScreen({ navigation }: Props) {
       });
 
       // Step 4: Update auth store and navigate
+      clearGuest(); // ensure guest state is cleared on registration
       login({
         id: uid,
         email: email.trim(),

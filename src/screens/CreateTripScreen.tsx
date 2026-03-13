@@ -436,7 +436,7 @@ export default function CreateTripScreen({ navigation }: Props) {
           </FyndScrollContainer>
 
           {/* Always-visible bottom bar — Select Vibe CTA */}
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(14, bottomInset) }]}>
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(2, bottomInset) }]}>
             <TouchableOpacity
               style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
               onPress={() => canGoToStep2 && setStep(2)}
@@ -460,8 +460,8 @@ export default function CreateTripScreen({ navigation }: Props) {
             <View style={styles.iconCircle}>
               <Ionicons name="sparkles-outline" size={30} color="#fff" />
             </View>
-            <Text style={styles.vibeTitle}>What interests you?</Text>
-            <Text style={styles.vibeSubtitle}>Select activities you would like to experience</Text>
+            <Text style={styles.vibeTitle}>What Interests You?</Text>
+            <Text style={styles.vibeSubtitle}>Select Activities</Text>
             <View style={styles.vibeGrid}>
               {VIBES.map(v => (
                 <TouchableOpacity
@@ -484,7 +484,7 @@ export default function CreateTripScreen({ navigation }: Props) {
           </FyndScrollContainer>
 
           {/* Always-visible bottom bar — Back + Find My Places */}
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(14, bottomInset) }]}>
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(2, bottomInset) }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
@@ -575,7 +575,7 @@ export default function CreateTripScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
 
-  progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  progressWrapper: { paddingHorizontal: 8, paddingTop: 4, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
   progressActive: { backgroundColor: '#22C55E' },
@@ -613,8 +613,8 @@ const styles = StyleSheet.create({
   ctaBtnTextEnabled: { color: '#fff' },
 
   iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 4, lineHeight: 32 },
-  vibeSubtitle: { fontSize: 15, fontFamily: F.regular, color: '#6B7280', marginBottom: 20, marginTop: 4 },
+  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 6, lineHeight: 32 },
+  vibeSubtitle: { fontSize: 14, fontFamily: F.semibold, color: '#6B7280', marginBottom: 16, marginTop: 0 },
   vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 50, paddingVertical: 11, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent' },
   vibeChipActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
