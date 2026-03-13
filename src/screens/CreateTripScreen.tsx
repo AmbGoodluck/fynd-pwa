@@ -5,6 +5,7 @@ import {
   PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
@@ -112,8 +113,8 @@ type Props = { navigation: any };
 export default function CreateTripScreen({ navigation }: Props) {
   const [step, setStep] = useState(1);
 
-  // Reactive safe-area bottom inset for the step-2 bottom bar.
   const { bottom: bottomInset } = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   // Step 1 state
   const [destination, setDestination] = useState('');
@@ -322,7 +323,7 @@ export default function CreateTripScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { paddingBottom: tabBarHeight }]} edges={['top']}>
       <StatusBar barStyle="dark-content" />
 
       <AppHeader
@@ -436,7 +437,7 @@ export default function CreateTripScreen({ navigation }: Props) {
           </FyndScrollContainer>
 
           {/* Always-visible bottom bar — Select Vibe CTA */}
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(2, bottomInset) }]}>
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(8, bottomInset) }]}>
             <TouchableOpacity
               style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
               onPress={() => canGoToStep2 && setStep(2)}
@@ -460,8 +461,12 @@ export default function CreateTripScreen({ navigation }: Props) {
             <View style={styles.iconCircle}>
               <Ionicons name="sparkles-outline" size={30} color="#fff" />
             </View>
-            <Text style={styles.vibeTitle}>What Interests You?</Text>
-            <Text style={styles.vibeSubtitle}>Select Activities</Text>
+            <View style={styles.vibeTitleRow}>
+              <Text style={styles.vibeTitle}>What Interests You?</Text>
+            </View>
+            <View style={styles.vibeSubtitleRow}>
+              <Text style={styles.vibeSubtitle}>Select Activities</Text>
+            </View>
             <View style={styles.vibeGrid}>
               {VIBES.map(v => (
                 <TouchableOpacity
@@ -484,7 +489,7 @@ export default function CreateTripScreen({ navigation }: Props) {
           </FyndScrollContainer>
 
           {/* Always-visible bottom bar — Back + Find My Places */}
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(2, bottomInset) }]}>
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(8, bottomInset) }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
@@ -613,8 +618,10 @@ const styles = StyleSheet.create({
   ctaBtnTextEnabled: { color: '#fff' },
 
   iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 6, lineHeight: 32 },
-  vibeSubtitle: { fontSize: 14, fontFamily: F.semibold, color: '#6B7280', marginBottom: 16, marginTop: 0 },
+  vibeTitleRow: { width: '100%', marginBottom: 6 },
+  vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', lineHeight: 32 },
+  vibeSubtitleRow: { width: '100%', marginBottom: 16 },
+  vibeSubtitle: { fontSize: 14, fontFamily: F.semibold, color: '#6B7280' },
   vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 50, paddingVertical: 11, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent' },
   vibeChipActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
