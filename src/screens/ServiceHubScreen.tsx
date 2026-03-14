@@ -10,6 +10,7 @@ import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { searchNearby, PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 const CATEGORIES = [
   { id: 'Medical',           label: 'Medical',        icon: 'medkit',              color: '#EF4444' },
@@ -34,9 +35,10 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const { isGuest } = useGuestStore();
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
-    if (isGuest) {
+    if (isGuest || !isAuthenticated) {
       setShowGuestModal(true);
       return;
     }

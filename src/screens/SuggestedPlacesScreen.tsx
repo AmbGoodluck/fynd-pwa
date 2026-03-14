@@ -14,6 +14,7 @@ import GuestGateModal from '../components/GuestGateModal';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { useGuestStore } from '../store/useGuestStore';
+import { useAuthStore } from '../store/useAuthStore';
 import {
   usePremiumStore,
   FREE_MAX_PLACES_PER_ITINERARY,
@@ -37,6 +38,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   const { bottom: bottomInset } = useSafeAreaInsets();
   const { isGuest, savePlace, unsavePlace, isPlaceSaved, savedPlaces } = useGuestStore();
+  const { isAuthenticated } = useAuthStore();
   const { isPremium, canCreateItinerary, incrementItineraryCount } = usePremiumStore();
 
   // Tiered place limits: guest=4, free=5, premium=unlimited
@@ -73,7 +75,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       setSelectedForItinerary(prev => prev.filter(p => p.placeId !== place.placeId));
     } else {
       if (selectedForItinerary.length >= maxPlaces) {
-        if (isGuest) {
+        if (isGuest || !isAuthenticated) {
           setShowUpgradeModal(true);
         } else {
           setShowPlaceLimitModal(true);
@@ -85,7 +87,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   };
 
   const handleSave = (place: any) => {
-    if (isGuest) { setShowGate(true); return; }
+    if (isGuest || !isAuthenticated) { setShowGate(true); return; }
     if (isPlaceSaved(place.placeId)) {
       unsavePlace(place.placeId);
       return;

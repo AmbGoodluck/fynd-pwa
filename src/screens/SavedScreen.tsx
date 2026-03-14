@@ -12,7 +12,7 @@ import GuestGateModal from '../components/GuestGateModal';
 type Props = { navigation: any };
 
 export default function SavedScreen({ navigation }: Props) {
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showGate, setShowGate] = useState(false);
@@ -25,7 +25,7 @@ export default function SavedScreen({ navigation }: Props) {
   );
 
   const handleAttemptAction = () => {
-    if (isGuest) {
+    if (isGuest || !isAuthenticated) {
       setShowGate(true);
       return false;
     }
