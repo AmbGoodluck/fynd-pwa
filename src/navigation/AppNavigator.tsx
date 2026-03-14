@@ -44,6 +44,9 @@ const MapScreen        = React.lazy(() => import('../screens/MapScreen'));
 const ServiceHubScreen = React.lazy(() => import('../screens/ServiceHubScreen'));
 const ItineraryScreen  = React.lazy(() => import('../screens/ItineraryScreen'));
 
+// ── Navigation ─────────────────────────────────────────────────────────────────
+import NavigationScreen from '../screens/NavigationScreen';
+
 // ── Stack (trip flow) ───────────────────────────────────────────────────────────
 import ProcessingScreen from '../screens/ProcessingScreen';
 import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
@@ -298,6 +301,9 @@ export default function AppNavigator() {
 
           {/* ── Legacy compat ─────────────────────────── */}
           <Stack.Screen name="Feedback" component={SupportFeedbackScreen} />
+
+          {/* ── In-app Navigation ────────────────────── */}
+          <Stack.Screen name="Navigation" component={NavigationScreen} />
 
           {/* ── Shared Trips ──────────────────────────── */}
           <Stack.Screen name="SharedTrips"      component={SharedTripsScreen} />

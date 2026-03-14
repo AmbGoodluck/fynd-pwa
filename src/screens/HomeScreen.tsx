@@ -55,10 +55,12 @@ export default function HomeScreen({ navigation }: Props) {
     const interval = setInterval(() => {
       const next = (bannerIndex + 1) % BANNER_IMAGES.length;
       setBannerIndex(next);
-      bannerRef.current?.scrollToIndex({ index: next, animated: true });
-    }, 3500);
+      // scrollToOffset is more reliable on web than scrollToIndex
+      const itemWidth = width - 40; // matches bannerWrap marginHorizontal: 20
+      bannerRef.current?.scrollToOffset({ offset: itemWidth * next, animated: true });
+    }, 4000);
     return () => clearInterval(interval);
-  }, [bannerIndex]);
+  }, [bannerIndex, width]);
 
   const hasSessionTrip = !!destination;
 
@@ -112,10 +114,15 @@ export default function HomeScreen({ navigation }: Props) {
             horizontal pagingEnabled scrollEnabled={false}
             showsHorizontalScrollIndicator={false}
             keyExtractor={(_, i) => i.toString()}
+            getItemLayout={(_, index) => ({
+              length: width - 40,
+              offset: (width - 40) * index,
+              index,
+            })}
             renderItem={({ item }) => (
               <ImageBackground
                 source={{ uri: item }}
-                style={[styles.banner, { width: width - 28 }]}
+                style={[styles.banner, { width: width - 40 }]}
                 imageStyle={styles.bannerImage}
               >
                 <View style={styles.bannerOverlay}>

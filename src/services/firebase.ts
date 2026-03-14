@@ -17,12 +17,20 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
+// Validate required config is present at startup
+const requiredKeys = ['apiKey', 'authDomain', 'projectId', 'appId'] as const;
+const missingKeys = requiredKeys.filter(k => !firebaseConfig[k]);
+if (missingKeys.length > 0) {
+  console.error('[Firebase] Missing config keys:', missingKeys.join(', '), '— check EXPO_PUBLIC_FIREBASE_* env vars.');
+}
+
 let auth: any;
 try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
   });
 } catch (e) {
+  // initializeAuth throws if already initialized — getAuth returns existing instance
   auth = getAuth(app);
 }
 

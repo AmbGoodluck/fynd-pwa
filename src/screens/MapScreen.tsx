@@ -20,6 +20,10 @@ import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import { submitFeedback } from '../services/feedbackService';
+import { usePremiumStore } from '../store/usePremiumStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useGuestStore } from '../store/useGuestStore';
+import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
@@ -369,6 +373,9 @@ export default function MapScreen({ navigation, route }: Props) {
   const { width: viewportWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isMobileWeb = Platform.OS === 'web' && viewportWidth <= 900;
+  const { isPremium } = usePremiumStore();
+  const { isAuthenticated } = useAuthStore();
+  const { isGuest } = useGuestStore();
 
   // Mobile browsers can overlay a bottom toolbar that is not always reported
   // via safe-area insets. Add a conservative cushion on mobile web.
@@ -390,6 +397,7 @@ export default function MapScreen({ navigation, route }: Props) {
   const [rating, setRating] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
   const [navInfo, setNavInfo] = useState<{ distance: string; duration: string } | null>(null);
+  const [showServiceHubUpgradeModal, setShowServiceHubUpgradeModal] = useState(false);
   const mapLoadStartRef = useRef<number>(Date.now());
 
   const mapsJsUrl = useMemo(() => {
@@ -545,13 +553,27 @@ export default function MapScreen({ navigation, route }: Props) {
 
   const navigateToStop = (stop: Stop) => {
     if (!userLoc) {
-      Alert.alert('Location needed', 'Enable location access to get directions.');
+      Alert.alert('Location access required for navigation.');
       return;
     }
-    const { latitude: dLat, longitude: dLng } = stop.coordinate;
-    webViewRef.current?.injectJavaScript(
-      `showDirections(${userLoc.latitude}, ${userLoc.longitude}, ${dLat}, ${dLng}); true;`
-    );
+    // Launch full NavigationScreen for turn-by-turn walking directions
+    navigation.navigate('Navigation', {
+      destinationLat: stop.coordinate.latitude,
+      destinationLng: stop.coordinate.longitude,
+      destinationName: stop.name,
+    });
+  };
+
+  const handleServiceHubFab = () => {
+    if (isGuest || !isAuthenticated) {
+      Alert.alert('Account Required', 'Sign in to access ServiceHub.');
+      return;
+    }
+    if (!isPremium) {
+      setShowServiceHubUpgradeModal(true);
+      return;
+    }
+    navigation.navigate('ServiceHub');
   };
 
   const stopNavigation = () => {
@@ -977,6 +999,26 @@ export default function MapScreen({ navigation, route }: Props) {
         </ScrollView>
       </View>
 
+      {/* ── ServiceHub FAB ── */}
+      {!mapLoading && (
+        <TouchableOpacity
+          style={styles.serviceHubFab}
+          onPress={handleServiceHubFab}
+        >
+          <Ionicons name="help-buoy-outline" size={22} color="#fff" />
+        </TouchableOpacity>
+      )}
+
+      {/* ── ServiceHub Upgrade Modal ── */}
+      <FyndPlusUpgradeModal
+        visible={showServiceHubUpgradeModal}
+        onClose={() => setShowServiceHubUpgradeModal(false)}
+        onUpgrade={() => { setShowServiceHubUpgradeModal(false); navigation.navigate('Subscription'); }}
+        icon="compass-outline"
+        title="Unlock ServiceHub"
+        message="Access nearby medical help, transport, and emergency services with FyndPlus."
+      />
+
       {/* ── Rating Modal ── */}
       {showRating && (
         <View style={styles.ratingOverlay}>
@@ -1394,5 +1436,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: F.semibold,
     color: '#fff',
+  },
+
+  // ── ServiceHub FAB ──
+  serviceHubFab: {
+    position: 'absolute',
+    right: 16,
+    bottom: 220,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#22C55E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+    zIndex: 20,
   },
 });
