@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
-  findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
+  findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 0, margin: 0 },
   findBtnEnabled: { backgroundColor: '#22C55E' },
   findBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
   findBtnTextEnabled: { color: '#fff' },
