@@ -4,7 +4,7 @@ import {
   StatusBar, Modal, TextInput, Alert, Linking, Platform,
   PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -113,7 +113,6 @@ type Props = { navigation: any };
 export default function CreateTripScreen({ navigation }: Props) {
   const [step, setStep] = useState(1);
 
-  const { bottom: bottomInset } = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
   // Step 1 state
@@ -436,8 +435,8 @@ export default function CreateTripScreen({ navigation }: Props) {
             </View>
           </FyndScrollContainer>
 
-          {/* Floating action button — Select Vibe */}
-          <View style={[styles.floatingBar, { bottom: 0 }]}> 
+          {/* Bottom-docked action button — Select Vibe */}
+          <View style={styles.floatingBar}> 
             <TouchableOpacity
               style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
               onPress={() => canGoToStep2 && setStep(2)}
@@ -488,8 +487,8 @@ export default function CreateTripScreen({ navigation }: Props) {
             </View>
           </FyndScrollContainer>
 
-          {/* Floating action buttons — Back + Fynd Places */}
-          <View style={[styles.floatingBar, { bottom: Math.max(12, bottomInset + 8) }]}>
+          {/* Bottom-docked action buttons — Back + Fynd Places */}
+          <View style={styles.floatingBar}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
@@ -580,13 +579,13 @@ export default function CreateTripScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
 
-  progressWrapper: { paddingHorizontal: 12, paddingTop: 4, paddingBottom: 4 },
+  progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
   progressActive: { backgroundColor: '#22C55E' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
-  scrollContent: { paddingHorizontal: 12, paddingTop: 4, paddingBottom: 4 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 16, marginTop: 6 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
@@ -628,25 +627,18 @@ const styles = StyleSheet.create({
   vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
   vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
 
+  // Bottom-docked action bar — sits just above the tab bar
   floatingBar: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    left: 16,
+    right: 16,
+    bottom: 10,
     flexDirection: 'row',
     gap: 12,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
-    padding: 0,
-    margin: 0,
   },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
-  findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 0, margin: 0 },
+  findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
   findBtnEnabled: { backgroundColor: '#22C55E' },
   findBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
   findBtnTextEnabled: { color: '#fff' },
@@ -658,24 +650,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
-  floatingBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    gap: 12,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    shadowColor: '#000',
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 6,
-    padding: 0,
-    margin: 0,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
   },
-  findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center', padding: 0, margin: 0 },
-  findBtnEnabled: { backgroundColor: '#22C55E' },
+  modalInput: { flex: 1, paddingVertical: 12, fontSize: 15, fontFamily: F.regular, color: '#111827' },
+  suggestionList: {
+    maxHeight: 200,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 14,
+  },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
