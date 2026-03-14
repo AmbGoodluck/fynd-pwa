@@ -8,8 +8,7 @@ let currentModel = 'gpt-4o';
 
 // Restrict to known origins only — add your production domain here
 const ALLOWED_ORIGINS = [
-  'https://fynd-app.pages.dev',
-  'https://fynd.app',
+  'https://app.fyndplaces.com',
   'http://localhost:8081',
   'http://localhost:19006',
   'http://localhost:3000',
