@@ -437,7 +437,7 @@ export default function CreateTripScreen({ navigation }: Props) {
           </FyndScrollContainer>
 
           {/* Floating action button — Select Vibe */}
-          <View style={[styles.floatingBar, { bottom: Math.max(12, bottomInset + 8) }]}>
+          <View style={[styles.floatingBar, { bottom: 0 }]}> 
             <TouchableOpacity
               style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
               onPress={() => canGoToStep2 && setStep(2)}
@@ -630,17 +630,19 @@ const styles = StyleSheet.create({
 
   floatingBar: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     gap: 12,
-    bottom: 0, // Always flush with the bottom
-    backgroundColor: 'transparent', // Remove any background
-    shadowColor: '#000',
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 6,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+    padding: 0,
+    margin: 0,
   },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
