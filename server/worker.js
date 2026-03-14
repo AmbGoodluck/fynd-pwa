@@ -139,6 +139,25 @@ export default {
       }
     }
 
+    // ── GET /api/places/autocomplete — Places autocomplete proxy ──────
+    if (method === 'GET' && url.pathname === '/api/places/autocomplete') {
+      const placesKey = env.GOOGLE_PLACES_API_KEY;
+      if (!placesKey) return json({ error: 'GOOGLE_PLACES_API_KEY not configured' }, 500, request);
+
+      const input = url.searchParams.get('input');
+      const types = url.searchParams.get('types') || '(regions)';
+      if (!input) return json({ error: 'input parameter required' }, 400, request);
+
+      try {
+        const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=${encodeURIComponent(types)}&key=${placesKey}`;
+        const r = await fetch(apiUrl);
+        const data = await r.json();
+        return json(data, r.status, request);
+      } catch (e) {
+        return json({ error: 'autocomplete proxy error', detail: e.message }, 500, request);
+      }
+    }
+
     // ── GET /api/places/geocode — reverse geocode proxy ───────────────
     if (method === 'GET' && url.pathname === '/api/places/geocode') {
       const placesKey = env.GOOGLE_PLACES_API_KEY;
