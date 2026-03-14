@@ -634,6 +634,8 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     gap: 12,
+    bottom: 0, // Always flush with the bottom
+    backgroundColor: 'transparent', // Remove any background
     shadowColor: '#000',
     shadowOpacity: 0.10,
     shadowRadius: 12,
