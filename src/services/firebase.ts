@@ -7,12 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { configureGoogle } from './authService';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBtZk65H1piPxLbSM_RS7Q9-gjogYezWMI",
-  authDomain: "fynd-app-42ef4.firebaseapp.com",
-  projectId: "fynd-app-42ef4",
-  storageBucket: "fynd-app-42ef4.firebasestorage.app",
-  messagingSenderId: "52406028380",
-  appId: "1:52406028380:web:ac4669fdb019ff9581be99",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || '',
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || '',
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || '',
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '',
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];

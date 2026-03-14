@@ -277,7 +277,7 @@ export default function CreateTripScreen({ navigation }: Props) {
     // Geocode in background — lat/lng used only for distance sorting, not blocking
     try {
       const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
-      const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+      const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
       let url: string;
       if (Platform.OS === 'web' && PROXY) {
         url = `${PROXY}/api/places/textsearch?query=${encodeURIComponent(input)}`;

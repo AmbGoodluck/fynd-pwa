@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import * as Sentry from './sentry';
 
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
-const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyAXJbrM6TImUPguLUnXUNKUkPzTdXKV53c';
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
 const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
 const GOOGLE_BASE = 'https://maps.googleapis.com/maps/api/place';
 const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
