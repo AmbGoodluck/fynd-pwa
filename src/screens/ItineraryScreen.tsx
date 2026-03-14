@@ -14,6 +14,8 @@ import { useSharedTripStore } from '../store/useSharedTripStore';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { usePremiumStore } from '../store/usePremiumStore';
+import { detectBooking } from '../services/bookingDetectionService';
+import { useBookingLinksStore } from '../store/useBookingLinksStore';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -32,6 +34,9 @@ function mapPlaceToStop(p: any, index: number) {
       longitude: p.coordinates?.lng ?? 0,
     },
     bookingUrl: p.bookingUrl,
+    // Preserve for booking detection (Sections 5–6)
+    category: p.category as string | undefined,
+    types: p.types as string[] | undefined,
   };
 }
 
@@ -74,6 +79,12 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [sharing, setSharing] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
+  const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
+
+  // Sections 8 + 10: booking links cache
+  const bookingLinks = useBookingLinksStore(s => s.links);
+  const setBookingLink = useBookingLinksStore(s => s.setLink);
+  const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
 
   const { sessionUserId, sessionUserName, addMyTrip } = useSharedTripStore();
   const { isPremium } = usePremiumStore();
@@ -87,10 +98,11 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const removePlace = (id: string) =>
     setStops(prev => prev.filter(s => s.id !== id));
 
-  const openBookingUrl = (url: string, name?: string) => {
+  const openBookingUrl = (url: string, placeId: string, name?: string) => {
     if (!isValidBookingUrl(url)) return;
     setBookingTitle(name || 'Book Now');
     setBookingUrl(url);
+    setBookingPlaceId(placeId);
   };
 
   const openGoogleMaps = () => {
@@ -187,10 +199,22 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   };
 
   // Render each stop card for the DraggableList
-  const renderStop = (item: Stop, index: number, dragHandle: React.ReactElement) => (
+  const renderStop = (item: Stop, index: number, dragHandle: React.ReactElement) => {
+    // Sections 2–6: high-accuracy booking detection for this stop
+    const { showBookNow, bookingLink } = detectBooking({
+      placeId: item.id,
+      businessName: item.name,
+      bookingUrl: item.bookingUrl,
+      category: (item as any).category,
+      types: (item as any).types,
+      cached: bookingLinks[item.id] ?? null,
+    });
+
+    return (
     <TouchableOpacity
       activeOpacity={0.95}
       onLongPress={() => {
+        if (bookingLink) setBookingLink(bookingLink);
         setPreviewStop({
           placeId: item.id,
           name: item.name,
@@ -198,7 +222,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           rating: parseFloat(item.rating),
           photoUrl: item.image,
           photoUrls: (item as any).photoUrls,
-          bookingUrl: item.bookingUrl,
+          bookingUrl: showBookNow ? bookingLink?.booking_url : undefined,
           address: item.distance,
           vibes: tripVibes,
         });
@@ -238,10 +262,10 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.cardActions}>
-            {isValidBookingUrl(item.bookingUrl) ? (
+            {showBookNow && bookingLink ? (
               <TouchableOpacity
                 style={styles.bookBtn}
-                onPress={() => openBookingUrl(item.bookingUrl!, item.name)}
+                onPress={() => openBookingUrl(bookingLink.booking_url, item.id, item.name)}
               >
                 <Ionicons name="calendar-outline" size={12} color="#fff" />
                 <Text style={styles.bookBtnText}>BOOK NOW</Text>
@@ -255,7 +279,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         </View>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -448,7 +473,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         visible={!!bookingUrl}
         url={bookingUrl ?? ''}
         title={bookingTitle}
-        onClose={() => setBookingUrl(null)}
+        placeId={bookingPlaceId ?? undefined}
+        onClose={() => { setBookingUrl(null); setBookingPlaceId(null); }}
+        onFeedback={applyBookingFeedback}
       />
 
       {/* Share Trip — FyndPlus upgrade prompt for free users */}

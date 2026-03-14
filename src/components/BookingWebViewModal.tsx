@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { isGoogleMapsUrl } from '../services/bookingDetectionService';
 
 // WebView is only available on native — import conditionally to avoid web crashes
 let WebView: any = null;
@@ -23,9 +24,14 @@ if (Platform.OS !== 'web') {
   }
 }
 
-/** Returns true if `url` is a well-formed http/https URL */
+/**
+ * Returns true if `url` is a well-formed http/https URL that is NOT a Google Maps link.
+ * Sections 2 + 6: blocks maps.google.com, google.com/maps, goo.gl/maps.
+ */
 export function isValidBookingUrl(url: string | undefined | null): boolean {
   if (!url || typeof url !== 'string' || url.trim().length === 0) return false;
+  // Block Google Maps URLs — they are not booking pages
+  if (isGoogleMapsUrl(url)) return false;
   try {
     const parsed = new URL(url);
     return parsed.protocol === 'http:' || parsed.protocol === 'https:';
@@ -38,12 +44,20 @@ type Props = {
   visible: boolean;
   url: string;
   title?: string;
+  /** Optional place ID — used to wire up booking feedback (Section 9) */
+  placeId?: string;
   onClose: () => void;
+  /** Called when the user answers the "Was this correct?" feedback prompt */
+  onFeedback?: (placeId: string, positive: boolean) => void;
 };
 
-export default function BookingWebViewModal({ visible, url, title, onClose }: Props) {
+export default function BookingWebViewModal({
+  visible, url, title, placeId, onClose, onFeedback,
+}: Props) {
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  // Section 9: show feedback bar after successful load
+  const [showFeedback, setShowFeedback] = useState(false);
   const { top: topInset } = useSafeAreaInsets();
 
   // On web or when WebView is unavailable, open externally and close immediately
@@ -54,7 +68,8 @@ export default function BookingWebViewModal({ visible, url, title, onClose }: Pr
       } catch {
         Linking.openURL(url).catch(() => {});
       }
-      // Defer close to next tick so the caller's state update completes
+      // Section 9: on web, show a brief feedback prompt via a scheduled close
+      // (Web opens in new tab — no in-app WebView to attach feedback to)
       setTimeout(onClose, 0);
     }
     return null;
@@ -68,14 +83,18 @@ export default function BookingWebViewModal({ visible, url, title, onClose }: Pr
   const handleError = () => {
     setHasError(true);
     setLoading(false);
+    setShowFeedback(false);
   };
 
   const handleLoad = () => {
     setLoading(false);
     setHasError(false);
+    // Section 9: surface feedback bar once page has loaded
+    if (placeId && onFeedback) setShowFeedback(true);
   };
 
   const handleHttpError = (e: any) => {
+    // Section 11: booking page HTTP error → hide Book Now (show error state)
     if (e?.nativeEvent?.statusCode >= 400) {
       handleError();
     }
@@ -84,6 +103,12 @@ export default function BookingWebViewModal({ visible, url, title, onClose }: Pr
   const resetState = () => {
     setLoading(true);
     setHasError(false);
+    setShowFeedback(false);
+  };
+
+  const handleFeedback = (positive: boolean) => {
+    if (placeId && onFeedback) onFeedback(placeId, positive);
+    setShowFeedback(false);
   };
 
   return (
@@ -163,6 +188,31 @@ export default function BookingWebViewModal({ visible, url, title, onClose }: Pr
               <View style={styles.loadingOverlay} pointerEvents="none">
                 <ActivityIndicator size="large" color="#22C55E" />
                 <Text style={styles.loadingText}>Loading booking page…</Text>
+              </View>
+            )}
+
+            {/* ── Section 9: Feedback bar ───────────────────── */}
+            {showFeedback && (
+              <View style={styles.feedbackBar}>
+                <Text style={styles.feedbackQuestion}>
+                  Was this the correct booking page?
+                </Text>
+                <View style={styles.feedbackBtns}>
+                  <TouchableOpacity
+                    style={[styles.feedbackBtn, styles.feedbackBtnYes]}
+                    onPress={() => handleFeedback(true)}
+                  >
+                    <Ionicons name="thumbs-up-outline" size={14} color="#22C55E" />
+                    <Text style={styles.feedbackBtnTextYes}>Yes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.feedbackBtn, styles.feedbackBtnNo]}
+                    onPress={() => handleFeedback(false)}
+                  >
+                    <Ionicons name="thumbs-down-outline" size={14} color="#EF4444" />
+                    <Text style={styles.feedbackBtnTextNo}>No</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -251,4 +301,55 @@ const styles = StyleSheet.create({
   fallbackBtnText: { color: '#fff', fontSize: 15, fontFamily: F.semibold },
   cancelBtn: { paddingVertical: 10 },
   cancelBtnText: { color: '#9CA3AF', fontSize: 14 },
+
+  // Section 9: feedback bar
+  feedbackBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F2F2F7',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 4,
+  },
+  feedbackQuestion: {
+    flex: 1,
+    fontSize: 13,
+    color: '#374151',
+    fontFamily: F.medium,
+    marginRight: 12,
+  },
+  feedbackBtns: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  feedbackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  feedbackBtnYes: {
+    borderColor: '#BBF7D0',
+    backgroundColor: '#F0FDF4',
+  },
+  feedbackBtnNo: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
+  feedbackBtnTextYes: { fontSize: 13, color: '#22C55E', fontFamily: F.semibold },
+  feedbackBtnTextNo:  { fontSize: 13, color: '#EF4444', fontFamily: F.semibold },
 });

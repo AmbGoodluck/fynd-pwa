@@ -30,10 +30,15 @@ const TIME_OF_DAY_KEYWORDS: Record<string, string[]> = {
   night: ['nightlife', 'late night', 'open late'],
 };
 
-function getBookingUrl(placeId: string, types: string[]): string | undefined {
-  if (types.some(t => REQUIRES_BOOKING.has(t))) {
-    return `https://www.google.com/maps/place/?q=place_id:${placeId}`;
-  }
+/**
+ * Returns a booking URL for a place when one is reliably known.
+ * NOTE: Google Maps URLs are intentionally NOT returned here — the booking
+ * detection service blocks them, and they are not booking pages.
+ * Real booking URLs come from enriched data / third-party platforms.
+ */
+function getBookingUrl(_placeId: string, _types: string[]): string | undefined {
+  // No Google Maps links. Return undefined; the booking detection service
+  // will score any real URL provided from an external source.
   return undefined;
 }
 

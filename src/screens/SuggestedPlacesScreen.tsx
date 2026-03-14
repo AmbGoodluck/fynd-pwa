@@ -15,6 +15,8 @@ import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWeb
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { detectBooking } from '../services/bookingDetectionService';
+import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import {
   usePremiumStore,
   FREE_MAX_PLACES_PER_ITINERARY,
@@ -58,6 +60,12 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const [showSaveLimitModal, setShowSaveLimitModal] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
+  const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
+
+  // Section 8 + 10: booking links cache — prevents repeated detection for same place
+  const bookingLinks = useBookingLinksStore(s => s.links);
+  const setBookingLink = useBookingLinksStore(s => s.setLink);
+  const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
 
   useEffect(() => {
     const navStart = typeof params.perfSuggestedNavAt === 'number' ? params.perfSuggestedNavAt : mountAtRef.current;
@@ -100,6 +108,17 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   };
 
   const handleLongPress = (place: any) => {
+    // Run booking detection so the preview modal only shows a verified booking URL
+    const { showBookNow, bookingLink } = detectBooking({
+      placeId: place.placeId,
+      businessName: place.name,
+      bookingUrl: place.bookingUrl,
+      category: place.category,
+      types: place.types,
+      cached: bookingLinks[place.placeId] ?? null,
+    });
+    if (bookingLink) setBookingLink(bookingLink);
+
     setPreviewPlace({
       placeId: place.placeId,
       name: place.name,
@@ -107,19 +126,20 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       rating: place.rating || 4.0,
       distanceKm: place.distanceKm,
       photoUrl: place.photoUrl,
-      photoUrls: place.photoUrls,   // ADD THIS
-      bookingUrl: place.bookingUrl,
+      photoUrls: place.photoUrls,
+      bookingUrl: showBookNow ? bookingLink?.booking_url : undefined,
       category: place.category,
       address: place.address,
-      vibes: tripVibes,             // ADD THIS
+      vibes: tripVibes,
     });
     setShowPreview(true);
   };
 
-  const openBookingUrl = (url: string, name?: string) => {
+  const openBookingUrl = (url: string, placeId: string, name?: string) => {
     if (!isValidBookingUrl(url)) return;
     setBookingTitle(name || 'Book Now');
     setBookingUrl(url);
+    setBookingPlaceId(placeId);
   };
 
   const handleGenerateItinerary = () => {
@@ -142,6 +162,16 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const renderPlace = ({ item }: { item: any }) => {
     const isSelected = !!selectedForItinerary.find(p => p.placeId === item.placeId);
     const saved = isPlaceSaved(item.placeId);
+
+    // Sections 2–6: run high-accuracy booking detection for this place
+    const { showBookNow, bookingLink } = detectBooking({
+      placeId: item.placeId,
+      businessName: item.name,
+      bookingUrl: item.bookingUrl,
+      category: item.category,
+      types: item.types,
+      cached: bookingLinks[item.placeId] ?? null,
+    });
 
     return (
       <TouchableOpacity
@@ -207,10 +237,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              {isValidBookingUrl(item.bookingUrl) ? (
+              {showBookNow && bookingLink ? (
                 <TouchableOpacity
                   style={styles.bookBtn}
-                  onPress={() => openBookingUrl(item.bookingUrl, item.name)}
+                  onPress={() => openBookingUrl(bookingLink.booking_url, item.placeId, item.name)}
                 >
                   <Ionicons name="calendar-outline" size={13} color="#fff" />
                   <Text style={styles.bookBtnText}>BOOK NOW</Text>
@@ -330,7 +360,9 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         visible={!!bookingUrl}
         url={bookingUrl ?? ''}
         title={bookingTitle}
-        onClose={() => setBookingUrl(null)}
+        placeId={bookingPlaceId ?? undefined}
+        onClose={() => { setBookingUrl(null); setBookingPlaceId(null); }}
+        onFeedback={applyBookingFeedback}
       />
 
       {/* Free user: place-per-itinerary limit (5 places) */}
