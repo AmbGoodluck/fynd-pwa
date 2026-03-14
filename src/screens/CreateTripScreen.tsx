@@ -345,7 +345,7 @@ export default function CreateTripScreen({ navigation }: Props) {
         <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 16 }]}
           >
             <Text style={styles.sectionTitle}>Select your preference</Text>
 
@@ -455,7 +455,7 @@ export default function CreateTripScreen({ navigation }: Props) {
         <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 16 }]}
           >
             <View style={styles.iconCircle}>
               <Ionicons name="sparkles-outline" size={30} color="#fff" />
@@ -627,14 +627,14 @@ const styles = StyleSheet.create({
   vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
   vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
 
-  // Bottom-docked action bar — sits just above the tab bar
+  // Bottom action bar — in-flow, always visible below scroll content
   floatingBar: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 4,
     flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
     gap: 12,
+    backgroundColor: '#F9FAFB',
   },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
