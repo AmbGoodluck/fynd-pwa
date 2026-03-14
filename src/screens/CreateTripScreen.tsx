@@ -346,7 +346,7 @@ export default function CreateTripScreen({ navigation }: Props) {
         <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
           >
             <Text style={styles.sectionTitle}>Select your preference</Text>
 
@@ -436,8 +436,8 @@ export default function CreateTripScreen({ navigation }: Props) {
             </View>
           </FyndScrollContainer>
 
-          {/* Always-visible bottom bar — Select Vibe CTA */}
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(8, bottomInset) }]}>
+          {/* Floating action button — Select Vibe */}
+          <View style={[styles.floatingBar, { bottom: Math.max(12, bottomInset + 8) }]}>
             <TouchableOpacity
               style={[styles.findBtn, { flex: 1 }, canGoToStep2 && styles.findBtnEnabled]}
               onPress={() => canGoToStep2 && setStep(2)}
@@ -456,7 +456,7 @@ export default function CreateTripScreen({ navigation }: Props) {
         <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
           >
             <View style={styles.iconCircle}>
               <Ionicons name="sparkles-outline" size={30} color="#fff" />
@@ -488,8 +488,8 @@ export default function CreateTripScreen({ navigation }: Props) {
             </View>
           </FyndScrollContainer>
 
-          {/* Always-visible bottom bar — Back + Find My Places */}
-          <View style={[styles.bottomBar, { paddingBottom: Math.max(8, bottomInset) }]}>
+          {/* Floating action buttons — Back + Fynd Places */}
+          <View style={[styles.floatingBar, { bottom: Math.max(12, bottomInset + 8) }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
               <Text style={styles.backBtnText}>Back</Text>
             </TouchableOpacity>
@@ -580,13 +580,13 @@ export default function CreateTripScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
 
-  progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  progressWrapper: { paddingHorizontal: 12, paddingTop: 4, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
   progressActive: { backgroundColor: '#22C55E' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  scrollContent: { paddingHorizontal: 12, paddingTop: 4, paddingBottom: 4 },
   sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 16, marginTop: 6 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
@@ -628,7 +628,18 @@ const styles = StyleSheet.create({
   vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
   vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
 
-  bottomBar: { flexDirection: 'row', paddingHorizontal: 20, paddingBottom: 10, paddingTop: 2, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB', gap: 12 },
+  floatingBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 6,
+  },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
   findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
