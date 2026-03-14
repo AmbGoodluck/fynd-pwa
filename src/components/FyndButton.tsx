@@ -26,7 +26,7 @@ export default function FyndButton({ title, onPress, loading, disabled, variant 
 }
 
 const styles = StyleSheet.create({
-  button: { backgroundColor: '#22C55E', padding: 16, borderRadius: 30, alignItems: 'center' },
+  button: { backgroundColor: 'transparent', padding: 0, borderRadius: 30, alignItems: 'center' },
   outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#22C55E' },
   disabled: { opacity: 0.5 },
   text: { color: '#fff', fontWeight: '600', fontSize: 16 },
