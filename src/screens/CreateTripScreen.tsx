@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 16,
     right: 16,
-    bottom: 10,
+    bottom: 4,
     flexDirection: 'row',
     gap: 12,
   },
