@@ -2,8 +2,8 @@ import React, { useState, Suspense } from 'react';
 import {
   Platform, StyleSheet, View, useWindowDimensions,
   Modal, Text, TouchableOpacity, TouchableWithoutFeedback,
-  ActivityIndicator,
 } from 'react-native';
+import Loader from '../components/Loader';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -61,13 +61,9 @@ import SharedTripsScreen from '../screens/SharedTripsScreen';
 import JoinTripScreen from '../screens/JoinTripScreen';
 import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
 
-// Minimal fullscreen loader shown while lazy chunks are fetching
+// Full-screen loader shown while lazy chunks are fetching — matches ProcessingScreen visual
 function LazyFallback() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
-      <ActivityIndicator size="large" color="#22C55E" />
-    </View>
-  );
+  return <Loader />;
 }
 
 // Wrapper components for lazy screens — required so Tab.Screen can use both
@@ -136,8 +132,12 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
                 height: 60 + safeBottom,
                 paddingBottom: Math.max(6, safeBottom),
                 paddingTop: 6,
-                position: 'absolute' as const,
-                left: 0, right: 0, bottom: 0,
+                // absolute only on web (fixed footer inside max-width container);
+                // on Android/iOS let the tab bar sit in normal flow so it's
+                // never clipped or obscured by the system nav bar.
+                ...(Platform.OS === 'web'
+                  ? ({ position: 'absolute' as const, left: 0, right: 0, bottom: 0 } as object)
+                  : {}),
                 backgroundColor: '#fff',
                 borderTopWidth: 1,
                 borderTopColor: '#F2F2F7',
@@ -319,7 +319,13 @@ export default function AppNavigator() {
 }
 
 const styles = StyleSheet.create({
-  appFrame: { flex: 1, maxWidth: '100%', overflow: 'hidden' as const },
+  appFrame: {
+    flex: 1,
+    maxWidth: '100%',
+    // overflow: hidden prevents horizontal scroll on web; on Android it can
+    // clip shadows and modals so we only apply it on web.
+    ...(Platform.OS === 'web' ? ({ overflow: 'hidden' } as object) : {}),
+  },
 });
 
 const navStyles = StyleSheet.create({
