@@ -886,22 +886,22 @@ export default function MapScreen({ navigation, route }: Props) {
         )}
       </View>
 
-      {/* ── Quick-help hints strip ── */}
-      <View style={styles.hintsStrip}>
-        <View style={styles.hintItem}>
-          <Ionicons name="navigate" size={13} color="#22C55E" />
-          <Text style={styles.hintTxt}>Tap <Text style={styles.hintBold}>Navigate</Text> for turn-by-turn directions</Text>
-        </View>
-        <View style={styles.hintDivider} />
-        <View style={styles.hintItem}>
-          <Ionicons name="chevron-back" size={13} color="#22C55E" />
-          <Ionicons name="chevron-forward" size={13} color="#22C55E" />
-          <Text style={styles.hintTxt}>Arrows to browse stops · tap pin to jump</Text>
-        </View>
-      </View>
-
       {/* ── Stop navigator bar ── */}
       <View style={[styles.tripBottomSection, tripBottomLayoutStyle]}>
+
+        {/* ── Quick-help hints strip ── */}
+        <View style={styles.hintsStrip}>
+          <View style={styles.hintItem}>
+            <Ionicons name="navigate" size={13} color="#22C55E" />
+            <Text style={styles.hintTxt}>Tap <Text style={styles.hintBold}>Navigate</Text> to open turn-by-turn directions</Text>
+          </View>
+          <View style={styles.hintDivider} />
+          <View style={styles.hintItem}>
+            <Ionicons name="chevron-back" size={13} color="#22C55E" />
+            <Ionicons name="chevron-forward" size={13} color="#22C55E" />
+            <Text style={styles.hintTxt}>Use arrows to browse stops · tap a pin to jump</Text>
+          </View>
+        </View>
         <View style={styles.stopBar}>
           <TouchableOpacity
             onPress={() => activeIdx > 0 && selectStop(activeIdx - 1)}
