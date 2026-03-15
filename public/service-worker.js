@@ -10,7 +10,7 @@
 //   • User session tokens
 //   • Firebase/Firestore real-time data
 
-const CACHE_VERSION = 'fynd-pwa-v5';
+const CACHE_VERSION = 'fynd-pwa-v6';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

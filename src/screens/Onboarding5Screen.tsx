@@ -1,14 +1,12 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ImageBackground, StatusBar,
+  Image, StatusBar, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useGuestStore } from '../store/useGuestStore';
 
-// Group of friends travelling together — shared trips backdrop
-const IMAGE_URI = 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=900&q=85';
+const { height } = Dimensions.get('window');
 
 type Props = { navigation: any };
 
@@ -21,91 +19,86 @@ export default function Onboarding5Screen({ navigation }: Props) {
   };
 
   return (
-    <ImageBackground source={{ uri: IMAGE_URI }} style={styles.bg} resizeMode="cover">
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={styles.scrim} />
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={{ flex: 1 }} />
-
-        <View style={styles.bottomCard}>
-          <View style={styles.featurePill}>
-            <Ionicons name="share-social-outline" size={14} color="#22C55E" />
-            <Text style={styles.featurePillText}>Shared Trips</Text>
-          </View>
-
-          <Text style={styles.title}>Explore{'\n'}Together</Text>
-          <Text style={styles.subtitle}>
-            Create and share trips with friends and family. Plan together, travel together, and make memories that last.
-          </Text>
-
-          <View style={styles.dots}>
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-            <View style={[styles.dot, styles.dotActive]} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.getStartedBtn}
-            onPress={handleGetStarted}
-            activeOpacity={0.88}
-          >
-            <Text style={styles.getStartedBtnText}>Get Started</Text>
-          </TouchableOpacity>
+      {/* Top: title + dots */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Explore{'\n'}Together</Text>
+        <View style={styles.dots}>
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={styles.dot} />
+          <View style={[styles.dot, styles.dotActive]} />
         </View>
-      </SafeAreaView>
-    </ImageBackground>
+      </View>
+
+      {/* Illustration */}
+      <View style={styles.imgWrap}>
+        <Image
+          source={require('../../assets/onboarding5.png')}
+          style={styles.img}
+          resizeMode="contain"
+        />
+      </View>
+
+      {/* Bottom: subtitle + button */}
+      <View style={styles.bottom}>
+        <Text style={styles.subtitle}>
+          Create and share trips with friends and family. Plan together, travel together, and make memories that last.
+        </Text>
+        <TouchableOpacity
+          style={styles.getStartedBtn}
+          onPress={handleGetStarted}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.getStartedBtnText}>Get Started</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.48)',
+  safe: { flex: 1, backgroundColor: '#fff' },
+  header: {
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 12,
   },
-  safe: { flex: 1, paddingHorizontal: 20 },
-  bottomCard: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderRadius: 28,
-    padding: 28,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  featurePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(34,197,94,0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    alignSelf: 'flex-start',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.4)',
-  },
-  featurePillText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
-    color: '#fff',
-    lineHeight: 40,
-    marginBottom: 10,
+    color: '#111827',
+    lineHeight: 38,
+    marginBottom: 16,
     letterSpacing: -0.5,
+  },
+  dots: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E7EB' },
+  dotActive: { backgroundColor: '#22C55E', width: 24 },
+  imgWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  img: {
+    width: '100%',
+    height: height * 0.42,
+  },
+  bottom: {
+    paddingHorizontal: 28,
+    paddingBottom: 32,
+    paddingTop: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.82)',
-    lineHeight: 22,
-    marginBottom: 20,
+    color: '#6B7280',
+    lineHeight: 23,
+    marginBottom: 24,
   },
-  dots: { flexDirection: 'row', gap: 8, marginBottom: 24, alignItems: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.38)' },
-  dotActive: { backgroundColor: '#22C55E', width: 24 },
   getStartedBtn: {
     backgroundColor: '#22C55E',
     borderRadius: 50,
@@ -113,9 +106,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#22C55E',
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 6,
   },
   getStartedBtnText: { color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: 0.2 },
