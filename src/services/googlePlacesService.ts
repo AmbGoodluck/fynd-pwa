@@ -217,20 +217,29 @@ export async function searchPlacesByVibe(
       };
     }
 
-    const todKeywordStr = todKeywords.length > 0 ? ` ${todKeywords[0]}` : '';
-    const keywords1 = safeVibes.slice(0, 3).join(' ') + todKeywordStr;
-    const keywords2 = safeVibes.length > 3 ? safeVibes.slice(3, 6).join(' ') : 'attractions';
+    // One focused text-search query per vibe so each preference gets its own call.
+    // Also fire nearby-search calls for time-of-day types when coordinates are known.
+    const todStr = todKeywords.length > 0 ? ` ${todKeywords[0]}` : '';
+    const vibeQueries = safeVibes.map(v => `${v} in ${safeDestination}`);
+    const allQueries = [
+      ...vibeQueries,
+      `things to do in ${safeDestination}${todStr}`,
+    ];
+    const textUrls = allQueries.map(q => textSearchUrl(q));
 
-    const query1 = `${keywords1} in ${safeDestination}`;
-    const query2 = `best ${keywords2} places to visit in ${safeDestination}`;
+    const nearbyTypesToSearch = hasOrigin
+      ? (todTypes.length > 0 ? todTypes.slice(0, 3) : ['tourist_attraction', 'restaurant', 'cafe'])
+      : [];
+    const nearbyUrls = nearbyTypesToSearch.map(t => nearbySearchUrl(originLat, originLng, t));
 
-    const urls = [textSearchUrl(query1), textSearchUrl(query2)];
+    const allUrls = [...textUrls, ...nearbyUrls];
 
     debugLog(`[Places] platform=${Platform.OS} proxy=${isWeb && PROXY ? 'yes' : 'no'}`);
-    debugLog('[Places] queries:', query1, '|', query2);
-    debugLog('[Places] urls:', urls.map(redactKey));
+    debugLog('[Places] queries:', allQueries);
+    debugLog('[Places] nearby types:', nearbyTypesToSearch);
+    debugLog('[Places] total calls:', allUrls.length);
 
-    const results = await Promise.allSettled(urls.map(async url => {
+    const results = await Promise.allSettled(allUrls.map(async url => {
       debugLog('[Places] fetching:', redactKey(url).substring(0, 160));
       const r = await fetchWithTimeout(url);
       debugLog('[Places] response status:', r.status, r.statusText);
@@ -271,27 +280,6 @@ export async function searchPlacesByVibe(
           extra: { destination, vibes, proxy: PROXY, isWeb },
         });
       }
-    }
-
-    if (combined.length === 0 && hasOrigin) {
-      debugLog('[Places] Falling back to nearby search by coordinates');
-      const nearbyTypes = ['tourist_attraction', 'restaurant', 'cafe'];
-      const nearbyResults = await Promise.allSettled(
-        nearbyTypes.map(type => fetchWithTimeout(nearbySearchUrl(originLat, originLng, type)).then(r => r.json()))
-      );
-
-      for (const result of nearbyResults) {
-        if (result.status !== 'fulfilled') continue;
-        const data = result.value;
-        if (data?.status !== 'OK' || !Array.isArray(data.results)) continue;
-        for (const p of data.results) {
-          if (!seen.has(p.place_id)) {
-            seen.add(p.place_id);
-            combined.push(mapPlace(p));
-          }
-        }
-      }
-      debugLog('[Places] nearby fallback count:', combined.length);
     }
 
     if (!hadFulfilledResponse) {
@@ -379,7 +367,7 @@ export async function searchPlacesByVibe(
       },
     });
     debugLog('[Places] total unique results:', combined.length, 'strictly filtered:', strictlyFiltered.length);
-    return strictlyFiltered.slice(0, 30);
+    return strictlyFiltered.slice(0, 60);
   } catch (e) {
     debugWarn('[Places] searchPlacesByVibe error:', e);
     Sentry.captureException(e, {
