@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
-  sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 16, marginTop: 6 },
+  sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 28, marginTop: 6, paddingBottom: 4 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   cardLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

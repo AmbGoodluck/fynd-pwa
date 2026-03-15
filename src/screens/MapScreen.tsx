@@ -480,10 +480,10 @@ export default function MapScreen({ navigation, route }: Props) {
     webViewRef.current?.injectJavaScript(`setActiveStop(${activeIdx}); true;`);
   }, [activeIdx, webViewReady, hasStops]);
 
-  // Safety valve: if mapReady message never arrives (e.g. API key issue), clear
-  // the loading overlay after 12 s so the UI is never permanently stuck.
+  // Safety valve: clear loading overlay after 5 s max so the UI is never stuck.
+  // mapReady message from JS clears it sooner when the map actually initialises.
   useEffect(() => {
-    const t = setTimeout(() => setMapLoading(false), 12000);
+    const t = setTimeout(() => setMapLoading(false), 5000);
     return () => clearTimeout(t);
   }, []);
 
@@ -552,11 +552,8 @@ export default function MapScreen({ navigation, route }: Props) {
   };
 
   const navigateToStop = (stop: Stop) => {
-    if (!userLoc) {
-      Alert.alert('Location access required for navigation.');
-      return;
-    }
-    // Launch full NavigationScreen for turn-by-turn walking directions
+    // Launch full NavigationScreen for turn-by-turn walking directions.
+    // NavigationScreen handles its own location permission prompt.
     navigation.navigate('Navigation', {
       destinationLat: stop.coordinate.latitude,
       destinationLng: stop.coordinate.longitude,
@@ -581,8 +578,16 @@ export default function MapScreen({ navigation, route }: Props) {
   };
 
   const openFullRoute = () => {
-    // Show overview of all stops on in-app map
-    showOverview();
+    // Navigate to NavigationScreen for the active stop (in-app turn-by-turn)
+    if (activeStop) {
+      navigation.navigate('Navigation', {
+        destinationLat: activeStop.coordinate.latitude,
+        destinationLng: activeStop.coordinate.longitude,
+        destinationName: activeStop.name,
+      });
+    } else {
+      showOverview();
+    }
   };
 
   const showOverview = () => {

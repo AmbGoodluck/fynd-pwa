@@ -47,6 +47,9 @@ const FyndMapView = forwardRef<FyndMapViewRef, Props>(
         showsHorizontalScrollIndicator={false}
         showsVerticalScrollIndicator={false}
         mixedContentMode="always"
+        // Cache the Google Maps JS script so subsequent loads are instant
+        cacheEnabled
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
         onMessage={handleMessage}
       />
     );
