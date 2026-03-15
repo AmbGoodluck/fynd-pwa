@@ -78,6 +78,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [showPreview, setShowPreview] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
@@ -159,10 +161,10 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
   const handleShareTrip = async () => {
     if (stops.length === 0) return;
-    if (stops.length > 4) {
+    if (stops.length > 7) {
       Alert.alert(
         'Trip Limit Reached',
-        'Trips in this version support up to 4 places per day.',
+        'Trips in this version support up to 7 places per day.',
         [{ text: 'OK' }]
       );
       return;
@@ -200,12 +202,61 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       logEvent('trip_shared', { destination, stop_count: stops.length });
     } catch (e: any) {
       if (e?.message?.includes('TRIP_LIMIT')) {
-        Alert.alert('Trip Limit Reached', 'Trips in this version support up to 4 places per day.');
+        Alert.alert('Trip Limit Reached', 'Trips in this version support up to 7 places per day.');
       } else {
         Alert.alert('Error', 'Could not share trip. Please try again.');
       }
     } finally {
       setSharing(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (stops.length === 0 || copying) return;
+    setCopying(true);
+    try {
+      const today = new Date().toLocaleDateString('en-US', {
+        month: 'long', day: 'numeric', year: 'numeric',
+      });
+      const places = stops.map((s) => ({
+        placeId: s.id,
+        name: s.name,
+        description: s.description,
+        photoUrl: s.image,
+        rating: parseFloat(s.rating) || undefined,
+        distanceKm: s.distance ? parseFloat(s.distance) : undefined,
+        walkMinutes: s.time ? parseInt(s.time) : undefined,
+        coordinates: s.coordinate.latitude !== 0
+          ? { lat: s.coordinate.latitude, lng: s.coordinate.longitude }
+          : undefined,
+      }));
+
+      const trip = await createSharedTrip({
+        owner_id: sessionUserId,
+        owner_name: sessionUserName,
+        trip_name: destination,
+        trip_date: today,
+        places,
+      });
+
+      addMyTrip(trip);
+      const link = buildShareLink(trip.trip_id);
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(link);
+      }
+
+      logEvent('trip_link_copied', { destination, stop_count: stops.length });
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch (e: any) {
+      if (e?.message?.includes('TRIP_LIMIT')) {
+        Alert.alert('Trip Limit Reached', 'Trips in this version support up to 7 places per day.');
+      } else {
+        Alert.alert('Error', 'Could not copy link. Please try again.');
+      }
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -441,11 +492,11 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               Invite your team to explore this itinerary together
             </Text>
 
-            {stops.length > 4 && (
+            {stops.length > 7 && (
               <View style={styles.limitWarning}>
                 <Ionicons name="warning-outline" size={16} color="#F59E0B" />
                 <Text style={styles.limitWarningText}>
-                  Only the first 4 places will be shared (V1 limit).
+                  Only the first 7 places will be shared (V1 limit).
                 </Text>
               </View>
             )}
@@ -467,6 +518,31 @@ export default function ItineraryScreen({ navigation, route }: Props) {
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.shareOption, (copying || sharing) && { opacity: 0.6 }]}
+              onPress={handleCopyLink}
+              disabled={copying || sharing}
+            >
+              <View style={styles.shareOptionIcon}>
+                <Ionicons
+                  name={linkCopied ? 'checkmark-circle-outline' : 'link-outline'}
+                  size={24}
+                  color={linkCopied ? '#22C55E' : '#6B7280'}
+                />
+              </View>
+              <View style={styles.shareOptionText}>
+                <Text style={styles.shareOptionLabel}>
+                  {copying ? 'Copying…' : linkCopied ? 'Link Copied!' : 'Copy Link'}
+                </Text>
+                <Text style={styles.shareOptionDesc}>
+                  app.fyndplaces.com/trip/…
+                </Text>
+              </View>
+              {!copying && !linkCopied && (
+                <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity

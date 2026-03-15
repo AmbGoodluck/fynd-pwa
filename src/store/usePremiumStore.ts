@@ -14,7 +14,7 @@ function getWeekStart(): string {
 export const FREE_WEEKLY_ITINERARY_LIMIT = 3;
 export const FREE_MAX_PLACES_PER_ITINERARY = 5;
 export const FREE_MAX_SAVED_PLACES = 10;
-export const GUEST_MAX_PLACES_PER_ITINERARY = 4;
+export const GUEST_MAX_PLACES_PER_ITINERARY = 7;
 
 interface PremiumStore {
   isPremium: boolean;

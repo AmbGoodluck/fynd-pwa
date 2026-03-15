@@ -43,8 +43,8 @@ export async function createSharedTrip(params: {
   trip_date: string;
   places: SharedTripPlace[];
 }): Promise<SharedTrip> {
-  if (params.places.length > 4) {
-    throw new Error('TRIP_LIMIT: Trips support up to 4 places.');
+  if (params.places.length > 7) {
+    throw new Error('TRIP_LIMIT: Trips support up to 7 places.');
   }
 
   const trip_id = uuid();
@@ -196,7 +196,7 @@ export async function getJoinedTrips(user_id: string): Promise<SharedTrip[]> {
 
 // ── Generate share link ───────────────────────────────────────────────────────
 export function buildShareLink(trip_id: string): string {
-  return `fynd.app/trip/${trip_id}`;
+  return `https://app.fyndplaces.com/trip/${trip_id}`;
 }
 
 // ── Track trip shared (call after share link is presented to user) ────────────
