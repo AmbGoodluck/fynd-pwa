@@ -415,12 +415,10 @@ export default function MapScreen({ navigation, route }: Props) {
   const [showServiceHubUpgradeModal, setShowServiceHubUpgradeModal] = useState(false);
   const mapLoadStartRef = useRef<number>(Date.now());
 
-  const mapsJsUrl = useMemo(() => {
-    if (Platform.OS === 'web' && PROXY) {
-      return `${PROXY}/api/maps/js?callback=initMap&loading=async`;
-    }
-    return `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async`;
-  }, []);
+  const mapsJsUrl = useMemo(
+    () => `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async`,
+    [],
+  );
 
   // Build HTML once — stops are baked in; user location + activeIdx are pushed via injectJavaScript.
   // On idle Map tab (no route stops), use trip store places if available.

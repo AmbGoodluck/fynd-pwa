@@ -32,6 +32,13 @@ export default function LogoScreen({ navigation }: Props) {
   const { login } = useAuthStore();
 
   useEffect(() => {
+    // If React Navigation's linking config already resolved a deep link (e.g. /trip/:id),
+    // don't run the auth-check navigation — it would override the deep link destination.
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const path = window.location.pathname ?? '';
+      if (path.startsWith('/trip/')) return;
+    }
+
     let navigated = false;
     const go = (screen: string) => {
       if (!navigated) {
