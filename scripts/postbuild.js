@@ -7,6 +7,7 @@ cp('feedback/privacy-policy.html', 'dist/privacy-policy.html');
 cp('feedback/terms.html', 'dist/terms.html');
 cp('public/_redirects', 'dist/_redirects');
 cp('public/manifest.json', 'dist/manifest.json');
+cp('public/service-worker.js', 'dist/service-worker.js');
 cp('assets/logo-icon.png', 'dist/icon.png');
 fs.mkdirSync('dist/fonts', { recursive: true });
 cp('node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf', 'dist/fonts/Ionicons.ttf');
