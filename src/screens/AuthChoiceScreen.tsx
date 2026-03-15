@@ -41,7 +41,7 @@ export default function AuthChoiceScreen({ navigation }: Props) {
 
   return (
     <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=900&q=80' }}
+      source={require('../../assets/auth-bg.jpg')}
       style={styles.bg}
       resizeMode="cover"
     >
