@@ -63,6 +63,14 @@ export default function JoinTripScreen({ navigation, route }: Props) {
     })();
   }, [trip_id]);
 
+  const goBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.replace('MainTabs');
+    }
+  };
+
   const handleJoin = async () => {
     if (!trip) return;
     setJoining(true);
@@ -73,7 +81,13 @@ export default function JoinTripScreen({ navigation, route }: Props) {
         user_name: sessionUserName,
       });
       addJoinedTrip(trip);
-      navigation.replace('SharedTripDetail', { trip_id: trip.trip_id });
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs' },
+          { name: 'SharedTripDetail', params: { trip_id: trip.trip_id } },
+        ],
+      });
     } catch (e: any) {
       if (e?.message === 'TRIP_NOT_FOUND') {
         Alert.alert('Trip Not Found', 'This trip is no longer available.');
@@ -86,7 +100,13 @@ export default function JoinTripScreen({ navigation, route }: Props) {
   };
 
   const handleAlreadyMember = () => {
-    navigation.replace('SharedTripDetail', { trip_id: trip_id });
+    navigation.reset({
+      index: 1,
+      routes: [
+        { name: 'MainTabs' },
+        { name: 'SharedTripDetail', params: { trip_id: trip_id } },
+      ],
+    });
   };
 
   if (loading) {
@@ -107,7 +127,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
           <Ionicons name="alert-circle-outline" size={64} color="#E5E5EA" />
           <Text style={styles.notFoundTitle}>Trip Not Available</Text>
           <Text style={styles.notFoundSub}>This trip is no longer available.</Text>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={goBack}>
             <Text style={styles.primaryBtnText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -127,7 +147,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
           <TouchableOpacity style={styles.primaryBtn} onPress={handleAlreadyMember}>
             <Text style={styles.primaryBtnText}>Open Trip</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.ghostBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.ghostBtn} onPress={goBack}>
             <Text style={styles.ghostBtnText}>Cancel</Text>
           </TouchableOpacity>
         </View>
@@ -235,7 +255,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.outlineBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.outlineBtn} onPress={goBack}>
             <Text style={styles.outlineBtnText}>Cancel</Text>
           </TouchableOpacity>
         </View>

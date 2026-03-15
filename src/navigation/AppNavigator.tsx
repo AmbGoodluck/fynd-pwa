@@ -248,9 +248,18 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
   );
 }
 
+const linking = {
+  prefixes: ['https://app.fyndplaces.com'],
+  config: {
+    screens: {
+      JoinTrip: 'trip/:trip_id',
+    },
+  },
+};
+
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <View style={styles.appFrame}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* ── Intro ─────────────────────────────────── */}

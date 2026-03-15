@@ -29,5 +29,7 @@
     }
   ],
   "categories": ["travel", "navigation"],
-  "screenshots": []
+  "screenshots": [],
+  "scope": "/",
+  "handle_links": "preferred"
 }
