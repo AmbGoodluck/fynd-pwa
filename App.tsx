@@ -51,12 +51,31 @@ const fontSources = {
 };
 
 // Catches React render errors so we see the message instead of blank screen.
+// If the error looks like a stale lazy-chunk load failure (happens after a
+// redeployment), force a hard reload so the browser fetches fresh bundles.
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
 > {
   state = { error: null };
   static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) {
+    const msg = String(error);
+    const isChunkError =
+      /Loading chunk/.test(msg) ||
+      /Loading module/.test(msg) ||
+      /AsyncRequireError/.test(msg) ||
+      /ChunkLoadError/.test(msg) ||
+      /failed to fetch dynamically imported module/i.test(msg);
+    if (isChunkError && Platform.OS === 'web') {
+      // Hard-reload once to pick up fresh bundles; guard against reload loops.
+      const key = 'fynd_chunk_reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+    }
+  }
   render() {
     if (this.state.error) {
       return (

@@ -10,7 +10,7 @@
 //   • User session tokens
 //   • Firebase/Firestore real-time data
 
-const CACHE_VERSION = 'fynd-pwa-v10';
+const CACHE_VERSION = 'fynd-pwa-v11';
 const STATIC_CACHE  = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 
@@ -121,6 +121,28 @@ self.addEventListener('fetch', (event) => {
     /\.(css|js|woff2?|ttf|otf|png|jpg|jpeg|svg|ico|webp)(\?|$)/.test(request.url);
 
   if (isStaticAsset) {
+    // Lazy JS chunks: network-first so stale chunks never cause load failures
+    // after a redeployment deletes the old content-hashed file.
+    if (/\/_expo\/static\/js\//.test(request.url)) {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
+            }
+            return response;
+          })
+          .catch(() =>
+            caches.match(request).then((cached) =>
+              cached || new Response('', { status: 404 })
+            )
+          )
+      );
+      return;
+    }
+
+    // All other static assets (fonts, images, CSS): cache-first
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
@@ -130,7 +152,7 @@ self.addEventListener('fetch', (event) => {
             caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, clone));
           }
           return response;
-        }).catch(() => cached || new Response('', { status: 404 }));
+        }).catch(() => new Response('', { status: 404 }));
       })
     );
     return;
