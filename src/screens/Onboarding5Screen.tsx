@@ -82,11 +82,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
   },
   img: {
     width: '100%',
-    height: height * 0.42,
+    height: height * 0.59,
   },
   bottom: {
     paddingHorizontal: 28,
