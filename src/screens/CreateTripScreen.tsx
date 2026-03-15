@@ -345,7 +345,7 @@ export default function CreateTripScreen({ navigation }: Props) {
         <View style={{ flex: 1 }}>
           <FyndScrollContainer
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: 16 }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 26 }]}
           >
             <Text style={styles.sectionTitle}>Select your preference</Text>
 
@@ -357,7 +357,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                   style={[styles.locationBtn, styles.locationBtnOutline]}
                   onPress={() => setShowLocationModal(true)}
                 >
-                  <Ionicons name="pencil-outline" size={14} color="#57636C" style={{ marginRight: 5 }} />
+                  <Ionicons name="pencil-outline" size={16} color="#57636C" style={{ marginRight: 6 }} />
                   <Text style={styles.locationBtnOutlineText} numberOfLines={1}>Input location</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -368,7 +368,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                   {locationLoading
                     ? <ActivityIndicator size="small" color="#fff" />
                     : <>
-                        <Ionicons name="locate-outline" size={14} color="#fff" style={{ marginRight: 5 }} />
+                        <Ionicons name="locate-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
                         <Text style={styles.locationBtnFilledText} numberOfLines={1}>Use my location</Text>
                       </>
                   }
@@ -586,19 +586,19 @@ const styles = StyleSheet.create({
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
-  sectionTitle: { fontSize: 22, fontFamily: F.semibold, color: '#111827', marginBottom: 44, marginTop: 10 },
+  sectionTitle: { fontSize: 27, fontFamily: F.bold, color: '#111827', marginBottom: 16, marginTop: 10 },
 
-  card: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+  card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },
   cardLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { fontSize: 15, fontFamily: F.medium, color: '#111827', flex: 1 },
-  cardValue: { fontSize: 15, fontFamily: F.bold, color: '#22C55E', marginLeft: 8 },
+  cardValue: { fontSize: 16, fontFamily: F.bold, color: '#22C55E', marginLeft: 8 },
 
-  locationBtnRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  locationBtn: { flex: 1, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 10 },
+  locationBtnRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  locationBtn: { flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 12 },
   locationBtnOutline: { borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#fff' },
-  locationBtnOutlineText: { fontSize: 13, fontFamily: F.medium, color: '#374151' },
+  locationBtnOutlineText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
   locationBtnFilled: { backgroundColor: '#22C55E' },
-  locationBtnFilledText: { fontSize: 13, fontFamily: F.semibold, color: '#fff' },
+  locationBtnFilledText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
   destinationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: '#F0FDF4', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8 },
   destinationBadgeText: { fontSize: 13, fontFamily: F.medium, color: '#16A34A', flex: 1 },
 
