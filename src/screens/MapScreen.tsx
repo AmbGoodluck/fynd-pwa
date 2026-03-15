@@ -25,6 +25,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { useTripStore } from '../store/useTripStore';
+import { openInExternalMaps, openRouteInMaps } from '../services/mapsIntent';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
@@ -567,12 +568,10 @@ export default function MapScreen({ navigation, route }: Props) {
   };
 
   const navigateToStop = (stop: Stop) => {
-    // Launch full NavigationScreen for turn-by-turn walking directions.
-    // NavigationScreen handles its own location permission prompt.
-    navigation.navigate('Navigation', {
-      destinationLat: stop.coordinate.latitude,
-      destinationLng: stop.coordinate.longitude,
-      destinationName: stop.name,
+    openInExternalMaps({
+      latitude: stop.coordinate.latitude,
+      longitude: stop.coordinate.longitude,
+      label: stop.name,
     });
   };
 
@@ -593,16 +592,14 @@ export default function MapScreen({ navigation, route }: Props) {
   };
 
   const openFullRoute = () => {
-    // Navigate to NavigationScreen for the active stop (in-app turn-by-turn)
-    if (activeStop) {
-      navigation.navigate('Navigation', {
-        destinationLat: activeStop.coordinate.latitude,
-        destinationLng: activeStop.coordinate.longitude,
-        destinationName: activeStop.name,
-      });
-    } else {
-      showOverview();
-    }
+    if (stops.length === 0) return;
+    openRouteInMaps(
+      stops.map(s => ({
+        latitude: s.coordinate.latitude,
+        longitude: s.coordinate.longitude,
+        label: s.name,
+      })),
+    );
   };
 
   const showOverview = () => {
