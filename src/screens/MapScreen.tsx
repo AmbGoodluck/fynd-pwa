@@ -24,6 +24,7 @@ import { usePremiumStore } from '../store/usePremiumStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
+import { useTripStore } from '../store/useTripStore';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
@@ -387,6 +388,20 @@ export default function MapScreen({ navigation, route }: Props) {
   const stops: Stop[] = route?.params?.stops ?? [];
   const hasStops = stops.length > 0;
 
+  // Idle Map tab — pull current trip places from the session store
+  const storeSelectedPlaces = useTripStore(s => s.selectedPlaces);
+  const tabStops: Stop[] = useMemo(
+    () => storeSelectedPlaces.map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      image: p.image,
+      coordinate: p.coordinate,
+      rating: p.rating !== undefined ? String(p.rating) : undefined,
+    })),
+    [storeSelectedPlaces],
+  );
+
   const webViewRef = useRef<FyndMapViewRef>(null);
   const [webViewReady, setWebViewReady] = useState(false);
   const [mapLoading, setMapLoading] = useState(true);
@@ -407,12 +422,14 @@ export default function MapScreen({ navigation, route }: Props) {
     return `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async`;
   }, []);
 
-  // Build HTML once — stops are baked in; user location + activeIdx are pushed via injectJavaScript
-  const mapHtml = useMemo(
-    () => (hasStops ? buildTripHtml(stops, mapsJsUrl) : buildIdleHtml(mapsJsUrl)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasStops, mapsJsUrl]   // intentionally only rebuild if mode/script source changes
-  );
+  // Build HTML once — stops are baked in; user location + activeIdx are pushed via injectJavaScript.
+  // On idle Map tab (no route stops), use trip store places if available.
+  const mapHtml = useMemo(() => {
+    if (hasStops) return buildTripHtml(stops, mapsJsUrl);
+    if (tabStops.length > 0) return buildTripHtml(tabStops, mapsJsUrl);
+    return buildIdleHtml(mapsJsUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasStops, tabStops.length, mapsJsUrl]);
 
   useEffect(() => {
     mapLoadStartRef.current = Date.now();
@@ -513,7 +530,7 @@ export default function MapScreen({ navigation, route }: Props) {
       } else if (data.type === 'navError') {
         setIsNavigating(false);
         setNavInfo(null);
-        Alert.alert('Navigation', 'Could not calculate route. Make sure location is enabled.');
+        // Navigation is handled by NavigationScreen — silently ignore directions errors
       }
     } catch (_) {}
   };
@@ -787,41 +804,40 @@ export default function MapScreen({ navigation, route }: Props) {
 
   // ── Idle state (Map tab, no active trip) ───────────────────────────────────
   if (!hasStops) {
+    const hasTabStops = tabStops.length > 0;
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <AppHeader title="Map" />
 
-        <View style={styles.mapBox}>
+        {/* Map fills remaining space when trip stops are available; fixed height otherwise */}
+        <View style={hasTabStops ? { flex: 1 } : styles.mapBox}>
           <FyndMapView
             ref={webViewRef}
             html={mapHtml}
             style={styles.webView}
             onMessage={onMessage}
           />
-          {mapLoading && (
-            <View style={styles.mapLoadingOverlay}>
-              <ActivityIndicator color="#22C55E" size="large" />
-              <Text style={styles.mapLoadingTxt}>Loading map…</Text>
-            </View>
-          )}
+          {/* No loading overlay on idle tab — map renders in place */}
         </View>
 
-        <View style={styles.idleCard}>
-          <Ionicons name="compass-outline" size={44} color="#22C55E" style={{ marginBottom: 14 }} />
-          <Text style={styles.idleTitle}>Your trip map lives here</Text>
-          <Text style={styles.idleSub}>
-            Build an itinerary from Suggested Places, then tap{' '}
-            <Text style={styles.idleSubBold}>In-App Map</Text> to see all your
-            stops pinned on the map with a route connecting them.
-          </Text>
-          <TouchableOpacity
-            style={styles.idleCta}
-            onPress={() => navigation.navigate('Create Trip')}
-          >
-            <Ionicons name="airplane-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.idleCtaTxt}>Plan a Trip</Text>
-          </TouchableOpacity>
-        </View>
+        {!hasTabStops && (
+          <View style={styles.idleCard}>
+            <Ionicons name="compass-outline" size={44} color="#22C55E" style={{ marginBottom: 14 }} />
+            <Text style={styles.idleTitle}>Your trip map lives here</Text>
+            <Text style={styles.idleSub}>
+              Build an itinerary from Suggested Places, then tap{' '}
+              <Text style={styles.idleSubBold}>In-App Map</Text> to see all your
+              stops pinned on the map with a route connecting them.
+            </Text>
+            <TouchableOpacity
+              style={styles.idleCta}
+              onPress={() => navigation.navigate('Create Trip')}
+            >
+              <Ionicons name="airplane-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.idleCtaTxt}>Plan a Trip</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </SafeAreaView>
     );
   }

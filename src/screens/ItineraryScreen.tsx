@@ -16,6 +16,7 @@ import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { usePremiumStore } from '../store/usePremiumStore';
 import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
+import { useTripStore } from '../store/useTripStore';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -85,6 +86,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const bookingLinks = useBookingLinksStore(s => s.links);
   const setBookingLink = useBookingLinksStore(s => s.setLink);
   const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
+  const setStorePlaces = useTripStore(s => s.setSelectedPlaces);
 
   const { sessionUserId, sessionUserName, addMyTrip } = useSharedTripStore();
   const { isPremium } = usePremiumStore();
@@ -132,6 +134,15 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const openInAppMap = () => {
     setShowMapModal(false);
     logEvent('map_opened', { type: 'in_app', destination, stop_count: stops.length });
+    // Persist stops to session store so the Map tab also shows them
+    setStorePlaces(stops.map(s => ({
+      id: s.id,
+      name: s.name,
+      description: s.description,
+      image: s.image,
+      coordinate: s.coordinate,
+      address: '',
+    })));
     navigation.navigate('TripMap', { stops });
   };
 
