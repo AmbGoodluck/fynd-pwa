@@ -1,11 +1,11 @@
 import { Platform } from 'react-native';
 import * as Sentry from './sentry';
+import { FALLBACK_IMAGE } from '../constants';
 
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
 const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
 const GOOGLE_BASE = 'https://maps.googleapis.com/maps/api/place';
-const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
 const DEV_LOGS = typeof __DEV__ !== 'undefined' && __DEV__;
 
 // Place types that typically require advance booking
@@ -119,7 +119,7 @@ function nearbySearchUrl(lat: number, lng: number, type: string): string {
 
 /** Build a photo URL based on platform (web → proxy hides key, native → direct) */
 export function getPhotoUrl(photoRef: string, maxWidth = 320): string {
-  if (!photoRef) return FALLBACK_IMG;
+  if (!photoRef) return FALLBACK_IMAGE;
   if (isWeb && PROXY) {
     return `${PROXY}/api/places/photo?photo_reference=${encodeURIComponent(photoRef)}&maxwidth=${maxWidth}`;
   }
@@ -204,7 +204,7 @@ export async function searchPlacesByVibe(
         rating: p.rating || 4.0,
         description: p.editorial_summary?.overview || p.types?.[0]?.replace(/_/g, ' ') || '',
         photoRef: ref,
-        photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
+        photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMAGE,
         photoUrls: refs.length > 0 ? refs.map((r: string) => getPhotoUrl(r, 400)) : undefined,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
@@ -407,7 +407,7 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
         rating: p.rating || 0,
         description: '',
         photoRef: ref,
-        photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMG,
+        photoUrl: ref ? getPhotoUrl(ref) : FALLBACK_IMAGE,
         photoUrls: photoRefs.length > 0 ? photoRefs.map((r: string) => getPhotoUrl(r, 400)) : undefined,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: type,

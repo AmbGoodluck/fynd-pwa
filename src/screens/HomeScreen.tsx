@@ -254,10 +254,10 @@ export default function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
-  scroll: { paddingBottom: 20 },
+  scroll: { paddingBottom: 24 },
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 10, paddingBottom: 6,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16,
     backgroundColor: '#fff',
   },
   logo: { width: 50, height: 44, resizeMode: 'contain' },

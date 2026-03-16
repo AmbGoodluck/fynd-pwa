@@ -14,6 +14,7 @@ export interface SavedPlace {
   category?: string;
   city?: string;
   bookingUrl?: string;
+  types?: string[];
   savedAt: number; // timestamp
 }
 
@@ -47,6 +48,7 @@ function placeResultToSaved(place: PlaceResult): SavedPlace {
     category: place.category,
     city: place.city,
     bookingUrl: place.bookingUrl,
+    types: place.types,
     savedAt: Date.now(),
   };
 }

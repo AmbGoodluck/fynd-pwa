@@ -1,14 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
-  Linking, Platform, Alert, Modal, TouchableWithoutFeedback,
+  Linking, Platform, Alert, Modal, TouchableWithoutFeedback, FlatList,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
-import FyndScrollContainer from '../components/FyndScrollContainer';
+
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import GuestGateModal from '../components/GuestGateModal';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
@@ -138,7 +138,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
   };
 
-  const renderPlace = ({ item }: { item: any }) => {
+  const renderPlace = useCallback(({ item }: { item: any }) => {
     const isSelected = !!selectedForItinerary.find(p => p.placeId === item.placeId);
     const saved = isPlaceSaved(item.placeId);
 
@@ -159,33 +159,40 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         delayLongPress={350}
       >
         <View style={styles.card}>
-          <Image
-            source={{ uri: item.photoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400' }}
-            style={styles.cardImage}
-          />
-
-          {/* Save heart */}
-          <TouchableOpacity style={styles.heartBtn} onPress={() => handleSave(item)}>
-            <Ionicons
-              name={saved ? 'heart' : 'heart-outline'}
-              size={20}
-              color={saved ? '#EF4444' : '#fff'}
+          <View style={styles.imageContainer}>
+            <Image
+              source={{ uri: item.photoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800' }}
+              style={styles.cardImage}
             />
-          </TouchableOpacity>
+
+            {/* Save heart */}
+            <TouchableOpacity style={styles.heartBtn} onPress={() => handleSave(item)}>
+              <Ionicons
+                name={saved ? 'heart' : 'heart-outline'}
+                size={20}
+                color={saved ? '#EF4444' : '#fff'}
+              />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.cardBody}>
             <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.cardDesc} numberOfLines={2}>
-              {item.description || item.category || 'A great place to visit'}
-            </Text>
+            
+            {item.description || item.category ? (
+              <Text style={styles.cardDesc} numberOfLines={2}>
+                {item.description || item.category || 'A great place to visit'}
+              </Text>
+            ) : null}
+
             {item.matchedTags && item.matchedTags.length > 0 ? (
               <View style={styles.matchRow}>
-                <Ionicons name="checkmark-circle" size={11} color="#22C55E" />
+                <Ionicons name="checkmark-circle" size={13} color="#22C55E" />
                 <Text style={styles.matchText} numberOfLines={1}>
-                  {' '}{item.matchedTags.join(' • ')}
+                  {item.matchedTags.join(' • ')}
                 </Text>
               </View>
             ) : null}
+
             <View style={styles.cardMeta}>
               <View style={styles.metaItem}>
                 <Ionicons name="star" size={13} color="#F59E0B" />
@@ -211,8 +218,9 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
                 style={[styles.addBtn, isSelected && styles.addBtnSelected]}
                 onPress={() => handleAddToItinerary(item)}
               >
+                <Ionicons name={isSelected ? "checkmark-circle" : "add-circle-outline"} size={16} color={isSelected ? "#fff" : "#22C55E"} />
                 <Text style={[styles.addBtnText, isSelected && styles.addBtnTextSelected]}>
-                  {isSelected ? '✓ Added' : '+ Add to Itinerary'}
+                  {isSelected ? 'Added' : 'Add to Itinerary'}
                 </Text>
               </TouchableOpacity>
 
@@ -221,8 +229,8 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
                   style={styles.bookBtn}
                   onPress={() => openBookingUrl(bookingLink.booking_url, item.placeId, item.name)}
                 >
-                  <Ionicons name="calendar-outline" size={13} color="#fff" />
-                  <Text style={styles.bookBtnText}>BOOK NOW</Text>
+                  <Ionicons name="calendar-outline" size={14} color="#fff" />
+                  <Text style={styles.bookBtnText}>Book Now</Text>
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -230,7 +238,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [selectedForItinerary, bookingLinks, isPlaceSaved]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -279,11 +287,18 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
       ) : (
-        <FyndScrollContainer style={styles.scrollView} contentContainerStyle={styles.list}>
-          {places.map(item => (
-            <View key={item.placeId}>{renderPlace({ item })}</View>
-          ))}
-        </FyndScrollContainer>
+        <FlatList
+          data={places}
+          keyExtractor={item => item.placeId || String(item.name)}
+          renderItem={renderPlace}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+          contentContainerStyle={styles.list}
+          style={styles.scrollView}
+        />
       )}
 
       <View style={[styles.ctaBar, { paddingBottom: Math.max(12, bottomInset) }]}>
@@ -414,47 +429,71 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#BBF7D0',
   },
   countBadgeText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
-  list: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 16 },
+  list: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
   card: {
-    flexDirection: 'row', backgroundColor: '#fff',
-    borderRadius: 18, marginBottom: 12,
-    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 }, elevation: 3, overflow: 'hidden',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+    overflow: 'hidden',
   },
-  cardImage: { width: 80, minWidth: 64, height: 128 },
+  imageContainer: { position: 'relative' },
+  cardImage: { width: '100%', height: 200, resizeMode: 'cover' },
   heartBtn: {
-    position: 'absolute', top: 8, left: 8,
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardBody: { flex: 1, padding: 12, justifyContent: 'space-between' },
-  cardName: {
-    fontSize: 15, fontFamily: F.semibold,
-    color: '#111827', marginBottom: 3,
+  cardBody: { padding: 16 },
+  cardName: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 6 },
+  cardDesc: { fontSize: 14, fontFamily: F.regular, color: '#6B7280', marginBottom: 10, lineHeight: 20 },
+  cardMeta: { flexDirection: 'row', gap: 12, marginBottom: 14, flexWrap: 'wrap' },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 13, fontFamily: F.medium, color: '#57636C', maxWidth: 120 },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F2F2F7',
+    paddingTop: 14,
+    flexWrap: 'wrap',
   },
-  cardDesc: {
-    fontSize: 12, color: '#6B7280',
-    lineHeight: 18, marginBottom: 6, flex: 1,
-  },
-  cardMeta: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 12, color: '#57636C', maxWidth: 90 },
-  actionRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   addBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 8, borderRadius: 12,
-    backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#22C55E',
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
   },
   addBtnSelected: { backgroundColor: '#22C55E' },
-  addBtnText: { fontSize: 11, fontFamily: F.semibold, color: '#22C55E' },
+  addBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
   addBtnTextSelected: { color: '#fff' },
   bookBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#1D4ED8', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#1D4ED8',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
-  bookBtnText: { fontSize: 10, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  bookBtnText: { fontSize: 13, fontFamily: F.bold, color: '#fff' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: {
     fontSize: 18, fontFamily: F.semibold,
@@ -526,8 +565,8 @@ const styles = StyleSheet.create({
   },
   todChipText: { fontSize: 11, color: '#fff', fontWeight: '600' },
   matchRow: {
-    flexDirection: 'row', alignItems: 'center',
-    marginBottom: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    marginBottom: 8,
   },
-  matchText: { fontSize: 11, color: '#22C55E', fontWeight: '600', flex: 1 },
+  matchText: { fontSize: 12, color: '#22C55E', fontFamily: F.semibold, flex: 1 },
 });
