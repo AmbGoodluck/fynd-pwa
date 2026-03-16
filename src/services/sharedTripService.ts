@@ -62,7 +62,15 @@ export async function createSharedTrip(params: {
     member_count: 1,
   };
 
-  await setDoc(doc(db, TRIPS_COL, trip_id), trip);
+  try {
+    await setDoc(doc(db, TRIPS_COL, trip_id), trip);
+  } catch (err: any) {
+    if (err?.code === 'permission-denied') {
+      console.error('Firestore Permission Denied for creating shared trip:', err);
+      throw new Error('PERMISSION_DENIED: Please check your Firestore Rules. They might be blocking shared_trips writes.');
+    }
+    throw err;
+  }
 
   // Add owner as first member
   const ownerMember: TripMember = {
@@ -73,7 +81,11 @@ export async function createSharedTrip(params: {
     role: 'owner',
     joined_at: now,
   };
-  await setDoc(doc(db, MEMBERS_COL, ownerMember.member_id), ownerMember);
+  try {
+    await setDoc(doc(db, MEMBERS_COL, ownerMember.member_id), ownerMember);
+  } catch (err: any) {
+    console.warn('Firestore failed adding owner member for trip (member auth missing?):', err);
+  }
 
   trackTripCreated(params.owner_id, trip_id, {
     trip_name: params.trip_name,

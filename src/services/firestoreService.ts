@@ -69,6 +69,12 @@ export async function deleteSavedPlace(docId: string) {
   await deleteDoc(doc(db, 'savedPlaces', docId));
 }
 
+export async function deleteSavedPlaceByPlaceId(userId: string, placeId: string) {
+  const q = query(collection(db, 'savedPlaces'), where('userId', '==', userId), where('placeId', '==', placeId));
+  const snap = await getDocs(q);
+  snap.docs.forEach(d => deleteDoc(d.ref));
+}
+
 export async function isPlaceSaved(userId: string, placeId: string): Promise<boolean> {
   const q = query(collection(db, 'savedPlaces'), where('userId', '==', userId), where('placeId', '==', placeId));
   const snap = await getDocs(q);

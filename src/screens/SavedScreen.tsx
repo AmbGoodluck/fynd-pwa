@@ -11,6 +11,7 @@ import { useTempItineraryStore, TEMP_MAX_PLACES } from '../store/useTempItinerar
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
 import { F } from '../theme/fonts';
+import { getRecentItineraries, type ItineraryDoc } from '../services/database';
 
 import { FALLBACK_IMAGE } from '../constants';
 
@@ -26,6 +27,21 @@ export default function SavedScreen({ navigation }: Props) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDiffCityModal, setShowDiffCityModal] = useState(false);
   const [showFullModal, setShowFullModal] = useState(false);
+
+  // Tabs State
+  const [activeTab, setActiveTab] = useState<'places' | 'itineraries'>('places');
+  const [itineraries, setItineraries] = useState<ItineraryDoc[]>([]);
+  const [loadingItineraries, setLoadingItineraries] = useState(false);
+
+  React.useEffect(() => {
+    if (activeTab === 'itineraries' && isAuthenticated && user) {
+      setLoadingItineraries(true);
+      getRecentItineraries(user.id, 20)
+        .then(res => setItineraries(res))
+        .catch(err => console.error('Failed to load itineraries:', err))
+        .finally(() => setLoadingItineraries(false));
+    }
+  }, [activeTab, isAuthenticated, user]);
 
   const displayName = user?.fullName?.split(' ')[0] || 'U';
 
@@ -107,34 +123,57 @@ export default function SavedScreen({ navigation }: Props) {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Saved Places</Text>
-        <Text style={styles.subtitle}>
-          {savedPlaces.length > 0
-            ? `${savedPlaces.length} place${savedPlaces.length !== 1 ? 's' : ''} saved`
-            : 'Heart places to save them here'}
-        </Text>
-      </View>
-
-
-
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={16} color="#8E8E93" style={{ marginRight: 6 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search saved places…"
-            placeholderTextColor="#8E8E93"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={16} color="#8E8E93" />
-            </TouchableOpacity>
-          ) : null}
+        <Text style={styles.title}>Saved</Text>
+        
+        {/* Tab Row */}
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'places' && styles.tabActive]}
+            onPress={() => setActiveTab('places')}
+          >
+            <Text style={[styles.tabText, activeTab === 'places' && styles.tabTextActive]}>
+              Places ({savedPlaces.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'itineraries' && styles.tabActive]}
+            onPress={() => {
+              if (isGuest) {
+                setShowGate(true);
+              } else {
+                setActiveTab('itineraries');
+              }
+            }}
+          >
+            <Text style={[styles.tabText, activeTab === 'itineraries' && styles.tabTextActive]}>
+              Recent Trips
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+
+
+      {/* Search (Only for Places Tab) */}
+      {activeTab === 'places' && (
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search-outline" size={16} color="#8E8E93" style={{ marginRight: 6 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search saved places…"
+              placeholderTextColor="#8E8E93"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color="#8E8E93" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      )}
 
       {/* Guest notice */}
       {isGuest && (
@@ -148,38 +187,96 @@ export default function SavedScreen({ navigation }: Props) {
       )}
 
       {/* List */}
-      {filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="bookmark-outline" size={56} color="#E5E5EA" />
-          <Text style={styles.emptyTitle}>
-            {savedPlaces.length === 0 ? 'No saved places' : 'No results'}
-          </Text>
-          <Text style={styles.emptyText}>
-            {savedPlaces.length === 0
-              ? 'Browse suggested places and tap the heart to save them here.'
-              : 'Try a different search term.'}
-          </Text>
-          {savedPlaces.length === 0 ? (
+      {activeTab === 'places' ? (
+        filtered.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="bookmark-outline" size={56} color="#E5E5EA" />
+            <Text style={styles.emptyTitle}>
+              {savedPlaces.length === 0 ? 'No saved places' : 'No results'}
+            </Text>
+            <Text style={styles.emptyText}>
+              {savedPlaces.length === 0
+                ? 'Browse suggested places and tap the heart to save them here.'
+                : 'Try a different search term.'}
+            </Text>
+            {savedPlaces.length === 0 ? (
+              <TouchableOpacity
+                style={styles.exploreBtn}
+                onPress={() => navigation.navigate('Create Trip')}
+              >
+                <Text style={styles.exploreBtnText}>Create a Trip</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={item => item.placeId}
+            renderItem={renderItem}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={5}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            removeClippedSubviews
+            contentContainerStyle={styles.listContent}
+          />
+        )
+      ) : (
+        /* Itineraries Tab */
+        loadingItineraries ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Loading trips...</Text>
+          </View>
+        ) : itineraries.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="map-outline" size={56} color="#E5E5EA" />
+            <Text style={styles.emptyTitle}>No recent trips</Text>
+            <Text style={styles.emptyText}>
+              Trips you generate will be saved here automatically.
+            </Text>
             <TouchableOpacity
               style={styles.exploreBtn}
               onPress={() => navigation.navigate('Create Trip')}
             >
-              <Text style={styles.exploreBtnText}>Create a Trip</Text>
+              <Text style={styles.exploreBtnText}>Generate Itinerary</Text>
             </TouchableOpacity>
-          ) : null}
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.placeId}
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={5}
-          maxToRenderPerBatch={6}
-          windowSize={7}
-          removeClippedSubviews
-          contentContainerStyle={styles.listContent}
-        />
+          </View>
+        ) : (
+          <FlatList
+            data={itineraries}
+            keyExtractor={item => item.id || Math.random().toString()}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.itineraryCard}
+                onPress={() => navigation.navigate('Itinerary', {
+                  places: item.stops.map(s => ({
+                    placeId: s.placeId,
+                    name: s.placeName,
+                    photoUrl: s.imageUrl,
+                    category: '',
+                    description: s.shortDescription,
+                    rating: s.rating,
+                    distanceKm: s.distanceKm,
+                    walkMinutes: s.travelTimeMinutes,
+                    coordinates: { lat: s.latitude, lng: s.longitude }
+                  })),
+                  destination: item.destination,
+                  tripId: item.tripId
+                })}
+              >
+                <Image source={{ uri: item.coverPhotoUrl || FALLBACK_IMAGE }} style={styles.itineraryImage} />
+                <View style={styles.itineraryDetails}>
+                  <Text style={styles.itineraryTitle}>{item.destination}</Text>
+                  <Text style={styles.itinerarySub}>
+                    {item.totalStops} places • {new Date(item.createdAt.toMillis()).toLocaleDateString()}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            )}
+          />
+        )
       )}
 
       {/* Temp itinerary banner (Floating) */}
@@ -334,9 +431,14 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontFamily: F.bold, color: '#111827', marginBottom: 2 },
-  subtitle: { fontSize: 13, color: '#57636C' },
+  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 0, backgroundColor: '#fff' },
+  title: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 12 },
+  
+  tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  tab: { marginRight: 24, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: '#22C55E' },
+  tabText: { fontSize: 16, color: '#6B7280', fontFamily: F.semibold },
+  tabTextActive: { color: '#111827' },
 
   tempBanner: {
     position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 100,
@@ -365,6 +467,16 @@ const styles = StyleSheet.create({
   guestBannerText: { flex: 1, fontSize: 12, color: '#1D4ED8', fontWeight: '500' },
 
   listContent: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 110 },
+
+  itineraryCard: {
+    flexDirection: 'row', backgroundColor: '#fff', alignItems: 'center',
+    padding: 12, borderRadius: 12, marginBottom: 12,
+    borderWidth: 1, borderColor: '#F3F4F6',
+  },
+  itineraryImage: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#E5E7EB', marginRight: 12 },
+  itineraryDetails: { flex: 1 },
+  itineraryTitle: { fontSize: 16, fontFamily: F.semibold, color: '#111827', marginBottom: 4 },
+  itinerarySub: { fontSize: 13, color: '#6B7280' },
 
   // ── Modals ───────────────────────────────────────────────────────────
   emptyState: {

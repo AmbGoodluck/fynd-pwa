@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { PlaceResult } from '../services/googlePlacesService';
+import { useAuthStore } from './useAuthStore';
+import { savePlace as savePlaceDb, deleteSavedPlace, getSavedPlaces, isPlaceSaved as isPlaceSavedDb } from '../services/database';
 
 export interface SavedPlace {
   placeId: string;
@@ -28,10 +30,11 @@ interface GuestStore {
   setHasSeenOnboarding: (seen: boolean) => void;
   markGuestModeUsed: () => void;
   incrementGuestItineraryCount: () => void;
-  savePlace: (place: PlaceResult) => void;
-  unsavePlace: (placeId: string) => void;
+  savePlace: (place: PlaceResult) => Promise<void>;
+  unsavePlace: (placeId: string) => Promise<void>;
   isPlaceSaved: (placeId: string) => boolean;
   clearSavedPlaces: () => void;
+  hydrateSavedPlaces: () => Promise<void>;
   logout: () => void;
   reset: () => void;
 }
@@ -55,9 +58,10 @@ function placeResultToSaved(place: PlaceResult): SavedPlace {
 
 export const useGuestStore = create<GuestStore>()(
   persist(
-    (set, get) => ({
+    (set: any, get: any) => ({
       isGuest: false,
       hasSeenOnboarding: false,
+
       hasUsedGuestMode: false,
       guestItineraryCount: 0,
       savedPlaces: [],
@@ -71,14 +75,73 @@ export const useGuestStore = create<GuestStore>()(
       incrementGuestItineraryCount: () =>
         set((state) => ({ guestItineraryCount: state.guestItineraryCount + 1 })),
 
-      savePlace: (place) => {
+      savePlace: async (place) => {
         const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
         if (existing) return;
-        set((state) => ({ savedPlaces: [placeResultToSaved(place), ...state.savedPlaces] }));
+        
+        const savedPlace = placeResultToSaved(place);
+        // Optimistic update
+        set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
+        
+        const { user, isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated && user) {
+          try {
+            await savePlaceDb(user.id, {
+              placeId: savedPlace.placeId,
+              placeName: savedPlace.name || '',
+              shortDescription: savedPlace.description || savedPlace.category || '',
+              imageUrl: savedPlace.photoUrl || '',
+              latitude: savedPlace.coordinates?.lat || 0,
+              longitude: savedPlace.coordinates?.lng || 0,
+              rating: savedPlace.rating || 0,
+              city: savedPlace.city || '',
+            });
+          } catch (e) {
+            console.error('Failed to sync saved place to Firestore', e);
+          }
+        }
       },
 
-      unsavePlace: (placeId) =>
-        set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== placeId) })),
+      unsavePlace: async (placeId) => {
+        set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== placeId) }));
+        
+        const { user, isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated && user) {
+          try {
+            const docId = await isPlaceSavedDb(user.id, placeId);
+            if (docId) {
+              await deleteSavedPlace(docId, user.id);
+            }
+          } catch (e) {
+            console.error('Failed to delete saved place from Firestore', e);
+          }
+        }
+      },
+
+      hydrateSavedPlaces: async () => {
+        const { user, isAuthenticated } = useAuthStore.getState();
+        if (isAuthenticated && user) {
+          try {
+            const places = await getSavedPlaces(user.id);
+            if (places.length > 0) {
+              const mapped: SavedPlace[] = places.map((p) => ({
+                placeId: p.placeId,
+                name: p.placeName || '',
+                address: '',
+                description: p.shortDescription || '',
+                photoUrl: p.imageUrl || '',
+                rating: p.rating || 0,
+                coordinates: { lat: p.latitude || 0, lng: p.longitude || 0 },
+                city: p.city || '',
+                savedAt: p.savedAt ? (p.savedAt as any).toMillis?.() || Date.now() : Date.now(),
+              }));
+              set({ savedPlaces: mapped });
+            }
+          } catch (e) {
+            console.error('Failed to hydrate saved places', e);
+          }
+        }
+      },
 
       isPlaceSaved: (placeId) => get().savedPlaces.some(p => p.placeId === placeId),
 
