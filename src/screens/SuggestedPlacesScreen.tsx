@@ -296,12 +296,23 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           maxToRenderPerBatch={8}
           windowSize={7}
           removeClippedSubviews
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[
+            styles.list,
+            // Extra bottom padding so the last card doesn't hide under the
+            // stacked CTA bar + absolute tab bar on web.
+            Platform.OS === 'web' && { paddingBottom: 16 },
+          ]}
           style={styles.scrollView}
         />
       )}
 
-      <View style={[styles.ctaBar, { paddingBottom: Math.max(12, bottomInset) }]}>
+      <View style={[
+        styles.ctaBar,
+        { paddingBottom: Math.max(12, bottomInset) },
+        // On web the tab bar is position:absolute, so it floats above our content.
+        // Add explicit margin so the CTA button sits fully above the tab bar.
+        Platform.OS === 'web' && { marginBottom: 60 },
+      ]}>
         <TouchableOpacity
           style={[styles.ctaBtn, selectedForItinerary.length === 0 && styles.ctaBtnDisabled]}
           onPress={handleGenerateItinerary}
