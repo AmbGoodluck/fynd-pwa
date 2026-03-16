@@ -38,12 +38,14 @@ import HomeScreen from '../screens/HomeScreen';
 import CreateTripScreen from '../screens/CreateTripScreen';
 import SavedScreen from '../screens/SavedScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+// ItineraryScreen eagerly imported — React.lazy + Suspense in a Stack.Screen
+// caused the screen to hang on the loading fallback in production builds.
+import ItineraryScreen from '../screens/ItineraryScreen';
 
 // ── Lazy-loaded screens (heavy / not on critical path) ─────────────────────────
 // MapScreen embeds Google Maps JS API via WebView/iframe — defer until needed
 const MapScreen        = React.lazy(() => import('../screens/MapScreen'));
 const ServiceHubScreen = React.lazy(() => import('../screens/ServiceHubScreen'));
-const ItineraryScreen  = React.lazy(() => import('../screens/ItineraryScreen'));
 
 // ── Stack (trip flow) ───────────────────────────────────────────────────────────
 import ProcessingScreen from '../screens/ProcessingScreen';
@@ -242,24 +244,20 @@ export default function AppNavigator() {
   const { setUser, login, isAuthenticated } = useAuthStore();
 
   React.useEffect(() => {
-    // Global listener to aggressively sync the app state with Firebase's true session state.
-    // This catches token expirations, manual sign-outs from other tabs, and re-hydrations.
+    // Global listener: syncs Firebase session → Zustand stores.
+    // IMPORTANT: dep array is [] — setUser/login are Zustand actions and get
+    // new references on every store update. Including them would re-run this
+    // effect on every render, causing repeated unsub/resub and a login loop.
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        // User is fully logged out on the Firebase level. Ensure our stores match.
-        // On very first mount, if they are not logged in, this clears the initial state.
         useGuestStore.getState().logout();
-        setUser(null);
+        useAuthStore.getState().setUser(null);
       } else {
-        // We have a valid Firebase session. 
-        // If Zustand doesn't have it (or we just switched tabs), fetch details.
-        // We do not overwrite if Zustand already knows them, to minimize reads, 
-        // but checking the ID ensures we're synced.
         const currentId = useAuthStore.getState().user?.id;
         if (currentId !== user.uid) {
           try {
             const userDoc = await getUserDoc(user.uid);
-            login({
+            useAuthStore.getState().login({
               id: user.uid,
               fullName: userDoc?.fullName || user.displayName || '',
               email: user.email || '',
@@ -268,15 +266,14 @@ export default function AppNavigator() {
               travelPreferences: userDoc?.travelPreferences ?? [],
             });
           } catch {
-            // Document fetch failed, but auth is valid. 
-            // The LogoScreen handles the primary sign-in flow anyway.
+            // Firestore unavailable — auth still valid, LogoScreen handles primary flow.
           }
         }
       }
     });
-
     return () => unsubscribe();
-  }, [setUser, login]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <NavigationContainer linking={linking}>
@@ -307,9 +304,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Create Trip"     component={CreateTripScreen} />
           <Stack.Screen name="Processing"      component={ProcessingScreen} />
           <Stack.Screen name="SuggestedPlaces" component={SuggestedPlacesScreen} />
-          <Stack.Screen name="Itinerary">
-            {(props) => <Suspense fallback={<LazyFallback />}><ItineraryScreen {...props} /></Suspense>}
-          </Stack.Screen>
+          <Stack.Screen name="Itinerary" component={ItineraryScreen} />
           <Stack.Screen name="TripMap">
             {(props) => <Suspense fallback={<LazyFallback />}><MapScreen {...props} /></Suspense>}
           </Stack.Screen>
