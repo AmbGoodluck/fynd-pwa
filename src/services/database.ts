@@ -351,6 +351,19 @@ export async function updateItineraryStatus(itineraryId: string, status: 'active
   await updateDoc(doc(db, 'itineraries', itineraryId), { status });
 }
 
+export async function deleteItinerary(itineraryId: string) {
+  await deleteDoc(doc(db, 'itineraries', itineraryId));
+}
+
+export async function deleteTrip(tripId: string) {
+  // Also delete associated itineraries if any (optional, but good for cleanup)
+  await deleteDoc(doc(db, 'trips', tripId));
+  const q = query(collection(db, 'itineraries'), where('tripId', '==', tripId));
+  const snap = await getDocs(q);
+  const batch = snap.docs.map(d => deleteDoc(d.ref));
+  await Promise.all(batch);
+}
+
 // ================================
 // SAVED PLACES FUNCTIONS
 // ================================

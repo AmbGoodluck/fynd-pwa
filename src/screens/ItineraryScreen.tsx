@@ -20,6 +20,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { useTripStore } from '../store/useTripStore';
 import { saveItinerary } from '../services/database';
 import { Timestamp } from 'firebase/firestore';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -97,6 +98,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const { addMyTrip, sessionUserId, sessionUserName } = useSharedTripStore();
   const { user: authUser } = useAuthStore();
   const { isGuest } = useGuestStore();
+  const tabBarHeight = Platform.OS === 'web' ? useBottomTabBarHeight() : 0;
 
   // Always use the real auth user identity when available.
   // Guests fall back to the persisted random sessionUserId.
@@ -206,14 +208,14 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       const places = stops.map((s) => ({
         placeId: s.id,
         name: s.name,
-        description: s.description,
-        photoUrl: s.image,
-        rating: parseFloat(s.rating) || undefined,
-        distanceKm: s.distance ? parseFloat(s.distance) : undefined,
-        walkMinutes: s.time ? parseInt(s.time) : undefined,
+        description: s.description || '',
+        photoUrl: s.image || '',
+        rating: parseFloat(s.rating) || 0,
+        distanceKm: s.distance ? parseFloat(s.distance) : 0,
+        walkMinutes: s.time ? parseInt(s.time) : 0,
         coordinates: s.coordinate.latitude !== 0
           ? { lat: s.coordinate.latitude, lng: s.coordinate.longitude }
-          : undefined,
+          : { lat: 0, lng: 0 },
       }));
 
       const trip = await createSharedTrip({
@@ -465,11 +467,11 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           onReorder={setStops}
           renderItem={renderStop}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingVertical: 4, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingVertical: 4, paddingBottom: tabBarHeight + 40 }}
         />
       )}
 
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(12, bottomInset) }]}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(12, bottomInset) }, Platform.OS === 'web' && { marginBottom: tabBarHeight }]}>
         <TouchableOpacity
           style={[styles.mapBtn, stops.length === 0 && { opacity: 0.4 }]}
           onPress={() => stops.length > 0 && setShowMapModal(true)}

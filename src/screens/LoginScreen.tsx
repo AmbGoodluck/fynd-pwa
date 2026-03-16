@@ -36,6 +36,7 @@ export default function LoginScreen({ navigation }: Props) {
         isPremium: userDoc?.isPremium || false,
         travelPreferences: userDoc?.travelPreferences || [],
       });
+      await useGuestStore.getState().hydrateSavedPlaces();
       navigation.replace('MainTabs');
     } catch (e: any) {
       const msg = e.code === 'auth/invalid-credential' ? 'Incorrect email or password.' :

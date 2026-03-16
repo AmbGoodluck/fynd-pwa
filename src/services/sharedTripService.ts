@@ -63,10 +63,12 @@ export async function createSharedTrip(params: {
   };
 
   try {
+    console.log('Attempting to create shared trip in Firestore:', { trip_id, owner_id: params.owner_id, TRIPS_COL });
     await setDoc(doc(db, TRIPS_COL, trip_id), trip);
+    console.log('Shared trip created successfully in Firestore');
   } catch (err: any) {
+    console.error('Firestore createSharedTrip ERROR:', err.code, err.message, err);
     if (err?.code === 'permission-denied') {
-      console.error('Firestore Permission Denied for creating shared trip:', err);
       throw new Error('PERMISSION_DENIED: Please check your Firestore Rules. They might be blocking shared_trips writes.');
     }
     throw err;

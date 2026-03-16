@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { usePremiumStore } from '../store/usePremiumStore';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 type Props = { navigation: any };
 
@@ -20,6 +21,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const { user, logout: firebaseLogout } = useAuthStore();
   const { isGuest, logout: guestLogout } = useGuestStore();
   const { isPremium } = usePremiumStore();
+  const tabBarHeight = useBottomTabBarHeight();
 
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
   const displayEmail = user?.email || (isGuest ? 'Guest Session' : '');
@@ -95,7 +97,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
-  scroll: { paddingBottom: 48 },
+  scroll: { paddingBottom: 120 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 8 },
   avatarSection: { alignItems: 'center', paddingBottom: 24, paddingTop: 4, gap: 6 },
   avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 4, shadowColor: '#22C55E', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },

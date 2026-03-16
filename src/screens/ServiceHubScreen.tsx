@@ -4,6 +4,7 @@ import {
   Image, ActivityIndicator, Alert, Linking, Platform, ScrollView,
   Modal, TouchableWithoutFeedback,
 } from 'react-native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -36,6 +37,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const [showGuestModal, setShowGuestModal] = useState(false);
   const { isGuest } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
+  const tabBarHeight = useBottomTabBarHeight();
 
   useEffect(() => {
     if (isGuest || !isAuthenticated) {
@@ -83,7 +85,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
       if (Platform.OS === 'web' && e?.code === 1) {
         Alert.alert('Location Blocked', 'Allow location access in your browser settings and reload.');
       }
-      Sentry.captureException(e, { tags: { context: 'ServiceHubScreen.getLocation' } });
+      Sentry.captureException(e, { tags: { context: 'ServiceHubScreen.getLocation' } } as any);
       return null;
     }
   };
@@ -135,7 +137,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
     navigation.navigate('TripMap', { stops });
   };
 
-  const renderItem = ({ item }: { item: PlaceResult }) => (
+  const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <Image
         source={{ uri: item.photoUrl || getPhotoUrl(item.photoRef) }}
@@ -227,7 +229,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
           data={results}
           keyExtractor={item => item.placeId}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + 20 }]}
           showsVerticalScrollIndicator={false}
         />
       )}

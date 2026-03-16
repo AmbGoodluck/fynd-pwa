@@ -77,6 +77,7 @@ export default function RegisterScreen({ navigation }: Props) {
         isPremium: false,
         travelPreferences: [],
       });
+      await useGuestStore.getState().hydrateSavedPlaces();
 
       navigation.replace('MainTabs');
 

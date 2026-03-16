@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 
 
 const BANNER_IMAGES = [
@@ -37,6 +38,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
+  const tabBarHeight = useBottomTabBarHeight();
 
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
 
@@ -104,12 +106,12 @@ export default function HomeScreen({ navigation }: Props) {
             horizontal pagingEnabled scrollEnabled={false}
             showsHorizontalScrollIndicator={false}
             keyExtractor={(_, i) => i.toString()}
-            getItemLayout={(_, index) => ({
+            getItemLayout={(_: any, index: number) => ({
               length: width - 40,
               offset: (width - 40) * index,
               index,
             })}
-            renderItem={({ item }) => (
+            renderItem={({ item }: { item: string }) => (
               <ImageBackground
                 source={{ uri: item }}
                 style={[styles.banner, { width: width - 40 }]}
@@ -203,7 +205,7 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         )}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: tabBarHeight + 20 }} />
       </ScrollView>
 
       {/* ServiceHub Guest Restriction Modal */}
