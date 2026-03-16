@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { auth } from '../services/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 
 type Props = { navigation: any };
@@ -16,8 +18,52 @@ export default function AccountSettingsScreen({ navigation }: Props) {
   const [showNew, setShowNew] = useState(false);
   const [showReenter, setShowReenter] = useState(false);
 
-  const name = user?.fullName || 'Anika';
-  const email = user?.email || 'wvdiv@anika.com';
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const name = user?.fullName || '';
+  const email = user?.email || '';
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !oldPassword || !reenterPassword) {
+      Alert.alert('Missing Fields', 'Please fill in all password fields.');
+      return;
+    }
+    if (newPassword !== reenterPassword) {
+      Alert.alert('Passwords Don\'t Match', 'New password and confirmation must match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Password Too Short', 'New password must be at least 6 characters.');
+      return;
+    }
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser || !firebaseUser.email) {
+      Alert.alert('Error', 'No authenticated user found. Please sign in again.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const credential = EmailAuthProvider.credential(firebaseUser.email, oldPassword);
+      await reauthenticateWithCredential(firebaseUser, credential);
+      await updatePassword(firebaseUser, newPassword);
+      setOldPassword('');
+      setNewPassword('');
+      setReenterPassword('');
+      setChangePasswordOpen(false);
+      Alert.alert('Success', 'Password updated successfully.');
+    } catch (e: any) {
+      const code = e?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        Alert.alert('Wrong Password', 'The current password you entered is incorrect.');
+      } else if (code === 'auth/too-many-requests') {
+        Alert.alert('Too Many Attempts', 'Please wait a moment before trying again.');
+      } else {
+        Alert.alert('Error', 'Could not update password. Please try again.');
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -93,8 +139,14 @@ export default function AccountSettingsScreen({ navigation }: Props) {
                   <Ionicons name={showReenter ? 'eye-off-outline' : 'eye-outline'} size={18} color="#8E8E93" />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.changeBtn}>
-                <Text style={styles.changeBtnText}>Change Password</Text>
+              <TouchableOpacity
+                style={[styles.changeBtn, changingPassword && { opacity: 0.6 }]}
+                onPress={handleChangePassword}
+                disabled={changingPassword}
+              >
+                <Text style={styles.changeBtnText}>
+                  {changingPassword ? 'Updating…' : 'Change Password'}
+                </Text>
               </TouchableOpacity>
             </>
           )}
