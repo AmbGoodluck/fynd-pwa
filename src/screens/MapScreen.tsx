@@ -711,6 +711,11 @@ export default function MapScreen({ navigation, route }: Props) {
                   {activeStop.name}
                 </Text>
               ) : null}
+              <View style={styles.progressDots}>
+                {stops.slice(0, 12).map((_, i) => (
+                  <View key={i} style={[styles.progressDot, i === activeIdx && styles.progressDotActive]} />
+                ))}
+              </View>
             </View>
 
             <TouchableOpacity
@@ -809,7 +814,9 @@ export default function MapScreen({ navigation, route }: Props) {
 
         {!hasTabStops && (
           <View style={styles.idleCard}>
-            <Ionicons name="compass-outline" size={44} color="#22C55E" style={{ marginBottom: 14 }} />
+            <View style={styles.idleIconWrap}>
+              <Ionicons name="compass-outline" size={40} color="#22C55E" />
+            </View>
             <Text style={styles.idleTitle}>Your trip map lives here</Text>
             <Text style={styles.idleSub}>
               Build an itinerary from Suggested Places, then tap{' '}
@@ -881,19 +888,6 @@ export default function MapScreen({ navigation, route }: Props) {
       {/* ── Stop navigator bar ── */}
       <View style={[styles.tripBottomSection, tripBottomLayoutStyle]}>
 
-        {/* ── Quick-help hints strip ── */}
-        <View style={styles.hintsStrip}>
-          <View style={styles.hintItem}>
-            <Ionicons name="navigate" size={13} color="#22C55E" />
-            <Text style={styles.hintTxt}>Tap <Text style={styles.hintBold}>Navigate</Text> to open turn-by-turn directions</Text>
-          </View>
-          <View style={styles.hintDivider} />
-          <View style={styles.hintItem}>
-            <Ionicons name="chevron-back" size={13} color="#22C55E" />
-            <Ionicons name="chevron-forward" size={13} color="#22C55E" />
-            <Text style={styles.hintTxt}>Use arrows to browse stops · tap a pin to jump</Text>
-          </View>
-        </View>
         <View style={styles.stopBar}>
           <TouchableOpacity
             onPress={() => activeIdx > 0 && selectStop(activeIdx - 1)}
@@ -918,6 +912,11 @@ export default function MapScreen({ navigation, route }: Props) {
                 {activeStop.name}
               </Text>
             ) : null}
+            <View style={styles.progressDots}>
+              {stops.slice(0, 12).map((_, i) => (
+                <View key={i} style={[styles.progressDot, i === activeIdx && styles.progressDotActive]} />
+              ))}
+            </View>
           </View>
 
           <TouchableOpacity
@@ -1083,420 +1082,278 @@ export default function MapScreen({ navigation, route }: Props) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
 
   // ── Fullscreen mode ──
   fullscreenContainer: { flex: 1, backgroundColor: '#000' },
   fullscreenMapBox: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-    position: 'relative',
-    overflow: 'hidden',
+    flex: 1, backgroundColor: '#E5E7EB',
+    position: 'relative', overflow: 'hidden',
   },
   fullscreenControls: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 10,
+    position: 'absolute', top: 12, left: 12, right: 12,
+    flexDirection: 'row', gap: 6, alignItems: 'center', zIndex: 10,
   },
   closeFullscreenBtn: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', bottom: 20, right: 20,
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   fullscreenBottomPanel: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    maxHeight: '35%',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingTop: 8,
+    shadowColor: '#000', shadowOpacity: 0.14, shadowRadius: 20,
+    shadowOffset: { width: 0, height: -5 }, elevation: 14,
   },
-  detailCardFullscreen: {
-    marginVertical: 10,
-  },
+  detailCardFullscreen: { marginTop: 4, marginBottom: 8 },
 
   // ── Map box ──
   mapBox: {
-    width: '100%',
-    height: MAP_H,
-    backgroundColor: '#F2F2F7',
-    overflow: 'hidden',
-    position: 'relative',
+    width: '100%', height: MAP_H,
+    backgroundColor: '#E5E7EB', overflow: 'hidden', position: 'relative',
   },
   webView: { flex: 1 },
   mapLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F2F2F7',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(248,249,250,0.96)', gap: 10,
   },
-  mapLoadingTxt: {
-    marginTop: 10,
-    fontSize: 13,
-    color: '#8E8E93',
-    fontFamily: F.regular,
-  },
+  mapLoadingTxt: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
 
   // Map floating controls
   mapControls: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 10,
+    position: 'absolute', top: 12, left: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 6, zIndex: 10,
   },
   overviewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.93)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 22, paddingHorizontal: 12, paddingVertical: 8,
+    shadowColor: '#000', shadowOpacity: 0.14, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
-  overviewBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#111827' },
+  overviewBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#374151' },
   endTripBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#EF4444',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#EF4444', borderRadius: 22,
+    paddingHorizontal: 12, paddingVertical: 8,
+    shadowColor: '#EF4444', shadowOpacity: 0.4, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
-  endTripBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
+  endTripBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
   fullscreenBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#3B82F6',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 22, paddingHorizontal: 12, paddingVertical: 8,
+    shadowColor: '#000', shadowOpacity: 0.14, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 4,
   },
-  fullscreenBtnTxt: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
+  fullscreenBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#374151' },
   navigateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#22C55E',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#22C55E', borderRadius: 22,
+    paddingHorizontal: 14, paddingVertical: 8,
+    shadowColor: '#22C55E', shadowOpacity: 0.45, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 }, elevation: 5,
   },
   navigateBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
 
   navBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#EFF6FF', borderRadius: 12,
-    paddingHorizontal: 12, paddingVertical: 8,
-    marginBottom: 8, marginHorizontal: 4,
-    borderWidth: 1, borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF', borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 10,
+    marginHorizontal: 14, marginBottom: 8,
+    borderWidth: 1, borderColor: '#BFDBFE', gap: 8,
+    shadowColor: '#3B82F6', shadowOpacity: 0.08,
+    shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
   navBarText: { flex: 1, fontSize: 13, fontFamily: F.semibold, color: '#1D4ED8' },
   navStopBtn: {
-    backgroundColor: '#EF4444', borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: '#EF4444', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 5,
   },
-  navStopBtnText: { fontSize: 11, fontFamily: F.semibold, color: '#fff' },
+  navStopBtnText: { fontSize: 11, fontFamily: F.bold, color: '#fff' },
 
   // ── Idle card ──
   idleCard: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 24,
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 36, paddingBottom: 32,
+  },
+  idleIconWrap: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#22C55E', shadowOpacity: 0.18, shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   idleTitle: {
-    fontSize: 20,
-    fontFamily: F.bold,
-    color: '#111827',
-    marginBottom: 10,
-    textAlign: 'center',
+    fontSize: 22, fontFamily: F.bold, color: '#111827',
+    marginBottom: 10, textAlign: 'center',
   },
   idleSub: {
-    fontSize: 14,
-    color: '#57636C',
-    textAlign: 'center',
-    lineHeight: 21,
-    marginBottom: 24,
+    fontSize: 14, color: '#6B7280', textAlign: 'center',
+    lineHeight: 22, marginBottom: 28,
   },
   idleSubBold: { fontFamily: F.semibold, color: '#111827' },
   idleCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#22C55E',
-    borderRadius: 14,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#22C55E', borderRadius: 16,
+    paddingHorizontal: 32, paddingVertical: 14,
+    shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 5,
   },
   idleCtaTxt: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
 
-  // ── Quick-help hints strip ──
-  hintsStrip: {
-    backgroundColor: '#F9FAFB',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    gap: 4,
-  },
-  hintItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  hintTxt: {
-    fontSize: 11,
-    color: '#6B7280',
-    flex: 1,
-    fontFamily: F.regular,
-  },
-  hintBold: {
-    fontFamily: F.semibold,
-    color: '#111827',
-  },
-  hintDivider: {
-    height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 2,
+  // ── Bottom trip panel ──
+  tripBottomSection: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#F0F0F5',
+    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 14,
+    shadowOffset: { width: 0, height: -4 }, elevation: 10,
   },
 
   // ── Stop navigator bar ──
-  tripBottomSection: {
-    backgroundColor: '#fff',
-  },
   stopBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-    backgroundColor: '#fff',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, gap: 4,
   },
   arrowBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
-  arrowBtnDim: { opacity: 0.35 },
+  arrowBtnDim: { opacity: 0.3 },
   stopBarCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
-  stopBarCount: { fontSize: 12, fontFamily: F.regular, color: '#8E8E93' },
-  stopBarNum: { fontFamily: F.bold, color: '#111827' },
-  stopBarOf: { fontFamily: F.regular, color: '#8E8E93' },
+  stopBarCount: { fontSize: 11, fontFamily: F.regular, color: '#9CA3AF', letterSpacing: 0.2 },
+  stopBarNum: { fontFamily: F.bold, color: '#22C55E', fontSize: 13 },
+  stopBarOf: { fontFamily: F.regular, color: '#9CA3AF', fontSize: 11 },
   stopBarName: {
-    fontSize: 14,
-    fontFamily: F.semibold,
-    color: '#111827',
-    marginTop: 1,
+    fontSize: 15, fontFamily: F.semibold, color: '#111827',
+    marginTop: 2, textAlign: 'center',
+  },
+  progressDots: {
+    flexDirection: 'row', justifyContent: 'center',
+    gap: 4, marginTop: 7,
+  },
+  progressDot: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: '#E5E7EB',
+  },
+  progressDotActive: {
+    width: 20, height: 6, borderRadius: 3, backgroundColor: '#22C55E',
   },
 
   // ── Active stop detail card ──
   detailCard: {
     flexDirection: 'row',
-    marginHorizontal: 12,
-    marginTop: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    overflow: 'hidden',
-    height: 90,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    marginHorizontal: 14, marginTop: 6,
+    borderRadius: 18, overflow: 'hidden',
+    height: 100, backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#F0F0F5',
+    shadowColor: '#000', shadowOpacity: 0.09, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
-  detailImg: { width: 90, height: 90, resizeMode: 'cover' },
+  detailImg: { width: 100, height: 100, resizeMode: 'cover' },
   detailBody: {
-    flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    justifyContent: 'center',
+    flex: 1, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center',
   },
-  detailName: {
-    fontSize: 14,
-    fontFamily: F.semibold,
-    color: '#111827',
-    marginBottom: 3,
-  },
-  detailDesc: { fontSize: 12, color: '#57636C', marginBottom: 5 },
+  detailName: { fontSize: 15, fontFamily: F.semibold, color: '#111827', marginBottom: 3 },
+  detailDesc: { fontSize: 12, color: '#6B7280', marginBottom: 6, lineHeight: 17 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 20,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#F0FDF4', borderRadius: 20,
+    paddingHorizontal: 8, paddingVertical: 3,
   },
-  chipTxt: { fontSize: 11, fontFamily: F.medium, color: '#374151' },
+  chipTxt: { fontSize: 11, fontFamily: F.medium, color: '#16A34A' },
   goBtn: {
-    width: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: '#F2F2F7',
+    width: 64, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#F0FDF4',
+    borderLeftWidth: 1, borderLeftColor: '#D1FAE5', gap: 4,
   },
-  goBtnTxt: {
-    fontSize: 11,
-    fontFamily: F.semibold,
-    color: '#22C55E',
-    marginTop: 2,
-  },
+  goBtnTxt: { fontSize: 11, fontFamily: F.bold, color: '#22C55E', letterSpacing: 0.2 },
 
   // ── Thumbnail strip ──
-  thumbScroll: { marginTop: 10 },
-  thumbRow: { paddingHorizontal: 12, gap: 10 },
-  thumbItem: { alignItems: 'center', width: 68 },
+  thumbScroll: { marginTop: 10, marginBottom: 4 },
+  thumbRow: { paddingHorizontal: 14, paddingBottom: 4, gap: 10 },
+  thumbItem: { alignItems: 'center', width: 72 },
   thumbImgWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
+    width: 64, height: 64, borderRadius: 14, overflow: 'hidden',
+    borderWidth: 2.5, borderColor: 'transparent', position: 'relative',
   },
-  thumbImgWrapActive: { borderColor: '#22C55E' },
-  thumbImg: { width: 60, height: 60, resizeMode: 'cover' },
+  thumbImgWrapActive: {
+    borderColor: '#22C55E',
+    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  },
+  thumbImg: { width: 64, height: 64, resizeMode: 'cover' },
   thumbBadge: {
-    position: 'absolute',
-    bottom: 3,
-    left: 3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(0,0,0,0.50)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', bottom: 4, left: 4,
+    minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
   },
   thumbBadgeActive: { backgroundColor: '#22C55E' },
   thumbBadgeTxt: { fontSize: 10, fontFamily: F.bold, color: '#fff' },
   thumbLbl: {
-    fontSize: 10,
-    fontFamily: F.regular,
-    color: '#8E8E93',
-    marginTop: 4,
-    textAlign: 'center',
-    width: 68,
+    fontSize: 10, fontFamily: F.regular, color: '#9CA3AF',
+    marginTop: 5, textAlign: 'center', width: 72,
   },
-  thumbLblActive: { fontFamily: F.medium, color: '#22C55E' },
+  thumbLblActive: { fontFamily: F.semibold, color: '#22C55E' },
 
   // ── Rating Modal ──
   ratingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center', zIndex: 999,
   },
   ratingCard: {
-    width: '85%',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
+    width: '88%', backgroundColor: '#fff', borderRadius: 24,
+    padding: 28, alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 }, elevation: 14,
   },
   ratingTitle: {
-    fontSize: 20,
-    fontFamily: F.bold,
-    color: '#111827',
-    marginBottom: 6,
+    fontSize: 20, fontFamily: F.bold, color: '#111827',
+    textAlign: 'center', marginBottom: 6,
   },
   ratingSubtitle: {
-    fontSize: 14,
-    fontFamily: F.regular,
-    color: '#6B7280',
-    marginBottom: 20,
+    fontSize: 14, fontFamily: F.regular, color: '#6B7280', marginBottom: 20,
   },
   starsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 24,
+    flexDirection: 'row', justifyContent: 'center',
+    gap: 8, marginBottom: 28, marginTop: 12,
   },
-  starBtn: {
-    padding: 4,
-  },
-  ratingActions: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
+  starBtn: { padding: 4 },
+  ratingActions: { flexDirection: 'row', gap: 10, width: '100%' },
   ratingCancelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
+    flex: 1, paddingVertical: 13, borderRadius: 14,
+    backgroundColor: '#F3F4F6', alignItems: 'center',
   },
-  ratingCancelTxt: {
-    fontSize: 14,
-    fontFamily: F.semibold,
-    color: '#6B7280',
-  },
+  ratingCancelTxt: { fontSize: 14, fontFamily: F.semibold, color: '#6B7280' },
   ratingSubmitBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#22C55E',
-    alignItems: 'center',
+    flex: 1, paddingVertical: 13, borderRadius: 14,
+    backgroundColor: '#22C55E', alignItems: 'center',
+    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  ratingSubmitBtnDisabled: {
-    backgroundColor: '#D1D5DB',
-  },
-  ratingSubmitTxt: {
-    fontSize: 14,
-    fontFamily: F.semibold,
-    color: '#fff',
-  },
+  ratingSubmitBtnDisabled: { backgroundColor: '#D1D5DB', shadowOpacity: 0, elevation: 0 },
+  ratingSubmitTxt: { fontSize: 14, fontFamily: F.bold, color: '#fff' },
 
   // ── ServiceHub FAB ──
   serviceHubFab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 220,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    position: 'absolute', right: 16, bottom: 228,
+    width: 50, height: 50, borderRadius: 25,
     backgroundColor: '#22C55E',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#22C55E', shadowOpacity: 0.45, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 }, elevation: 8, zIndex: 20,
     zIndex: 20,
   },
 });
