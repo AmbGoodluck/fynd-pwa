@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Linking,
-  Alert, Modal, Image, Platform,
+  Alert, Modal, Image, Platform, TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,7 +74,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [showMapModal, setShowMapModal] = useState(false);
   const [previewStop, setPreviewStop] = useState<PreviewPlace | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [copying, setCopying] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLink, setShareLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
@@ -142,9 +144,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     navigation.navigate('TripMap', { stops });
   };
 
-  const handleCopyLink = async () => {
-    if (stops.length === 0 || copying) return;
-    setCopying(true);
+  const handleShareTrip = async () => {
+    if (stops.length === 0 || sharing) return;
+    setSharing(true);
     try {
       const today = new Date().toLocaleDateString('en-US', {
         month: 'long', day: 'numeric', year: 'numeric',
@@ -172,22 +174,32 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
       addMyTrip(trip);
       const link = buildShareLink(trip.trip_id);
-
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(link);
-      }
-
-      logEvent('trip_link_copied', { destination, stop_count: stops.length });
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2500);
+      setShareLink(link);
+      setLinkCopied(false);
+      setShowShareModal(true);
+      logEvent('trip_share_modal_opened', { destination, stop_count: stops.length });
     } catch (e: any) {
       if (e?.message?.includes('TRIP_LIMIT')) {
         Alert.alert('Trip Limit Reached', 'Trips in this version support up to 7 places per day.');
       } else {
-        Alert.alert('Error', 'Could not copy link. Please try again.');
+        Alert.alert('Error', 'Could not generate share link. Please try again.');
       }
     } finally {
-      setCopying(false);
+      setSharing(false);
+    }
+  };
+
+  const handleCopyFromModal = async () => {
+    if (!shareLink) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(shareLink);
+      }
+      logEvent('trip_link_copied', { destination, stop_count: stops.length });
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      Alert.alert('Could not copy', 'Please copy the link manually.');
     }
   };
 
@@ -289,17 +301,17 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         <Text style={styles.headerTitle} numberOfLines={1}>Itinerary</Text>
         <TouchableOpacity
           style={styles.shareHeaderBtn}
-          onPress={handleCopyLink}
-          disabled={copying}
+          onPress={handleShareTrip}
+          disabled={sharing}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons
-            name={linkCopied ? 'checkmark-circle-outline' : copying ? 'hourglass-outline' : 'link-outline'}
+            name={sharing ? 'hourglass-outline' : 'share-social-outline'}
             size={18}
             color="#22C55E"
           />
           <Text style={styles.shareHeaderBtnText}>
-            {copying ? 'Copying…' : linkCopied ? 'Copied!' : 'Copy Link'}
+            {sharing ? 'Loading…' : 'Share Trip'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -394,6 +406,61 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Share Trip Modal */}
+      <Modal
+        visible={showShareModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.shareModalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.shareModalIconWrap}>
+              <Ionicons name="share-social-outline" size={28} color="#22C55E" />
+            </View>
+            <Text style={styles.shareModalTitle}>Share Trip</Text>
+            <Text style={styles.shareModalBody}>
+              Copy the link below and share it with fellow travellers to invite them to your trip.
+            </Text>
+
+            <View style={styles.shareLinkBox}>
+              <TextInput
+                style={styles.shareLinkText}
+                value={shareLink}
+                editable={false}
+                selectTextOnFocus
+                multiline={false}
+                numberOfLines={1}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
+              onPress={handleCopyFromModal}
+            >
+              <Ionicons
+                name={linkCopied ? 'checkmark-circle-outline' : 'copy-outline'}
+                size={18}
+                color="#fff"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.copyBtnText}>
+                {linkCopied ? 'Copied!' : 'Copy Link'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
+              <Text style={styles.modalCancelText}>Done</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -534,4 +601,33 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   modalCancelText: { fontSize: 15, color: '#57636C', fontWeight: '500' },
+
+  // Share Trip Modal
+  shareModalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 20, paddingBottom: 40, alignItems: 'center',
+  },
+  shareModalIconWrap: {
+    width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0FDF4',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  },
+  shareModalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6, textAlign: 'center' },
+  shareModalBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 21, marginBottom: 18, paddingHorizontal: 8,
+  },
+  shareLinkBox: {
+    width: '100%', backgroundColor: '#F3F4F6', borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14,
+  },
+  shareLinkText: {
+    fontSize: 13, color: '#111827', fontFamily: 'monospace',
+  },
+  copyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#22C55E', borderRadius: 14,
+    width: '100%', height: 50, marginBottom: 12,
+  },
+  copyBtnDone: { backgroundColor: '#16A34A' },
+  copyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

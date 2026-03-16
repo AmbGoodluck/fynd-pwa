@@ -82,29 +82,29 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      {/* ── Top bar — fixed, outside scroll ──────────────── */}
+      <View style={styles.topBar}>
+        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
+        {isPremium && (
+          <View style={styles.premiumBadge}>
+            <Ionicons name="star" size={10} color="#fff" />
+            <Text style={styles.premiumBadgeText}>Plus</Text>
+          </View>
+        )}
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity
+          style={styles.sharedTripsBtn}
+          onPress={() => navigation.navigate('SharedTrips')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="people-outline" size={22} color="#22C55E" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.profileInitial}>{displayName?.[0]?.toUpperCase() ?? '?'}</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* ── Top bar ──────────────────────────────────────── */}
-        <View style={styles.topBar}>
-          <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-          {isPremium && (
-            <View style={styles.premiumBadge}>
-              <Ionicons name="star" size={10} color="#fff" />
-              <Text style={styles.premiumBadgeText}>Plus</Text>
-            </View>
-          )}
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity
-            style={styles.sharedTripsBtn}
-            onPress={() => navigation.navigate('SharedTrips')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="people-outline" size={22} color="#22C55E" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
-            <Text style={styles.profileInitial}>{displayName?.[0]?.toUpperCase() ?? '?'}</Text>
-          </TouchableOpacity>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {/* ── Hero Banner ──────────────────────────────────── */}
         <View style={styles.bannerWrap}>
