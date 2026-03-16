@@ -28,19 +28,16 @@ interface PremiumStore {
 export const usePremiumStore = create<PremiumStore>()(
   persist(
     (set, get) => ({
-      isPremium: false,
+      // All users are FyndPlus — free for now.
+      isPremium: true,
       weeklyItineraryCount: 0,
       weeklyResetDate: getWeekStart(),
 
-      setIsPremium: (val) => set({ isPremium: val }),
-
-      canCreateItinerary: () => {
-        const state = get();
-        if (state.isPremium) return true;
-        const currentWeekStart = getWeekStart();
-        if (currentWeekStart !== state.weeklyResetDate) return true; // new week resets
-        return state.weeklyItineraryCount < FREE_WEEKLY_ITINERARY_LIMIT;
+      setIsPremium: (_val) => {
+        // No-op: premium is open to all users.
       },
+
+      canCreateItinerary: () => true,
 
       incrementItineraryCount: () => {
         const currentWeekStart = getWeekStart();
@@ -55,6 +52,12 @@ export const usePremiumStore = create<PremiumStore>()(
     {
       name: 'fynd-premium',
       storage: createJSONStorage(() => AsyncStorage),
+      // Never persist isPremium — always boot with true so stale false values
+      // in storage don't accidentally re-enable the gate.
+      partialize: (state) => ({
+        weeklyItineraryCount: state.weeklyItineraryCount,
+        weeklyResetDate: state.weeklyResetDate,
+      }),
     }
   )
 );
