@@ -20,10 +20,8 @@ import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import { submitFeedback } from '../services/feedbackService';
-import { usePremiumStore } from '../store/usePremiumStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
-import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import { useTripStore } from '../store/useTripStore';
 import { openInExternalMaps, openRouteInMaps } from '../services/mapsIntent';
 
@@ -375,7 +373,6 @@ export default function MapScreen({ navigation, route }: Props) {
   const { width: viewportWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isMobileWeb = Platform.OS === 'web' && viewportWidth <= 900;
-  const { isPremium } = usePremiumStore();
   const { isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
 
@@ -413,7 +410,6 @@ export default function MapScreen({ navigation, route }: Props) {
   const [rating, setRating] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
   const [navInfo, setNavInfo] = useState<{ distance: string; duration: string } | null>(null);
-  const [showServiceHubUpgradeModal, setShowServiceHubUpgradeModal] = useState(false);
   const mapLoadStartRef = useRef<number>(Date.now());
 
   const mapsJsUrl = useMemo(
@@ -578,10 +574,6 @@ export default function MapScreen({ navigation, route }: Props) {
   const handleServiceHubFab = () => {
     if (isGuest || !isAuthenticated) {
       Alert.alert('Account Required', 'Sign in to access ServiceHub.');
-      return;
-    }
-    if (!isPremium) {
-      setShowServiceHubUpgradeModal(true);
       return;
     }
     navigation.navigate('ServiceHub');
@@ -1038,16 +1030,6 @@ export default function MapScreen({ navigation, route }: Props) {
           <Ionicons name="help-buoy-outline" size={22} color="#fff" />
         </TouchableOpacity>
       )}
-
-      {/* ── ServiceHub Upgrade Modal ── */}
-      <FyndPlusUpgradeModal
-        visible={showServiceHubUpgradeModal}
-        onClose={() => setShowServiceHubUpgradeModal(false)}
-        onUpgrade={() => { setShowServiceHubUpgradeModal(false); navigation.navigate('Subscription'); }}
-        icon="compass-outline"
-        title="Unlock ServiceHub"
-        message="Access nearby medical help, transport, and emergency services with FyndPlus."
-      />
 
       {/* ── Rating Modal ── */}
       {showRating && (

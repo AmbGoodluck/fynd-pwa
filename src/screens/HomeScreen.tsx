@@ -9,8 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
-import { usePremiumStore } from '../store/usePremiumStore';
-import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
+
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -35,12 +34,9 @@ export default function HomeScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
-  const { isPremium } = usePremiumStore();
-
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
-  const [showServiceHubPremiumModal, setShowServiceHubPremiumModal] = useState(false);
 
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
 
@@ -69,10 +65,6 @@ export default function HomeScreen({ navigation }: Props) {
       setShowServiceHubGuestModal(true);
       return;
     }
-    if (!isPremium) {
-      setShowServiceHubPremiumModal(true);
-      return;
-    }
     if (id === 'seeAll') {
       navigation.navigate('ServiceHub');
     } else {
@@ -85,12 +77,10 @@ export default function HomeScreen({ navigation }: Props) {
       {/* ── Top bar — fixed, outside scroll ──────────────── */}
       <View style={styles.topBar}>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        {isPremium && (
-          <View style={styles.premiumBadge}>
-            <Ionicons name="star" size={10} color="#fff" />
-            <Text style={styles.premiumBadgeText}>Plus</Text>
-          </View>
-        )}
+        <View style={styles.premiumBadge}>
+          <Ionicons name="star" size={10} color="#fff" />
+          <Text style={styles.premiumBadgeText}>Plus</Text>
+        </View>
         <View style={{ flex: 1 }} />
         <TouchableOpacity
           style={styles.sharedTripsBtn}
@@ -152,16 +142,10 @@ export default function HomeScreen({ navigation }: Props) {
             <Ionicons name="compass-outline" size={18} color="#111827" />
             <Text style={styles.sectionTitle}>ServiceHub</Text>
           </View>
-          {!isGuest && isAuthenticated && isPremium && (
+          {!isGuest && isAuthenticated && (
             <TouchableOpacity onPress={() => navigation.navigate('ServiceHub')} style={styles.seeAllBtn}>
               <Text style={styles.seeAllText}>See All</Text>
               <Ionicons name="chevron-forward" size={15} color="#22C55E" />
-            </TouchableOpacity>
-          )}
-          {!isGuest && isAuthenticated && !isPremium && (
-            <TouchableOpacity onPress={() => setShowServiceHubPremiumModal(true)} style={styles.seeAllBtn}>
-              <Ionicons name="lock-closed-outline" size={13} color="#9CA3AF" />
-              <Text style={[styles.seeAllText, { color: '#9CA3AF' }]}>Plus</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -221,16 +205,6 @@ export default function HomeScreen({ navigation }: Props) {
 
         <View style={{ height: 100 }} />
       </ScrollView>
-
-      {/* ServiceHub FyndPlus Upgrade Modal */}
-      <FyndPlusUpgradeModal
-        visible={showServiceHubPremiumModal}
-        onClose={() => setShowServiceHubPremiumModal(false)}
-        onUpgrade={() => { setShowServiceHubPremiumModal(false); navigation.navigate('Subscription'); }}
-        icon="compass-outline"
-        title="Unlock ServiceHub"
-        message="Get instant access to nearby medical help, transport, currency exchange, and emergency services with FyndPlus."
-      />
 
       {/* ServiceHub Guest Restriction Modal */}
       <Modal

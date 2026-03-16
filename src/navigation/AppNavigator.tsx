@@ -10,9 +10,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
-import { usePremiumStore } from '../store/usePremiumStore';
 import { useAuthStore } from '../store/useAuthStore';
-import FyndPlusUpgradeModal from '../components/FyndPlusUpgradeModal';
 import PWAInstallModal from '../components/PWAInstallModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
@@ -93,11 +91,9 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
   const insets    = useSafeAreaInsets();
   const isMobile  = Platform.OS === 'web' ? width <= 900 : true;
   const { isGuest }         = useGuestStore();
-  const { isPremium }       = usePremiumStore();
   const { isAuthenticated } = useAuthStore();
 
-  const [showGuestSavedModal,     setShowGuestSavedModal]     = useState(false);
-  const [showPremiumServiceHubModal, setShowPremiumServiceHubModal] = useState(false);
+  const [showGuestSavedModal, setShowGuestSavedModal] = useState(false);
 
   // PWA install prompt
   const { canInstall, showInstallPrompt, dismissForever } = usePWAInstall();
@@ -162,11 +158,6 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
               if (isGuest || !isAuthenticated) {
                 e.preventDefault();
                 setShowGuestSavedModal(true);
-                return;
-              }
-              if (!isPremium) {
-                e.preventDefault();
-                setShowPremiumServiceHubModal(true);
               }
             },
           }}
@@ -185,17 +176,7 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
         />
       </Tab.Navigator>
 
-      {/* ServiceHub FyndPlus Upgrade Modal (triggered from HomeScreen) */}
-      <FyndPlusUpgradeModal
-        visible={showPremiumServiceHubModal}
-        onClose={() => setShowPremiumServiceHubModal(false)}
-        onUpgrade={() => { setShowPremiumServiceHubModal(false); stackNavigation?.navigate('Subscription'); }}
-        icon="compass-outline"
-        title="Unlock ServiceHub"
-        message="Find medical help, transport, and essential services nearby. Upgrade to FyndPlus for instant access."
-      />
-
-      {/* Saved Tab Guest Modal */}
+      {/* Saved Tab / ServiceHub Guest Modal */}
       <Modal
         visible={showGuestSavedModal}
         transparent
