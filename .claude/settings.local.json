@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx kill-port 8081)",
-      "Bash(cmd /c \"netstat -ano | findstr :8081\")"
+      "Bash(cmd /c \"netstat -ano | findstr :8081\")",
+      "Bash(grep -o loading[^'']* /c/Users/jalloho/Documents/fynd-app/dist/_expo/static/js/web/index-241e106f5fa02a178faf03009eea9d22.js)",
+      "Bash(node -e \":*)"
     ]
   }
 }

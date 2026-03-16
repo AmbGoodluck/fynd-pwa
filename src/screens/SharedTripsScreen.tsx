@@ -89,9 +89,13 @@ function TripCard({
         <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
         {isOwner && onDelete && (
           <TouchableOpacity
-            onPress={onDelete}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ marginTop: 8 }}
+            onPress={(e) => {
+              // Stop the parent card TouchableOpacity from also firing (web)
+              (e as any)?.stopPropagation?.();
+              onDelete();
+            }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.deleteBtn}
           >
             <Ionicons name="trash-outline" size={18} color="#EF4444" />
           </TouchableOpacity>
@@ -307,4 +311,13 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 12, color: '#6B7280' },
 
   cardRight: { alignItems: 'center', justifyContent: 'center', paddingLeft: 8 },
+  deleteBtn: {
+    marginTop: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

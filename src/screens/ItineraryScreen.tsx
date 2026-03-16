@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Linking,
-  Alert, Modal, Image, Platform, TextInput,
+  Alert, Modal, Image, Platform, TextInput, Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,6 +78,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
@@ -189,17 +190,54 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     }
   };
 
+  const showCopiedToast = () => {
+    toastOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1800),
+      Animated.timing(toastOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    // Try modern Clipboard API first
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // fall through to legacy method
+      }
+    }
+    // Legacy fallback for older browsers / non-secure contexts
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      try {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(el);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  };
+
   const handleCopyFromModal = async () => {
     if (!shareLink) return;
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(shareLink);
-      }
-      logEvent('trip_link_copied', { destination, stop_count: stops.length });
+    const ok = await copyToClipboard(shareLink);
+    logEvent('trip_link_copied', { destination, stop_count: stops.length, success: ok });
+    if (ok) {
       setLinkCopied(true);
+      showCopiedToast();
       setTimeout(() => setLinkCopied(false), 2500);
-    } catch {
-      Alert.alert('Could not copy', 'Please copy the link manually.');
+    } else {
+      Alert.alert('Copy failed', 'Please long-press the link above and copy it manually.');
     }
   };
 
@@ -487,6 +525,15 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         onFeedback={applyBookingFeedback}
       />
 
+      {/* Copied! toast — floats above everything */}
+      <Animated.View
+        style={[styles.copiedToast, { opacity: toastOpacity }]}
+        pointerEvents="none"
+      >
+        <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
+        <Text style={styles.copiedToastText}>Link copied to clipboard!</Text>
+      </Animated.View>
+
     </SafeAreaView>
   );
 }
@@ -630,4 +677,23 @@ const styles = StyleSheet.create({
   },
   copyBtnDone: { backgroundColor: '#16A34A' },
   copyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  copiedToast: {
+    position: 'absolute',
+    bottom: 110,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#16A34A',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    zIndex: 999,
+  },
+  copiedToastText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
