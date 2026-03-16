@@ -11,6 +11,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
+import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
@@ -236,6 +239,45 @@ const linking = {
 };
 
 export default function AppNavigator() {
+  const { setUser, login, isAuthenticated } = useAuthStore();
+
+  React.useEffect(() => {
+    // Global listener to aggressively sync the app state with Firebase's true session state.
+    // This catches token expirations, manual sign-outs from other tabs, and re-hydrations.
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        // User is fully logged out on the Firebase level. Ensure our stores match.
+        // On very first mount, if they are not logged in, this clears the initial state.
+        useGuestStore.getState().logout();
+        setUser(null);
+      } else {
+        // We have a valid Firebase session. 
+        // If Zustand doesn't have it (or we just switched tabs), fetch details.
+        // We do not overwrite if Zustand already knows them, to minimize reads, 
+        // but checking the ID ensures we're synced.
+        const currentId = useAuthStore.getState().user?.id;
+        if (currentId !== user.uid) {
+          try {
+            const userDoc = await getUserDoc(user.uid);
+            login({
+              id: user.uid,
+              fullName: userDoc?.fullName || user.displayName || '',
+              email: user.email || '',
+              photoURL: user.photoURL,
+              isPremium: userDoc?.isPremium ?? false,
+              travelPreferences: userDoc?.travelPreferences ?? [],
+            });
+          } catch {
+            // Document fetch failed, but auth is valid. 
+            // The LogoScreen handles the primary sign-in flow anyway.
+          }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [setUser, login]);
+
   return (
     <NavigationContainer linking={linking}>
       <View style={styles.appFrame}>

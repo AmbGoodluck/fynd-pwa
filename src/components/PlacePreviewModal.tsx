@@ -5,9 +5,9 @@ import {
   ScrollView, NativeSyntheticEvent, NativeScrollEvent, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { FALLBACK_IMAGE } from '../constants';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600';
 
 export type PreviewPlace = {
   placeId: string;

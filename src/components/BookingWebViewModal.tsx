@@ -60,20 +60,23 @@ export default function BookingWebViewModal({
   const [showFeedback, setShowFeedback] = useState(false);
   const { top: topInset } = useSafeAreaInsets();
 
-  // On web or when WebView is unavailable, open externally and close immediately
-  if (Platform.OS === 'web' || !WebView) {
-    if (visible) {
+  // On web or when WebView is unavailable, open externally but keep Modal open for feedback
+  React.useEffect(() => {
+    if (visible && (Platform.OS === 'web' || !WebView)) {
       try {
-        (window as any).open(url, '_blank');
+        if (typeof window !== 'undefined' && window.open) {
+          window.open(url, '_blank');
+        } else {
+          Linking.openURL(url).catch(() => {});
+        }
       } catch {
         Linking.openURL(url).catch(() => {});
       }
-      // Section 9: on web, show a brief feedback prompt via a scheduled close
-      // (Web opens in new tab — no in-app WebView to attach feedback to)
-      setTimeout(onClose, 0);
+      if (placeId && onFeedback) {
+        setShowFeedback(true);
+      }
     }
-    return null;
-  }
+  }, [visible, url, placeId, onFeedback]);
 
   const handleOpenExternal = () => {
     Linking.openURL(url).catch(() => {});
@@ -167,22 +170,63 @@ export default function BookingWebViewModal({
               <Text style={styles.cancelBtnText}>Close</Text>
             </TouchableOpacity>
           </View>
+        ) : Platform.OS === 'web' || !WebView ? (
+          /* ── Web / External State ────────────────────────── */
+          <View style={styles.errorState}>
+            <Ionicons name="open-outline" size={60} color="#22C55E" />
+            <Text style={styles.errorTitle}>Booking Opened</Text>
+            <Text style={styles.errorBody}>
+              The booking page has been opened in a new tab or external browser.
+            </Text>
+            {showFeedback && placeId && onFeedback ? (
+              <View style={{ marginTop: 20, alignItems: 'center' }}>
+                <Text style={[styles.feedbackQuestion, { marginRight: 0, marginBottom: 16, textAlign: 'center' }]}>
+                  Was this the correct booking page?
+                </Text>
+                <View style={styles.feedbackBtns}>
+                  <TouchableOpacity
+                    style={[styles.feedbackBtn, styles.feedbackBtnYes, { paddingHorizontal: 20, paddingVertical: 10 }]}
+                    onPress={() => handleFeedback(true)}
+                  >
+                    <Ionicons name="thumbs-up-outline" size={16} color="#22C55E" />
+                    <Text style={[styles.feedbackBtnTextYes, { fontSize: 15 }]}>Yes, it was correct</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.feedbackBtn, styles.feedbackBtnNo, { paddingHorizontal: 20, paddingVertical: 10 }]}
+                    onPress={() => handleFeedback(false)}
+                  >
+                    <Ionicons name="thumbs-down-outline" size={16} color="#EF4444" />
+                    <Text style={[styles.feedbackBtnTextNo, { fontSize: 15 }]}>No, wrong page</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+               <TouchableOpacity style={styles.fallbackBtn} onPress={onClose}>
+                 <Text style={styles.fallbackBtnText}>Close</Text>
+               </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.cancelBtn, { marginTop: 16 }]} onPress={handleOpenExternal}>
+              <Text style={styles.cancelBtnText}>Open link again</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           /* ── WebView ─────────────────────────────────────── */
           <View style={styles.webviewWrap}>
-            <WebView
-              source={{ uri: url }}
-              onLoadStart={() => setLoading(true)}
-              onLoad={handleLoad}
-              onLoadEnd={() => setLoading(false)}
-              onError={handleError}
-              onHttpError={handleHttpError}
-              style={styles.webview}
-              javaScriptEnabled
-              domStorageEnabled
-              allowsBackForwardNavigationGestures
-              allowsInlineMediaPlayback
-            />
+            {WebView && (
+              <WebView
+                source={{ uri: url }}
+                onLoadStart={() => setLoading(true)}
+                onLoad={handleLoad}
+                onLoadEnd={() => setLoading(false)}
+                onError={handleError}
+                onHttpError={handleHttpError}
+                style={styles.webview}
+                javaScriptEnabled
+                domStorageEnabled
+                allowsBackForwardNavigationGestures
+                allowsInlineMediaPlayback
+              />
+            )}
 
             {loading && (
               <View style={styles.loadingOverlay} pointerEvents="none">

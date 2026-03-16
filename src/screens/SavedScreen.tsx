@@ -9,9 +9,10 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore, type SavedPlace } from '../store/useGuestStore';
 import { useTempItineraryStore, TEMP_MAX_PLACES } from '../store/useTempItineraryStore';
 import GuestGateModal from '../components/GuestGateModal';
+import PlaceCard from '../components/PlaceCard';
 import { F } from '../theme/fonts';
 
-const FALLBACK_IMG = 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400';
+import { FALLBACK_IMAGE } from '../constants';
 
 type Props = { navigation: any };
 
@@ -74,65 +75,18 @@ export default function SavedScreen({ navigation }: Props) {
     const inTemp = tempPlaces.some(p => p.placeId === item.placeId);
 
     return (
-      <View style={styles.card}>
-        {/* Place image — fills card width */}
-        <Image
-          source={{ uri: item.photoUrl || FALLBACK_IMG }}
-          style={styles.cardImage}
-          resizeMode="cover"
+      <View style={{ marginBottom: 16 }}>
+        <PlaceCard
+          name={item.name}
+          category={item.category || item.city}
+          description={item.description}
+          rating={item.rating > 0 ? item.rating : undefined}
+          photoUrl={item.photoUrl || FALLBACK_IMAGE}
+          isSaved={true}
+          onSave={() => unsavePlace(item.placeId)}
+          isAdded={inTemp}
+          onAdd={() => handleAddToItinerary(item)}
         />
-
-        {/* Place info */}
-        <View style={styles.cardBody}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardCity} numberOfLines={1}>{item.city || item.address || ''}</Text>
-          <View style={styles.metaRow}>
-            {item.rating > 0 && (
-              <>
-                <Ionicons name="star" size={12} color="#F59E0B" />
-                <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
-              </>
-            )}
-            {item.category ? (
-              <Text style={styles.categoryText}>
-                {item.rating > 0 ? ' · ' : ''}{item.category.replace(/_/g, ' ')}
-              </Text>
-            ) : null}
-            {item.bookingUrl ? (
-              <View style={styles.bookBadge}>
-                <Ionicons name="calendar-outline" size={10} color="#22C55E" />
-                <Text style={styles.bookBadgeText}>Bookable</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Footer: Add to Itinerary + delete */}
-        <View style={styles.cardFooter}>
-          <TouchableOpacity
-            style={[styles.addBtn, inTemp && styles.addBtnAdded]}
-            onPress={() => handleAddToItinerary(item)}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={inTemp ? 'checkmark-circle-outline' : 'add-circle-outline'}
-              size={16}
-              color="#fff"
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.addBtnText}>
-              {inTemp ? 'Added' : 'Add to Itinerary'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => unsavePlace(item.placeId)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
       </View>
     );
   };
@@ -161,16 +115,7 @@ export default function SavedScreen({ navigation }: Props) {
         </Text>
       </View>
 
-      {/* Temp itinerary banner */}
-      {tempPlaces.length > 0 && (
-        <TouchableOpacity style={styles.tempBanner} onPress={() => setShowCreateModal(true)}>
-          <Ionicons name="map-outline" size={16} color="#166534" />
-          <Text style={styles.tempBannerText}>
-            {tempPlaces.length} place{tempPlaces.length !== 1 ? 's' : ''} ready · Tap to create itinerary
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color="#166534" />
-        </TouchableOpacity>
-      )}
+
 
       {/* Search */}
       <View style={styles.searchRow}>
@@ -229,8 +174,25 @@ export default function SavedScreen({ navigation }: Props) {
           keyExtractor={item => item.placeId}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={5}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
           contentContainerStyle={styles.listContent}
         />
+      )}
+
+      {/* Temp itinerary banner (Floating) */}
+      {tempPlaces.length > 0 && (
+        <TouchableOpacity style={styles.tempBanner} onPress={() => setShowCreateModal(true)} activeOpacity={0.9}>
+          <View style={{ backgroundColor: '#BBF7D0', padding: 6, borderRadius: 8, marginRight: 10 }}>
+            <Ionicons name="map-outline" size={18} color="#166534" />
+          </View>
+          <Text style={styles.tempBannerText}>
+            {tempPlaces.length} place{tempPlaces.length !== 1 ? 's' : ''} ready · Create Trip
+          </Text>
+          <Ionicons name="chevron-forward" size={18} color="#166534" />
+        </TouchableOpacity>
       )}
 
       {/* ── Modals ─────────────────────────────────────────────────── */}
@@ -377,12 +339,13 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: '#57636C' },
 
   tempBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F0FDF4', marginHorizontal: 14, marginTop: 4,
-    borderRadius: 12, padding: 10, marginBottom: 4,
+    position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 100,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F0FDF4', borderRadius: 16, padding: 14,
     borderWidth: 1, borderColor: '#BBF7D0',
+    shadowColor: '#166534', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
-  tempBannerText: { flex: 1, fontSize: 13, color: '#166534', fontFamily: F.medium },
+  tempBannerText: { flex: 1, fontSize: 14, color: '#166534', fontFamily: F.semibold },
 
   searchRow: { paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff' },
   searchBox: {
@@ -403,76 +366,7 @@ const styles = StyleSheet.create({
 
   listContent: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 110 },
 
-  // ── Card ────────────────────────────────────────────────────────────
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  cardImage: {
-    width: '100%',
-    height: 160,
-  },
-  cardBody: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  cardName: { fontSize: 16, fontFamily: F.semibold, color: '#111827', marginBottom: 2 },
-  cardCity: { fontSize: 13, color: '#57636C', marginBottom: 6 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 },
-  ratingText: { fontSize: 12, color: '#57636C', marginLeft: 3 },
-  categoryText: { fontSize: 12, color: '#9CA3AF', textTransform: 'capitalize' },
-  bookBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#F0FDF4', borderRadius: 6,
-    paddingHorizontal: 6, paddingVertical: 3, marginLeft: 6,
-  },
-  bookBadgeText: { fontSize: 10, color: '#22C55E', fontFamily: F.semibold },
-
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 14,
-    gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F2F7',
-  },
-  addBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    borderRadius: 12,
-    height: 42,
-    shadowColor: '#22C55E',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  addBtnAdded: {
-    backgroundColor: '#16A34A',
-  },
-  addBtnText: { color: '#fff', fontSize: 14, fontFamily: F.semibold },
-
-  deleteBtn: {
-    width: 40, height: 42,
-    alignItems: 'center', justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#FEE2E2',
-  },
-
-  // ── Empty state ──────────────────────────────────────────────────────
+  // ── Modals ───────────────────────────────────────────────────────────
   emptyState: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 40, paddingVertical: 16,

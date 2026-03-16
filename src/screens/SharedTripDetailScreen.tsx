@@ -17,8 +17,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
+import PlaceCard from '../components/PlaceCard';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import { useSharedTripStore } from '../store/useSharedTripStore';
+import { useBookingLinksStore } from '../store/bookingStore';
 import {
   getSharedTrip,
   getTripMembers,
@@ -31,82 +33,7 @@ import { useGuestStore } from '../store/useGuestStore';
 
 type Props = { navigation: any; route?: any };
 
-// ── Place Card ────────────────────────────────────────────────────────────────
-function PlaceCard({
-  place,
-  index,
-  isOwner,
-  onNavigate,
-  onBook,
-}: {
-  place: SharedTripPlace;
-  index: number;
-  isOwner: boolean;
-  onNavigate: () => void;
-  onBook: (url: string, name: string) => void;
-}) {
-  return (
-    <View style={placeStyles.card}>
-      <Image
-        source={{
-          uri:
-            place.photoUrl ||
-            'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
-        }}
-        style={placeStyles.image}
-      />
 
-      <View style={placeStyles.badge}>
-        <Text style={placeStyles.badgeText}>{index + 1}</Text>
-      </View>
-
-      <View style={placeStyles.body}>
-        <Text style={placeStyles.name} numberOfLines={1}>
-          {place.name}
-        </Text>
-
-        {place.category ? (
-          <View style={placeStyles.categoryRow}>
-            <Ionicons name="pricetag-outline" size={11} color="#22C55E" />
-            <Text style={placeStyles.categoryText}>{place.category}</Text>
-          </View>
-        ) : null}
-
-        <View style={placeStyles.metaRow}>
-          {place.rating != null && (
-            <View style={placeStyles.metaItem}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={placeStyles.metaText}>{place.rating.toFixed(1)}</Text>
-            </View>
-          )}
-          {place.distanceKm != null && (
-            <View style={placeStyles.metaItem}>
-              <Ionicons name="walk-outline" size={12} color="#6B7280" />
-              <Text style={placeStyles.metaText}>{place.distanceKm} km</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={placeStyles.actions}>
-          {isValidBookingUrl(place.bookingUrl) ? (
-            <TouchableOpacity
-              style={placeStyles.bookBtn}
-              onPress={() => onBook(place.bookingUrl!, place.name)}
-            >
-              <Ionicons name="calendar-outline" size={12} color="#fff" />
-              <Text style={placeStyles.bookBtnText}>Book</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <TouchableOpacity style={placeStyles.navBtn} onPress={onNavigate}>
-            <Ionicons name="navigate-outline" size={12} color="#22C55E" />
-            <Text style={placeStyles.navBtnText}>Navigate</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 // ── Member Avatar ─────────────────────────────────────────────────────────────
 function MemberAvatar({
@@ -162,6 +89,9 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [saved, setSaved] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
+  const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
+
+  const applyBookingFeedback = useBookingLinksStore((s: any) => s.applyFeedback);
 
   const { bottom: bottomInset } = useSafeAreaInsets();
 
@@ -446,11 +376,19 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           {trip?.places.map((p, i) => (
             <PlaceCard
               key={p.placeId || i}
-              place={p}
-              index={i}
-              isOwner={isOwner}
+              name={p.name}
+              category={p.category}
+              description={p.description}
+              distance={p.distanceKm ? `${p.distanceKm} km` : undefined}
+              rating={p.rating}
+              photoUrl={p.photoUrl}
+              indexBadge={i + 1}
               onNavigate={() => navigateToPlace(p)}
-              onBook={(url, name) => { setBookingTitle(name); setBookingUrl(url); }}
+              onBook={isValidBookingUrl(p.bookingUrl) ? () => { 
+                setBookingTitle(p.name); 
+                setBookingUrl(p.bookingUrl!);
+                setBookingPlaceId(p.placeId || null);
+              } : undefined}
             />
           ))}
         </View>
@@ -507,69 +445,15 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         visible={!!bookingUrl}
         url={bookingUrl ?? ''}
         title={bookingTitle}
-        onClose={() => setBookingUrl(null)}
+        placeId={bookingPlaceId ?? undefined}
+        onClose={() => { setBookingUrl(null); setBookingPlaceId(null); }}
+        onFeedback={applyBookingFeedback}
       />
     </SafeAreaView>
   );
 }
 
-// ── Place card styles ─────────────────────────────────────────────────────────
-const placeStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    overflow: 'hidden',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  image: { width: 80, height: 128, resizeMode: 'cover' },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#22C55E',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { fontSize: 11, fontFamily: F.bold, color: '#fff' },
-  body: { flex: 1, padding: 12, justifyContent: 'space-between' },
-  name: { fontSize: 14, fontFamily: F.semibold, color: '#111827', marginBottom: 4 },
-  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  categoryText: { fontSize: 11, color: '#22C55E', fontFamily: F.medium },
-  metaRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 12, color: '#6B7280' },
-  actions: { flexDirection: 'row', gap: 8 },
-  bookBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#1D4ED8',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  bookBtnText: { fontSize: 11, color: '#fff', fontFamily: F.semibold },
-  navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: '#22C55E',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  navBtnText: { fontSize: 11, color: '#22C55E', fontFamily: F.semibold },
-});
+
 
 // ── Member avatar styles ──────────────────────────────────────────────────────
 const memberStyles = StyleSheet.create({

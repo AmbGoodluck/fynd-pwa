@@ -108,29 +108,31 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
 
     function pinSvg(label, isActive) {
       var color = isActive ? '#22C55E' : '#EF4444';
-      var size = isActive ? 40 : 34;
-      var fs = isActive ? 13 : 11;
-      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + Math.round(size * 1.3) + '" viewBox="0 0 40 52">'
-        + '<path d="M20 0C9 0 0 9 0 20c0 14 20 32 20 32S40 34 40 20C40 9 31 0 20 0z" fill="' + color + '"/>'
-        + '<circle cx="20" cy="19" r="12" fill="white"/>'
+      var size = isActive ? 44 : 36;
+      var fs = isActive ? 14 : 12;
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + Math.round(size * 1.35) + '" viewBox="0 0 40 54">'
+        + '<defs><filter id="drop" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.3"/></filter></defs>'
+        + '<path d="M20 2C10 2 2 10 2 20c0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z" fill="' + color + '" filter="url(#drop)"/>'
+        + '<circle cx="20" cy="19" r="13" fill="white"/>'
         + '<text x="20" y="24" font-family="Arial,sans-serif" font-size="' + fs + '" font-weight="bold" text-anchor="middle" fill="' + color + '">' + label + '</text>'
         + '</svg>';
       return {
         url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
-        scaledSize: new google.maps.Size(size, Math.round(size * 1.3)),
-        anchor: new google.maps.Point(size / 2, Math.round(size * 1.3)),
+        scaledSize: new google.maps.Size(size, Math.round(size * 1.35)),
+        anchor: new google.maps.Point(size / 2, Math.round(size * 1.35)),
       };
     }
 
     function blueDotSvg() {
-      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22">'
-        + '<circle cx="11" cy="11" r="8" fill="#3B82F6" stroke="white" stroke-width="3"/>'
-        + '<circle cx="11" cy="11" r="3" fill="white"/>'
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28">'
+        + '<defs><filter id="glow"><feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#3B82F6" flood-opacity="0.6"/></filter></defs>'
+        + '<circle cx="14" cy="14" r="10" fill="#3B82F6" stroke="white" stroke-width="3" filter="url(#glow)"/>'
+        + '<circle cx="14" cy="14" r="4" fill="white"/>'
         + '</svg>';
       return {
         url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
-        scaledSize: new google.maps.Size(22, 22),
-        anchor: new google.maps.Point(11, 11),
+        scaledSize: new google.maps.Size(28, 28),
+        anchor: new google.maps.Point(14, 14),
       };
     }
 
@@ -160,18 +162,44 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
     function renderAll() {
       markers.forEach(function(m) { m.setMap(null); });
       markers = [];
-      if (polyline) polyline.setMap(null);
-      if (userMarker) userMarker.setMap(null);
+      if (directionsRenderer) {
+        directionsRenderer.setMap(null);
+      }
       if (STOPS.length === 0) return;
 
       if (STOPS.length > 1) {
-        polyline = new google.maps.Polyline({
-          path: STOPS.map(function(s) { return { lat: s.lat, lng: s.lng }; }),
-          geodesic: true,
-          strokeColor: '#22C55E',
-          strokeOpacity: 0.85,
-          strokeWeight: 4,
+        // Use DirectionsService for map paths instead of straight lines
+        var ds = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer({
           map: map,
+          suppressMarkers: true,
+          preserveViewport: true,
+          polylineOptions: {
+            strokeColor: '#22C55E',
+            strokeOpacity: 0.85,
+            strokeWeight: 4
+          }
+        });
+
+        var waypts = STOPS.slice(1, STOPS.length - 1).map(function(s) {
+          return { location: new google.maps.LatLng(s.lat, s.lng), stopover: true };
+        });
+
+        ds.route({
+          origin: new google.maps.LatLng(STOPS[0].lat, STOPS[0].lng),
+          destination: new google.maps.LatLng(STOPS[STOPS.length - 1].lat, STOPS[STOPS.length - 1].lng),
+          waypoints: waypts,
+          travelMode: google.maps.TravelMode.WALKING
+        }, function(res, status) {
+          if (status === 'OK') {
+            directionsRenderer.setDirections(res);
+          } else {
+            // fallback to straightforward polyline
+            polyline = new google.maps.Polyline({
+              path: STOPS.map(function(s) { return { lat: s.lat, lng: s.lng }; }),
+              geodesic: true, strokeColor: '#22C55E', strokeOpacity: 0.85, strokeWeight: 4, map: map,
+            });
+          }
         });
       }
 
@@ -252,6 +280,32 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
     function setUserLocation(lat, lng) {
       USER = { lat: lat, lng: lng };
       drawUserDot();
+      calculateNextStop();
+    }
+
+    function calculateNextStop() {
+      if (!USER || STOPS.length === 0) return;
+      var targetStop = STOPS[activeIdx];
+      if (!targetStop) return;
+
+      var ds = new google.maps.DirectionsService();
+      ds.route({
+        origin: USER,
+        destination: { lat: targetStop.lat, lng: targetStop.lng },
+        travelMode: google.maps.TravelMode.WALKING
+      }, function(res, status) {
+        if (status === 'OK') {
+          var leg = res.routes[0].legs[0];
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'nextStopInfo',
+              distance: leg.distance ? leg.distance.text : '',
+              duration: leg.duration ? leg.duration.text : '',
+              stopName: targetStop.name
+            }));
+          }
+        }
+      });
     }
 
     function showDirections(uLat, uLng, dLat, dLng) {
@@ -410,6 +464,7 @@ export default function MapScreen({ navigation, route }: Props) {
   const [rating, setRating] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
   const [navInfo, setNavInfo] = useState<{ distance: string; duration: string } | null>(null);
+  const [nextStopInfo, setNextStopInfo] = useState<{ distance: string; duration: string; stopName: string } | null>(null);
   const mapLoadStartRef = useRef<number>(Date.now());
 
   const mapsJsUrl = useMemo(
@@ -417,62 +472,46 @@ export default function MapScreen({ navigation, route }: Props) {
     [],
   );
 
-  // Build HTML once — stops are baked in; user location + activeIdx are pushed via injectJavaScript.
-  // On idle Map tab (no route stops), use trip store places if available.
-  const mapHtml = useMemo(() => {
-    if (hasStops) return buildTripHtml(stops, mapsJsUrl);
-    if (tabStops.length > 0) return buildTripHtml(tabStops, mapsJsUrl);
-    return buildIdleHtml(mapsJsUrl);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasStops, tabStops.length, mapsJsUrl]);
-
+  // Build HTML once — stops are baked in; user location + activeIdx are pushed via  // Request live user location on mount and track consistently
   useEffect(() => {
-    mapLoadStartRef.current = Date.now();
-    Sentry.addBreadcrumb({
-      category: 'perf.map',
-      message: 'map_html_load_start',
-      level: 'info',
-      data: { hasStops, platform: Platform.OS },
-    });
-  }, [mapHtml, hasStops]);
-
-  // Request GPS once on mount
-  useEffect(() => {
-    (async () => {
+    async function startLocationTracking() {
+      let locationSubscription: Location.LocationSubscription | null = null;
       try {
         if (Platform.OS === 'web') {
-          // Use browser Geolocation API directly on web
           const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
-          if (geo && typeof geo.getCurrentPosition === 'function') {
-            geo.getCurrentPosition(
-              (pos) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-              (err) => {
+          if (geo && typeof geo.watchPosition === 'function') {
+            const watchId = geo.watchPosition(
+              (pos: any) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+              (err: any) => {
                 Sentry.captureMessage('MapScreen web geolocation error', {
                   level: 'warning',
                   extra: { message: err.message, code: err.code },
                 });
               },
-              { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+              { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
-          } else {
-            Sentry.captureMessage('MapScreen web geolocation unavailable', {
-              level: 'warning',
-              extra: { hasNavigator: typeof navigator !== 'undefined' },
-            });
+            locationSubscription = { remove: () => geo.clearWatch(watchId) };
           }
-          return;
+        } else {
+          // Native (Android/iOS)
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status === 'granted') {
+            locationSubscription = await Location.watchPositionAsync(
+              { accuracy: Location.Accuracy.Balanced, timeInterval: 3000, distanceInterval: 5 },
+              (loc: any) => setUserLoc({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })
+            );
+          }
         }
-        // Native (Android/iOS)
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') return;
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        setUserLoc({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       } catch (err) {
         Sentry.captureException(err, { tags: { context: 'MapScreen.getUserLocation', platform: Platform.OS } });
       }
-    })();
+      return () => {
+        if (locationSubscription) {
+          locationSubscription.remove();
+        }
+      };
+    }
+    startLocationTracking();
   }, []);
 
   // Push user location into WebView as soon as both are ready
@@ -516,6 +555,8 @@ export default function MapScreen({ navigation, route }: Props) {
       } else if (data.type === 'markerTap') {
         lastInjectedIdx.current = data.index; // prevent echo injection
         setActiveIdx(data.index);
+      } else if (data.type === 'nextStopInfo') {
+        setNextStopInfo({ distance: data.distance, duration: data.duration, stopName: data.stopName });
       } else if (data.type === 'navInfo') {
         setIsNavigating(true);
         setNavInfo({ distance: data.distance, duration: data.duration });
@@ -789,6 +830,21 @@ export default function MapScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
           ) : null}
+
+          {/* Next Stop live info in fullscreen */}
+          {nextStopInfo && userLoc ? (
+             <View style={styles.nextStopCard}>
+               <View style={styles.nextStopIconBox}>
+                 <Ionicons name="navigate" size={16} color="#22C55E" />
+               </View>
+               <View style={styles.nextStopBody}>
+                 <Text style={styles.nextStopTitle}>Next: {nextStopInfo.stopName}</Text>
+                 <Text style={styles.nextStopSubtitle}>
+                   {nextStopInfo.duration} · {nextStopInfo.distance}
+                 </Text>
+               </View>
+             </View>
+          ) : null}
         </View>
       </SafeAreaView>
     );
@@ -1009,15 +1065,27 @@ export default function MapScreen({ navigation, route }: Props) {
                   <Text style={styles.thumbBadgeTxt}>{i + 1}</Text>
                 </View>
               </View>
-              <Text
-                style={[styles.thumbLbl, i === activeIdx && styles.thumbLblActive]}
-                numberOfLines={1}
-              >
+              <Text style={styles.thumbLblActive} numberOfLines={1}>
                 {stop.name}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* ── Next Stop live info card ── */}
+        {nextStopInfo && userLoc ? (
+           <View style={[styles.nextStopCard, { marginHorizontal: 14, marginBottom: 8, marginTop: 2 }]}>
+             <View style={styles.nextStopIconBox}>
+               <Ionicons name="navigate" size={16} color="#22C55E" />
+             </View>
+             <View style={styles.nextStopBody}>
+               <Text style={styles.nextStopTitle}>Next: {nextStopInfo.stopName}</Text>
+               <Text style={styles.nextStopSubtitle}>
+                 {nextStopInfo.duration} · {nextStopInfo.distance}
+               </Text>
+             </View>
+           </View>
+        ) : null}
       </View>
 
       {/* ── ServiceHub FAB ── */}
@@ -1306,6 +1374,24 @@ const styles = StyleSheet.create({
     marginTop: 5, textAlign: 'center', width: 72,
   },
   thumbLblActive: { fontFamily: F.semibold, color: '#22C55E' },
+
+  // ── Next Stop ETA Card ──
+  nextStopCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F0FDF4', borderRadius: 14,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: '#DCFCE7',
+    shadowColor: '#22C55E', shadowOpacity: 0.06,
+    shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+    marginTop: 4,
+  },
+  nextStopIconBox: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: '#DCFCE7',
+    alignItems: 'center', justifyContent: 'center', marginRight: 10,
+  },
+  nextStopBody: { flex: 1 },
+  nextStopTitle: { fontSize: 13, fontFamily: F.bold, color: '#166534', marginBottom: 2 },
+  nextStopSubtitle: { fontSize: 12, fontFamily: F.medium, color: '#15803D' },
 
   // ── Rating Modal ──
   ratingOverlay: {

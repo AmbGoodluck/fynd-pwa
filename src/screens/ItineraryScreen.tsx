@@ -4,8 +4,9 @@ import {
   Alert, Modal, Image, Platform, TextInput, Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { Ionicons } from '@expo/vector-icons';
+import { FALLBACK_IMAGE } from '../constants';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import { logEvent } from '../services/firebase';
@@ -27,7 +28,7 @@ function mapPlaceToStop(p: any, index: number) {
     distance: p.distanceKm ? `${p.distanceKm} km` : '',
     time: p.walkMinutes ? `${p.walkMinutes} min` : '',
     rating: p.rating ? String(p.rating.toFixed(1)) : '4.0',
-    image: p.photoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400',
+    image: p.photoUrl || FALLBACK_IMAGE,
     coordinate: {
       latitude: p.coordinates?.lat ?? 0,
       longitude: p.coordinates?.lng ?? 0,
@@ -546,7 +547,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#F2F2F7',
@@ -566,7 +567,7 @@ const styles = StyleSheet.create({
   shareHeaderBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
 
   headerSection: {
-    paddingHorizontal: 20, paddingVertical: 10,
+    paddingHorizontal: 20, paddingVertical: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
   },
@@ -580,8 +581,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
-  imageContainer: { width: 80 },
-  placeImage: { width: 80, height: ITEM_HEIGHT, resizeMode: 'cover' },
+  imageContainer: { width: 100, position: 'relative' },
+  placeImage: { width: 100, height: ITEM_HEIGHT, resizeMode: 'cover' },
   indexBadge: {
     position: 'absolute', top: 8, left: 8,
     width: 26, height: 26, borderRadius: 13,
@@ -591,26 +592,26 @@ const styles = StyleSheet.create({
   },
   indexBadgeText: { color: '#fff', fontSize: 12, fontFamily: F.bold },
   cardContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
-  placeName: { fontSize: 15, fontFamily: F.semibold, color: '#111827' },
-  placeDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18, flex: 1, marginVertical: 3 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 6 },
-  statText: { fontSize: 12, color: '#57636C', marginLeft: 2 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  placeName: { fontSize: 16, fontFamily: F.bold, color: '#111827' },
+  placeDesc: { fontSize: 13, fontFamily: F.regular, color: '#6B7280', flex: 1, marginVertical: 3 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  statText: { fontSize: 13, fontFamily: F.medium, color: '#57636C', marginLeft: 2 },
+  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   bookBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#1D4ED8', borderRadius: 12,
     paddingHorizontal: 10, paddingVertical: 8,
   },
-  bookBtnText: { fontSize: 10, color: '#fff', fontWeight: '700', letterSpacing: 0.3 },
-  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  removeBtnText: { fontSize: 11, color: '#9CA3AF' },
+  bookBtnText: { fontSize: 11, fontFamily: F.bold, color: '#fff', letterSpacing: 0.3 },
+  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  removeBtnText: { fontSize: 12, fontFamily: F.semibold, color: '#9CA3AF' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#111827', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   goBackBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   goBackBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
   bottomBar: {
-    paddingHorizontal: 16, paddingVertical: 14,
+    paddingHorizontal: 16, paddingVertical: 16,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
   },
   mapBtn: {
