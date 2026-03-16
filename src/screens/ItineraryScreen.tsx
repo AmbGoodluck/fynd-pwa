@@ -10,8 +10,10 @@ import { FALLBACK_IMAGE } from '../constants';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import { logEvent } from '../services/firebase';
-import { createSharedTrip, buildShareLink } from '../services/sharedTripService';
+import { createSharedTrip, buildShareLink, recordTripShared } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { useGuestStore } from '../store/useGuestStore';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
@@ -90,7 +92,15 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
   const setStorePlaces = useTripStore(s => s.setSelectedPlaces);
 
-  const { sessionUserId, sessionUserName, addMyTrip } = useSharedTripStore();
+  const { addMyTrip, sessionUserId, sessionUserName } = useSharedTripStore();
+  const { user: authUser } = useAuthStore();
+  const { isGuest } = useGuestStore();
+
+  // Always use the real auth user identity when available.
+  // Guests fall back to the persisted random sessionUserId.
+  const ownerId   = authUser?.id       || sessionUserId;
+  const ownerName = authUser?.fullName || authUser?.email?.split('@')[0] || sessionUserName;
+
   const { bottom: bottomInset } = useSafeAreaInsets();
 
   useEffect(() => {
@@ -167,8 +177,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       }));
 
       const trip = await createSharedTrip({
-        owner_id: sessionUserId,
-        owner_name: sessionUserName,
+        owner_id: ownerId,
+        owner_name: ownerName,
         trip_name: destination,
         trip_date: today,
         places,
@@ -176,15 +186,44 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
       addMyTrip(trip);
       const link = buildShareLink(trip.trip_id);
+      recordTripShared(ownerId, trip.trip_id);
       setShareLink(link);
       setLinkCopied(false);
-      setShowShareModal(true);
+
+      // Try native Web Share API first (mobile browsers, PWA homescreen)
+      if (
+        Platform.OS === 'web' &&
+        typeof navigator !== 'undefined' &&
+        typeof (navigator as any).share === 'function'
+      ) {
+        try {
+          await (navigator as any).share({
+            title: `Join my Fynd trip to ${destination}`,
+            text: `Check out this itinerary I built on Fynd! ${ownerName} is planning a trip to ${destination}.`,
+            url: link,
+          });
+          logEvent('trip_share_native', { destination, stop_count: stops.length });
+          // After native share, also show our modal so they can copy the link too
+          setShowShareModal(true);
+        } catch (shareErr: any) {
+          // User cancelled native share — still show our modal
+          if (shareErr?.name !== 'AbortError') {
+            setShowShareModal(true);
+          } else {
+            setShowShareModal(true); // show modal even on cancel so they have the link
+          }
+        }
+      } else {
+        // Desktop or browser that doesn't support Web Share API
+        setShowShareModal(true);
+      }
+
       logEvent('trip_share_modal_opened', { destination, stop_count: stops.length });
     } catch (e: any) {
       if (e?.message?.includes('TRIP_LIMIT')) {
-        Alert.alert('Trip Limit Reached', 'Trips in this version support up to 7 places per day.');
+        Alert.alert('Trip Limit Reached', 'Trips support up to 7 places. Remove a stop and try again.');
       } else {
-        Alert.alert('Error', 'Could not generate share link. Please try again.');
+        Alert.alert('Error', 'Could not generate share link. Please check your connection and try again.');
       }
     } finally {
       setSharing(false);
