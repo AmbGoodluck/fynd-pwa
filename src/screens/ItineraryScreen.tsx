@@ -232,36 +232,11 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       setShareLink(link);
       setLinkCopied(false);
 
-      // Try native Web Share API first (mobile browsers, PWA homescreen)
-      if (
-        Platform.OS === 'web' &&
-        typeof navigator !== 'undefined' &&
-        typeof (navigator as any).share === 'function'
-      ) {
-        try {
-          await (navigator as any).share({
-            title: `Join my Fynd trip to ${destination}`,
-            text: `Check out this itinerary I built on Fynd! ${ownerName} is planning a trip to ${destination}.`,
-            url: link,
-          });
-          logEvent('trip_share_native', { destination, stop_count: stops.length });
-          // After native share, also show our modal so they can copy the link too
-          setShowShareModal(true);
-        } catch (shareErr: any) {
-          // User cancelled native share — still show our modal
-          if (shareErr?.name !== 'AbortError') {
-            setShowShareModal(true);
-          } else {
-            setShowShareModal(true); // show modal even on cancel so they have the link
-          }
-        }
-      } else {
-        // Desktop or browser that doesn't support Web Share API
-        setShowShareModal(true);
-      }
-
+      // Show our custom share modal with the generated link
+      setShowShareModal(true);
       logEvent('trip_share_modal_opened', { destination, stop_count: stops.length });
     } catch (e: any) {
+
       if (e?.message?.includes('TRIP_LIMIT')) {
         Alert.alert('Trip Limit Reached', 'Trips support up to 7 places. Remove a stop and try again.');
       } else if (e?.message?.includes('PERMISSION_DENIED')) {
@@ -550,7 +525,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.shareModalTitle}>Share Trip</Text>
             <Text style={styles.shareModalBody}>
-              Copy the link below and share it with fellow travellers to invite them to your trip.
+              Add up to 7 members to trip
             </Text>
 
             <View style={styles.shareLinkBox}>
@@ -580,8 +555,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
-              <Text style={styles.modalCancelText}>Done</Text>
+              <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
+
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -750,9 +726,11 @@ const styles = StyleSheet.create({
   },
   shareModalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6, textAlign: 'center' },
   shareModalBody: {
-    fontSize: 14, color: '#57636C', textAlign: 'center',
-    lineHeight: 21, marginBottom: 18, paddingHorizontal: 8,
+    fontSize: 16, color: '#111827', textAlign: 'center',
+    fontFamily: F.semibold,
+    lineHeight: 24, marginBottom: 20, paddingHorizontal: 16,
   },
+
   shareLinkBox: {
     width: '100%', backgroundColor: '#F3F4F6', borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14,
