@@ -10,6 +10,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { F } from '../theme/fonts';
 
 
 const BANNER_IMAGES = [
@@ -124,7 +125,7 @@ export default function HomeScreen({ navigation }: Props) {
                     style={styles.createTripBtn}
                     onPress={() => navigation.navigate('Create Trip')}
                   >
-                    <Ionicons name="add" size={16} color="#fff" />
+                    <Ionicons name="add" size={18} color="#fff" />
                     <Text style={styles.createTripBtnText}>Create Trip</Text>
                   </TouchableOpacity>
                 </View>
@@ -141,7 +142,7 @@ export default function HomeScreen({ navigation }: Props) {
         {/* ── ServiceHub quick icons ───────────────────────── */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
-            <Ionicons name="compass-outline" size={18} color="#111827" />
+            <Ionicons name="compass-outline" size={20} color="#111827" />
             <Text style={styles.sectionTitle}>ServiceHub</Text>
           </View>
           {!isGuest && isAuthenticated && (
@@ -152,14 +153,16 @@ export default function HomeScreen({ navigation }: Props) {
           )}
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceRow} contentContainerStyle={{ paddingRight: 20 }}>
           {SERVICE_QUICK.map(item => (
             <TouchableOpacity
               key={item.id}
               style={styles.serviceCard}
               onPress={() => handleServicePress(item.id)}
             >
-              <Ionicons name={item.icon as any} size={26} color={item.color} />
+              <View style={[styles.serviceIconWrap, { backgroundColor: item.color + '15' }]}>
+                <Ionicons name={item.icon as any} size={32} color={item.color} />
+              </View>
               <Text style={styles.serviceLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
@@ -180,7 +183,7 @@ export default function HomeScreen({ navigation }: Props) {
           >
             <View style={styles.recentTripContent}>
               <View style={styles.recentTripIcon}>
-                <Ionicons name="location" size={22} color="#22C55E" />
+                <Ionicons name="location" size={24} color="#22C55E" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.recentTripDest}>{destination}</Text>
@@ -188,19 +191,22 @@ export default function HomeScreen({ navigation }: Props) {
                   {explorationHours}h{(selectedVibes?.length ?? 0) > 0 ? ` · ${selectedVibes.slice(0, 2).join(', ')}` : ''}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
             </View>
           </TouchableOpacity>
         ) : (
           <View style={styles.emptyCard}>
-            <Ionicons name="map-outline" size={36} color="#E5E5EA" />
-            <Text style={styles.emptyTitle}>No trips yet</Text>
-            <Text style={styles.emptySubtitle}>Create your first trip to get started!</Text>
+            <View style={styles.emptyIconWrap}>
+              <Ionicons name="map-outline" size={44} color="#22C55E" />
+            </View>
+            <Text style={styles.emptyTitle}>Your next story starts here</Text>
+            <Text style={styles.emptySubtitle}>Plan a custom itinerary and explore the world like a local.</Text>
             <TouchableOpacity
               style={styles.startBtn}
               onPress={() => navigation.navigate('Create Trip')}
             >
-              <Text style={styles.startBtnText}>Create Trip</Text>
+              <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.startBtnText}>Start Planning</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -260,7 +266,6 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16,
-    backgroundColor: '#fff',
   },
   logo: { width: 50, height: 44, resizeMode: 'contain' },
   premiumBadge: {
@@ -281,74 +286,74 @@ const styles = StyleSheet.create({
   },
   profileInitial: { color: '#fff', fontWeight: '700', fontSize: 16 },
   bannerWrap: { marginHorizontal: 20, marginTop: 8, marginBottom: 20 },
-  banner: { height: 220, borderRadius: 24, overflow: 'hidden' },
+  banner: { height: 260, borderRadius: 24, overflow: 'hidden' },
   bannerImage: { borderRadius: 24 },
   bannerOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.36)',
-    borderRadius: 24, padding: 22, justifyContent: 'flex-end',
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 24, padding: 24, justifyContent: 'flex-end',
   },
-  greeting: { fontSize: 14, color: 'rgba(255,255,255,0.82)', marginBottom: 4, letterSpacing: 0.2 },
-  heroTitle: { fontSize: 23, fontWeight: '800', color: '#fff', marginBottom: 16, lineHeight: 30, letterSpacing: -0.3 },
+  greeting: { fontSize: 16, fontFamily: F.medium, color: 'rgba(255,255,255,0.9)', marginBottom: 6, letterSpacing: 0.2 },
+  heroTitle: { fontSize: 30, fontFamily: F.bold, color: '#fff', marginBottom: 20, lineHeight: 36, letterSpacing: -0.5 },
   createTripBtn: {
     alignSelf: 'flex-start', backgroundColor: '#22C55E',
-    borderRadius: 22, paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 22, paddingHorizontal: 24, paddingVertical: 12,
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    shadowColor: '#22C55E', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#22C55E', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
-  createTripBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  bannerDots: { flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 6 },
+  createTripBtnText: { color: '#fff', fontFamily: F.bold, fontSize: 15 },
+  bannerDots: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 },
   bannerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D1D5DB' },
-  bannerDotActive: { backgroundColor: '#22C55E', width: 20, borderRadius: 3 },
+  bannerDotActive: { backgroundColor: '#22C55E', width: 22, borderRadius: 3 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, marginBottom: 12, marginTop: 8,
+    paddingHorizontal: 20, marginBottom: 16, marginTop: 12,
   },
-  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: '#111827', letterSpacing: -0.2 },
-  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  seeAllText: { fontSize: 13, color: '#22C55E', fontWeight: '600' },
-  serviceRow: { paddingLeft: 20, marginBottom: 20 },
+  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionTitle: { fontSize: 20, fontFamily: F.bold, color: '#111827', letterSpacing: -0.3 },
+  seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  seeAllText: { fontSize: 13, color: '#22C55E', fontFamily: F.bold },
+  serviceRow: { paddingLeft: 20, marginBottom: 24 },
   serviceCard: {
-    width: 80, height: 80, borderRadius: 20,
-    borderWidth: 1, borderColor: '#F0F0F5',
+    width: 90, height: 110, borderRadius: 24,
+    borderWidth: 1.5, borderColor: '#F2F2F7',
     alignItems: 'center', justifyContent: 'center',
-    marginRight: 12, backgroundColor: '#fff', gap: 5,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+    marginRight: 16, backgroundColor: '#fff', gap: 8,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
   },
-  serviceLabel: { fontSize: 10, textAlign: 'center', color: '#57636C', fontWeight: '600' },
-  savedRow: { paddingLeft: 20, marginBottom: 20 },
-  savedCard: { width: 148, height: 116, borderRadius: 18, marginRight: 12, overflow: 'hidden' },
-  savedCardBg: { width: 148, height: 116, justifyContent: 'flex-end' },
-  savedCardOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.44)',
-    padding: 10, borderBottomLeftRadius: 18, borderBottomRightRadius: 18,
+  serviceIconWrap: {
+    width: 56, height: 56, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
   },
-  savedCardName: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  savedCardCity: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+  serviceLabel: { fontSize: 12, textAlign: 'center', color: '#4B5563', fontFamily: F.semibold },
+  recentTripDest: { fontSize: 17, fontFamily: F.bold, color: '#111827', marginBottom: 4 },
+  recentTripMeta: { fontSize: 14, fontFamily: F.medium, color: '#6B7280' },
   emptyCard: {
-    alignItems: 'center', paddingVertical: 30,
-    marginHorizontal: 20, borderRadius: 20,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#F0F0F5',
-    marginBottom: 20,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+    alignItems: 'center', paddingVertical: 40,
+    marginHorizontal: 20, borderRadius: 28,
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F2F2F7',
+    marginBottom: 24,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, shadowOffset: { width: 0, height: 5 }, elevation: 2,
   },
-  emptyTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginTop: 12, marginBottom: 4 },
-  emptySubtitle: { fontSize: 13, color: '#6B7280', textAlign: 'center', paddingHorizontal: 24, marginBottom: 16, lineHeight: 20 },
-  startBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 28, paddingVertical: 12 },
-  startBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  emptyIconWrap: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: '#F0FDF4', alignItems: 'center',
+    justifyContent: 'center', marginBottom: 20,
+  },
+  emptyTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', paddingHorizontal: 32, marginBottom: 24, lineHeight: 22, fontFamily: F.regular },
+  startBtn: { backgroundColor: '#22C55E', borderRadius: 20, paddingHorizontal: 32, paddingVertical: 14, flexDirection: 'row', alignItems: 'center' },
+  startBtnText: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
   recentTripCard: {
-    marginHorizontal: 20, borderRadius: 18,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#F0F0F5',
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 }, elevation: 2, marginBottom: 18,
+    marginHorizontal: 20, borderRadius: 24,
+    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F2F2F7',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 2, marginBottom: 18,
   },
-  recentTripContent: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 },
+  recentTripContent: { flexDirection: 'row', alignItems: 'center', padding: 18, gap: 16 },
   recentTripIcon: {
-    width: 46, height: 46, borderRadius: 23,
+    width: 50, height: 50, borderRadius: 16,
     backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
   },
-  recentTripDest: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 3 },
-  recentTripMeta: { fontSize: 13, color: '#6B7280' },
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
   },
@@ -365,7 +370,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 22, fontWeight: '700', color: '#111827',
+    fontSize: 22, fontFamily: F.bold, color: '#111827',
     marginBottom: 10, textAlign: 'center',
   },
   modalBody: {
@@ -376,12 +381,12 @@ const styles = StyleSheet.create({
     width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
   modalOutlineBtn: {
     width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
+  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.semibold },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
-  modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
+  modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
 });

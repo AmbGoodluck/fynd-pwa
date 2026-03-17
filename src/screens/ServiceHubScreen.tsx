@@ -145,8 +145,9 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
       />
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.cardSub} numberOfLines={1}>{item.category}</Text>
         <View style={styles.cardMeta}>
-          <Ionicons name="walk-outline" size={13} color="#57636C" />
+          <Ionicons name="walk-outline" size={13} color="#6B7280" />
           <Text style={styles.cardDistance}>
             {item.distanceKm != null ? `${item.distanceKm.toFixed(2)} km` : '—'}
           </Text>
@@ -157,15 +158,14 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
             </>
           ) : null}
         </View>
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryBadgeText}>{item.category}</Text>
-        </View>
       </View>
       <TouchableOpacity style={styles.routeBtn} onPress={() => openRoute(item)}>
-        <Text style={styles.routeBtnText}>Route</Text>
+        <Ionicons name="navigate-outline" size={16} color="#fff" />
+        <Text style={styles.routeBtnText}>ROUTE</Text>
       </TouchableOpacity>
     </View>
   );
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

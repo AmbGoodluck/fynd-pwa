@@ -37,8 +37,8 @@ export default function ProfileScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={28} color="#111827" style={{ opacity: 0.6 }} />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={26} color="#111827" />
           </TouchableOpacity>
         </View>
 
@@ -90,6 +90,7 @@ export default function ProfileScreen({ navigation }: Props) {
             <Text style={styles.logoutBtnText}>{isGuest ? 'Exit Guest Mode' : 'Log Out'}</Text>
           </TouchableOpacity>
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -98,25 +99,49 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scroll: { paddingBottom: 120 },
-  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 8 },
-  avatarSection: { alignItems: 'center', paddingBottom: 24, paddingTop: 4, gap: 6 },
-  avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 4, shadowColor: '#22C55E', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 32 },
-  name: { fontSize: 18, fontWeight: '600', color: '#111827' },
-  email: { fontSize: 13, color: '#6B7280' },
-  premiumBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#22C55E', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5 },
-  premiumBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.3 },
-  guestBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F2F2F7', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  guestBadgeText: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  menuSection: { paddingHorizontal: 14, gap: 8 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 14, borderWidth: 0.5, borderColor: '#E5E5EA', paddingHorizontal: 14, height: 52, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
-  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' },
-  menuLabel: { fontSize: 15, color: '#111827', fontWeight: '500' },
-  menuRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  activeBadge: { backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  activeBadgeText: { fontSize: 11, color: '#22C55E', fontWeight: '600' },
-  logoutSection: { paddingHorizontal: 14, marginTop: 28 },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1.5, borderColor: '#FEE2E2', backgroundColor: '#FFF5F5', height: 52 },
-  logoutBtnText: { fontSize: 16, fontWeight: '600', color: '#EF4444' },
+  topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  avatarSection: { alignItems: 'center', paddingBottom: 32, paddingTop: 8, gap: 8 },
+  avatarCircle: {
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8, shadowColor: '#22C55E', shadowOpacity: 0.25,
+    shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5,
+  },
+  avatarText: { color: '#fff', fontFamily: F.bold, fontSize: 36 },
+  name: { fontSize: 22, fontFamily: F.bold, color: '#111827', letterSpacing: -0.5 },
+  email: { fontSize: 14, color: '#6B7280', fontFamily: F.medium },
+  premiumBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#22C55E', borderRadius: 14,
+    paddingHorizontal: 16, paddingVertical: 6,
+  },
+  premiumBadgeText: { color: '#fff', fontSize: 13, fontFamily: F.bold, letterSpacing: 0.3 },
+  guestBadge: { 
+    flexDirection: 'row', alignItems: 'center', gap: 6, 
+    backgroundColor: '#F3F4F6', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8 
+  },
+  guestBadgeText: { fontSize: 13, color: '#4B5563', fontFamily: F.semibold },
+  menuSection: { paddingHorizontal: 16, gap: 12 },
+  menuItem: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    backgroundColor: '#fff', borderRadius: 18, 
+    borderWidth: 1, borderColor: '#F2F2F7', 
+    paddingHorizontal: 16, height: 60,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 
+  },
+  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' },
+  menuLabel: { fontSize: 16, color: '#111827', fontFamily: F.semibold },
+  menuRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  activeBadge: { backgroundColor: '#F0FDF4', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  activeBadgeText: { fontSize: 12, color: '#22C55E', fontFamily: F.bold },
+  logoutSection: { paddingHorizontal: 16, marginTop: 32 },
+  logoutBtn: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 
+    borderRadius: 18, borderWidth: 1.5, borderColor: '#FEE2E2', 
+    backgroundColor: '#FFF5F5', height: 56 
+  },
+  logoutBtnText: { fontSize: 16, fontFamily: F.bold, color: '#EF4444' },
+
 });

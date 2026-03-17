@@ -123,11 +123,10 @@ export default function SavedScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Header */}
+      {/* Header & Tabs */}
       <View style={styles.header}>
         <Text style={styles.title}>Saved</Text>
         
-        {/* Tab Row */}
         <View style={styles.tabRow}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'places' && styles.tabActive]}
@@ -153,6 +152,7 @@ export default function SavedScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
       </View>
+
 
 
 
@@ -447,94 +447,69 @@ export default function SavedScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-
+  container: { flex: 1, backgroundColor: '#fff' },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4,
-    backgroundColor: '#fff',
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
   },
-  logo: { width: 50, height: 44, resizeMode: 'contain' },
-  topBarTitle: { fontSize: 22, fontWeight: '600', color: '#111827' },
+  logo: { width: 44, height: 44, resizeMode: 'contain' },
+  topBarTitle: { fontSize: 24, fontFamily: F.bold, color: '#111827', letterSpacing: -0.5 },
   avatarCircle: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#22C55E', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 0, backgroundColor: '#fff' },
-  title: { fontSize: 26, fontFamily: F.bold, color: '#111827', marginBottom: 12 },
-  
-  tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  tab: { marginRight: 24, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  avatarText: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
+  header: { paddingHorizontal: 16, paddingTop: 8, backgroundColor: '#fff' },
+  title: { fontSize: 28, fontFamily: F.bold, color: '#111827', marginBottom: 16, letterSpacing: -0.5 },
+  tabRow: { flexDirection: 'row', gap: 24 },
+  tab: { paddingBottom: 12, borderBottomWidth: 3, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: '#22C55E' },
   tabText: { fontSize: 16, color: '#6B7280', fontFamily: F.semibold },
   tabTextActive: { color: '#111827' },
-
-  tempBanner: {
-    position: 'absolute', bottom: 24, left: 16, right: 16, zIndex: 100,
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F0FDF4', borderRadius: 16, padding: 14,
-    borderWidth: 1, borderColor: '#BBF7D0',
-    shadowColor: '#166534', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4,
-  },
-  tempBannerText: { flex: 1, fontSize: 14, color: '#166534', fontFamily: F.semibold },
-
-  searchRow: { paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff' },
+  searchRow: { paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#fff' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F2F2F7', borderRadius: 14,
-    borderWidth: 1, borderColor: '#E5E5EA',
-    paddingHorizontal: 12, height: 42,
+    backgroundColor: '#F3F4F6', borderRadius: 16,
+    paddingHorizontal: 16, height: 48,
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#111827' },
-
+  searchInput: { flex: 1, fontSize: 15, color: '#111827', fontFamily: F.medium },
   guestBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#EFF6FF', marginHorizontal: 14,
-    borderRadius: 12, padding: 10, marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#EFF6FF', marginHorizontal: 16,
+    borderRadius: 14, padding: 12, marginBottom: 12,
     borderWidth: 1, borderColor: '#BFDBFE',
   },
-  guestBannerText: { flex: 1, fontSize: 12, color: '#1D4ED8', fontWeight: '500' },
-
-  listContent: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 110 },
-
+  guestBannerText: { flex: 1, fontSize: 13, color: '#1D4ED8', fontFamily: F.semibold },
+  listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 110 },
   itineraryCardWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    paddingRight: 8,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 20, marginBottom: 16,
+    borderWidth: 1, borderColor: '#F2F2F7', paddingRight: 8,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
   },
-  itineraryCard: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-  },
+  itineraryCard: { flex: 1, flexDirection: 'row', alignItems: 'center', padding: 14 },
   deleteItineraryBtn: {
-    padding: 10,
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FEF2F2',
+    alignItems: 'center', justifyContent: 'center', marginLeft: 4,
   },
-  itineraryImage: { width: 60, height: 60, borderRadius: 8, backgroundColor: '#E5E7EB', marginRight: 12 },
+  itineraryImage: { width: 70, height: 70, borderRadius: 14, backgroundColor: '#E5E7EB', marginRight: 16 },
   itineraryDetails: { flex: 1 },
-  itineraryTitle: { fontSize: 16, fontFamily: F.semibold, color: '#111827', marginBottom: 4 },
-  itinerarySub: { fontSize: 13, color: '#6B7280' },
-
-  // ── Modals ───────────────────────────────────────────────────────────
-  emptyState: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 40, paddingVertical: 16,
+  itineraryTitle: { fontSize: 17, fontFamily: F.bold, color: '#111827', marginBottom: 4 },
+  itinerarySub: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, marginTop: 40 },
+  emptyTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32, fontFamily: F.regular },
+  exploreBtn: { backgroundColor: '#22C55E', borderRadius: 18, paddingHorizontal: 32, paddingVertical: 14 },
+  exploreBtnText: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
+  tempBanner: {
+    position: 'absolute', bottom: 32, left: 16, right: 16, zIndex: 100,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 22, padding: 18,
+    borderWidth: 1, borderColor: '#22C55E',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15, shadowOffset: { width: 0, height: 10 }, elevation: 10,
   },
-  emptyTitle: { fontSize: 17, fontFamily: F.semibold, color: '#111827', marginTop: 14, marginBottom: 6 },
-  emptyText: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
-  exploreBtn: {
-    backgroundColor: '#22C55E', borderRadius: 16,
-    paddingHorizontal: 32, paddingVertical: 12,
-  },
-  exploreBtnText: { color: '#fff', fontFamily: F.semibold, fontSize: 15 },
+  tempBannerText: { flex: 1, fontSize: 15, color: '#166534', fontFamily: F.bold },
 
   // ── Modals ───────────────────────────────────────────────────────────
   overlay: {

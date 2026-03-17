@@ -358,9 +358,6 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       delayLongPress={350}
     >
       <View style={styles.card}>
-        {/* Drag handle on left */}
-        {dragHandle}
-
         <View style={styles.imageContainer}>
           <Image source={{ uri: item.image }} style={styles.placeImage} />
           <View style={styles.indexBadge}>
@@ -369,23 +366,24 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.cardContent}>
-          <Text style={styles.placeName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.placeDesc} numberOfLines={2}>{item.description}</Text>
-          <View style={styles.statsRow}>
-            {item.distance ? (
-              <>
-                <Ionicons name="walk-outline" size={13} color="#57636C" />
-                <Text style={styles.statText}>{item.distance}</Text>
-              </>
-            ) : null}
-            {item.time ? (
-              <>
-                <Ionicons name="time-outline" size={13} color="#57636C" style={{ marginLeft: 6 }} />
-                <Text style={styles.statText}>{item.time}</Text>
-              </>
-            ) : null}
-            <Ionicons name="star-half" size={13} color="#F59E0B" style={{ marginLeft: 6 }} />
-            <Text style={styles.statText}>{item.rating}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.placeName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.placeDesc} numberOfLines={2}>{item.description}</Text>
+            
+            <View style={styles.statsRow}>
+              {item.distance ? (
+                <View style={styles.statItem}>
+                  <Ionicons name="walk-outline" size={13} color="#6B7280" />
+                  <Text style={styles.statText}>{item.distance}</Text>
+                </View>
+              ) : null}
+              {item.time ? (
+                <View style={styles.statItem}>
+                  <Ionicons name="time-outline" size={13} color="#6B7280" />
+                  <Text style={styles.statText}>{item.time}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
 
           <View style={styles.cardActions}>
@@ -395,13 +393,15 @@ export default function ItineraryScreen({ navigation, route }: Props) {
                 onPress={() => openBookingUrl(bookingLink.booking_url, item.id, item.name)}
               >
                 <Ionicons name="calendar-outline" size={12} color="#fff" />
-                <Text style={styles.bookBtnText}>BOOK NOW</Text>
+                <Text style={styles.bookBtnText}>BOOK</Text>
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity style={styles.removeBtn} onPress={() => removePlace(item.id)}>
-              <Ionicons name="trash-outline" size={13} color="#9CA3AF" />
-              <Text style={styles.removeBtnText}>Remove</Text>
+            <TouchableOpacity style={styles.iconActionBtn} onPress={() => removePlace(item.id)}>
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
             </TouchableOpacity>
+            <View style={{ paddingLeft: 8 }}>
+              {dragHandle}
+            </View>
           </View>
         </View>
       </View>
@@ -659,35 +659,41 @@ const styles = StyleSheet.create({
   dragHint: { fontSize: 12, color: '#9CA3AF' },
   card: {
     flexDirection: 'row',
-    marginHorizontal: 14, marginBottom: 12,
-    borderRadius: 18, backgroundColor: '#fff', overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 }, elevation: 3,
+    marginHorizontal: 16, marginBottom: 14,
+    borderRadius: 22, backgroundColor: '#fff', overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 3,
+    borderWidth: 1, borderColor: '#F2F2F7',
   },
-  imageContainer: { width: 100, position: 'relative' },
-  placeImage: { width: 100, height: ITEM_HEIGHT, resizeMode: 'cover' },
+  imageContainer: { width: 110, position: 'relative' },
+  placeImage: { width: 110, height: ITEM_HEIGHT, resizeMode: 'cover' },
   indexBadge: {
-    position: 'absolute', top: 8, left: 8,
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.4,
-    shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    position: 'absolute', top: 10, left: 10,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(34, 197, 94, 0.95)', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.2,
+    shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
-  indexBadgeText: { color: '#fff', fontSize: 12, fontFamily: F.bold },
-  cardContent: { flex: 1, padding: 12, justifyContent: 'space-between' },
-  placeName: { fontSize: 16, fontFamily: F.bold, color: '#111827' },
-  placeDesc: { fontSize: 13, fontFamily: F.regular, color: '#6B7280', flex: 1, marginVertical: 3 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  statText: { fontSize: 13, fontFamily: F.medium, color: '#57636C', marginLeft: 2 },
-  cardActions: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  indexBadgeText: { color: '#fff', fontSize: 13, fontFamily: F.bold },
+  cardContent: { flex: 1, padding: 14, flexDirection: 'row', alignItems: 'center' },
+  placeName: { fontSize: 17, fontFamily: F.bold, color: '#111827', letterSpacing: -0.3 },
+  placeDesc: { fontSize: 13, fontFamily: F.regular, color: '#4B5563', marginVertical: 4, lineHeight: 18 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statText: { fontSize: 12, fontFamily: F.semibold, color: '#6B7280' },
+  cardActions: { alignItems: 'flex-end', gap: 12 },
   bookBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#1D4ED8', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 8,
+    backgroundColor: '#1D4ED8', borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 6,
   },
-  bookBtnText: { fontSize: 11, fontFamily: F.bold, color: '#fff', letterSpacing: 0.3 },
-  removeBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  removeBtnText: { fontSize: 12, fontFamily: F.semibold, color: '#9CA3AF' },
+  bookBtnText: { fontSize: 10, fontFamily: F.bold, color: '#fff', letterSpacing: 0.5 },
+  iconActionBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#111827', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },

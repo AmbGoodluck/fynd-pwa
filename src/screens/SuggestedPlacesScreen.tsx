@@ -12,6 +12,7 @@ import AppHeader from '../components/AppHeader';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import GuestGateModal from '../components/GuestGateModal';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
+import PlaceCard from '../components/PlaceCard';
 import { useTripStore } from '../store/useTripStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useGuestStore } from '../store/useGuestStore';
@@ -143,11 +144,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
   };
 
-  const renderPlace = useCallback(({ item }: { item: any }) => {
+  const renderPlace = useCallback(({ item, index }: { item: any, index: number }) => {
     const isSelected = !!selectedForItinerary.find(p => p.placeId === item.placeId);
     const saved = isPlaceSaved(item.placeId);
 
-    // Sections 2–6: run high-accuracy booking detection for this place
     const { showBookNow, bookingLink } = detectBooking({
       placeId: item.placeId,
       businessName: item.name,
@@ -159,91 +159,25 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
     return (
       <TouchableOpacity
-        activeOpacity={0.95}
+        activeOpacity={0.9}
         onLongPress={() => handleLongPress(item)}
         delayLongPress={350}
       >
-        <View style={styles.card}>
-          <View style={styles.imageContainer}>
-            <Image
-              source={{ uri: item.photoUrl || 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800' }}
-              style={styles.cardImage}
-            />
-
-            {/* Save heart */}
-            <TouchableOpacity style={styles.heartBtn} onPress={() => handleSave(item)}>
-              <Ionicons
-                name={saved ? 'heart' : 'heart-outline'}
-                size={20}
-                color={saved ? '#EF4444' : '#fff'}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.cardBody}>
-            <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-            
-            {item.description || item.category ? (
-              <Text style={styles.cardDesc} numberOfLines={2}>
-                {item.description || item.category || 'A great place to visit'}
-              </Text>
-            ) : null}
-
-            {item.matchedTags && item.matchedTags.length > 0 ? (
-              <View style={styles.matchRow}>
-                <Ionicons name="checkmark-circle" size={13} color="#22C55E" />
-                <Text style={styles.matchText} numberOfLines={1}>
-                  {item.matchedTags.join(' • ')}
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={styles.cardMeta}>
-              <View style={styles.metaItem}>
-                <Ionicons name="star" size={13} color="#F59E0B" />
-                <Text style={styles.metaText}>{item.rating?.toFixed(1) || '4.0'}</Text>
-              </View>
-              <View style={styles.metaItem}>
-                <Ionicons name="location-outline" size={13} color="#57636C" />
-                <Text style={styles.metaText} numberOfLines={1}>
-                  {item.address?.split(',')[0] || destination}
-                </Text>
-              </View>
-              {item.distanceKm ? (
-                <View style={styles.metaItem}>
-                  <Ionicons name="walk-outline" size={13} color="#57636C" />
-                  <Text style={styles.metaText}>{item.distanceKm} km</Text>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Action row: Add to Itinerary + Book Now */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={[styles.addBtn, isSelected && styles.addBtnSelected]}
-                onPress={() => handleAddToItinerary(item)}
-              >
-                <Ionicons name={isSelected ? "checkmark-circle" : "add-circle-outline"} size={16} color={isSelected ? "#fff" : "#22C55E"} />
-                <Text style={[styles.addBtnText, isSelected && styles.addBtnTextSelected]}>
-                  {isSelected ? 'Added' : 'Add to Itinerary'}
-                </Text>
-              </TouchableOpacity>
-
-              {showBookNow && bookingLink ? (
-                <TouchableOpacity
-                  style={styles.bookBtn}
-                  onPress={() => openBookingUrl(bookingLink.booking_url, item.placeId, item.name)}
-                >
-                  <Ionicons name="calendar-outline" size={14} color="#fff" />
-                  <Text style={styles.bookBtnText}>Book Now</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-        </View>
+        <PlaceCard
+          name={item.name}
+          description={item.description || item.category}
+          photoUrl={item.photoUrl}
+          rating={item.rating}
+          distance={item.distanceKm ? `${item.distanceKm} km` : undefined}
+          isSaved={saved}
+          onSave={() => handleSave(item)}
+          isAdded={isSelected}
+          onAdd={() => handleAddToItinerary(item)}
+          onBook={showBookNow && bookingLink ? () => openBookingUrl(bookingLink.booking_url, item.placeId, item.name) : undefined}
+        />
       </TouchableOpacity>
     );
-  }, [selectedForItinerary, bookingLinks, isPlaceSaved]);
+  }, [selectedForItinerary, bookingLinks, isPlaceSaved, places]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -568,18 +502,20 @@ const styles = StyleSheet.create({
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.semibold },
   interestsRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 7,
-    backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
-    flexWrap: 'wrap',
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
+    flexWrap: 'wrap', gap: 8,
   },
-  interestsLabel: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
-  interestsText: { fontSize: 12, color: '#22C55E', fontWeight: '600', flex: 1 },
+  interestsLabel: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
+  interestsText: { fontSize: 13, color: '#22C55E', fontFamily: F.bold, flex: 1 },
   todChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#22C55E', borderRadius: 10,
-    paddingHorizontal: 7, paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F0FDF4', borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#DCFCE7',
   },
-  todChipText: { fontSize: 11, color: '#fff', fontWeight: '600' },
+  todChipText: { fontSize: 12, color: '#16A34A', fontFamily: F.bold },
+
   matchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     marginBottom: 8,

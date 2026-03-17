@@ -90,19 +90,22 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
       }
       {...pan.panHandlers}
     >
-      <View style={{ height: 4, backgroundColor: '#E5E5EA', borderRadius: 2 }}>
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: '#22C55E', borderRadius: 2 }} />
+      <View style={{ height: 6, backgroundColor: '#F2F2F7', borderRadius: 3 }}>
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: '#22C55E', borderRadius: 3 }} />
       </View>
       <View
         style={{
           position: 'absolute',
-          top: 5,
+          top: 6,
           left: HPAD + ratio * trackW - THUMB / 2,
           width: THUMB, height: THUMB, borderRadius: THUMB / 2,
-          backgroundColor: '#22C55E',
-          shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 4,
+          backgroundColor: '#fff',
+          borderWidth: 2, borderColor: '#22C55E',
+          shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
+          shadowOffset: { width: 0, height: 3 },
         }}
       />
+
     </View>
   );
 }
@@ -467,23 +470,32 @@ export default function CreateTripScreen({ navigation }: Props) {
               <Text style={styles.vibeSubtitle}>Select activities you wish to explore</Text>
             </View>
             <View style={styles.vibeGrid}>
-              {VIBES.map(v => (
-                <TouchableOpacity
-                  key={v.id}
-                  style={[styles.vibeChip, selectedVibes.includes(v.id) && styles.vibeChipActive]}
-                  onPress={() => toggleVibe(v.id)}
-                >
-                  <Ionicons
-                    name={v.icon as any}
-                    size={18}
-                    color={selectedVibes.includes(v.id) ? '#22C55E' : v.color}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Text style={[styles.vibeLabel, selectedVibes.includes(v.id) && styles.vibeLabelActive]}>
-                    {v.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {VIBES.map(v => {
+                const isSelected = selectedVibes.includes(v.id);
+                return (
+                  <TouchableOpacity
+                    key={v.id}
+                    style={[
+                      styles.vibeChip,
+                      isSelected && { borderColor: v.color, backgroundColor: v.color + '10' }
+                    ]}
+                    onPress={() => toggleVibe(v.id)}
+                  >
+                    <Ionicons
+                      name={isSelected ? 'checkmark-circle' : v.icon as any}
+                      size={20}
+                      color={v.color}
+                      style={{ marginRight: 10 }}
+                    />
+                    <Text style={[
+                      styles.vibeLabel,
+                      isSelected && { color: v.color, fontFamily: F.bold }
+                    ]}>
+                      {v.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </FyndScrollContainer>
 
@@ -621,11 +633,16 @@ const styles = StyleSheet.create({
   vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', lineHeight: 32 },
   vibeSubtitleRow: { width: '100%', marginBottom: 16 },
   vibeSubtitle: { fontSize: 14, fontFamily: F.semibold, color: '#6B7280' },
-  vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  vibeChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', borderRadius: 50, paddingVertical: 11, paddingHorizontal: 16, borderWidth: 1.5, borderColor: 'transparent' },
-  vibeChipActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
-  vibeLabel: { fontSize: 14, fontFamily: F.medium, color: '#111827' },
-  vibeLabelActive: { fontFamily: F.semibold, color: '#22C55E' },
+  vibeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+  vibeChip: {
+    width: '48%', flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#fff', borderRadius: 16,
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderWidth: 1.5, borderColor: '#F2F2F7',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
+  },
+  vibeLabel: { fontSize: 13, fontFamily: F.semibold, color: '#4B5563' },
+
 
   // Bottom action bar — in-flow, always visible below scroll content
   floatingBar: {

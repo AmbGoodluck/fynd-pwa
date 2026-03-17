@@ -107,19 +107,19 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
     var directionsRenderer = null;
 
     function pinSvg(label, isActive) {
-      var color = isActive ? '#22C55E' : '#EF4444';
-      var size = isActive ? 44 : 36;
-      var fs = isActive ? 14 : 12;
-      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + Math.round(size * 1.35) + '" viewBox="0 0 40 54">'
-        + '<defs><filter id="drop" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity="0.3"/></filter></defs>'
-        + '<path d="M20 2C10 2 2 10 2 20c0 13 18 30 18 30s18-17 18-30c0-10-8-18-18-18z" fill="' + color + '" filter="url(#drop)"/>'
-        + '<circle cx="20" cy="19" r="13" fill="white"/>'
+      var color = isActive ? '#22C55E' : '#9CA3AF';
+      var size = isActive ? 48 : 38;
+      var fs = isActive ? 15 : 12;
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + Math.round(size * 1.3) + '" viewBox="0 0 40 52">'
+        + '<defs><filter id="drop" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="4" flood-opacity="0.25"/></filter></defs>'
+        + '<path d="M20 2C11 2 4 9 4 19c0 14 16 31 16 31s16-17 16-31c0-10-7-17-16-17z" fill="' + color + '" filter="url(#drop)"/>'
+        + '<circle cx="20" cy="19" r="14" fill="white"/>'
         + '<text x="20" y="24" font-family="Arial,sans-serif" font-size="' + fs + '" font-weight="bold" text-anchor="middle" fill="' + color + '">' + label + '</text>'
         + '</svg>';
       return {
         url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg),
-        scaledSize: new google.maps.Size(size, Math.round(size * 1.35)),
-        anchor: new google.maps.Point(size / 2, Math.round(size * 1.35)),
+        scaledSize: new google.maps.Size(size, Math.round(size * 1.3)),
+        anchor: new google.maps.Point(size / 2, Math.round(size * 1.3)),
       };
     }
 

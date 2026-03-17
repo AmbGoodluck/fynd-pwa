@@ -130,21 +130,21 @@ export default function SpotlightScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {/* Header */}
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={28} color="#111827" style={{ opacity: 0.6 }} />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={26} color="#111827" />
           </TouchableOpacity>
           <View style={styles.topBarCenter}>
             <Text style={styles.topBarTitle}>Spotlight</Text>
             <View style={styles.adPill}>
-              <Text style={styles.adPillText}>Ad</Text>
+              <Text style={styles.adPillText}>AD</Text>
             </View>
           </View>
-          <View style={{ width: 28 }} />
+          <View style={{ width: 44 }} />
         </View>
 
-        <Text style={styles.headerSubtitle}>Deals & destinations picked for your travel style</Text>
+        <Text style={styles.headerSubtitle}>Personalised travel deals & experiences picker for you</Text>
+
 
         {/* Categories */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow} contentContainerStyle={{ paddingHorizontal: 16 }}>
@@ -270,56 +270,58 @@ const cardWidth = (width - 48) / 2;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   scroll: { paddingBottom: 100 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 50, paddingBottom: 4 },
-  topBarCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  topBarTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
-  adPill: { backgroundColor: '#F2F2F7', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  adPillText: { fontSize: 11, color: '#57636C', fontWeight: '600' },
-  headerSubtitle: { fontSize: 13, color: '#8E8E93', paddingHorizontal: 16, marginBottom: 12 },
-  categoryRow: { marginBottom: 16 },
-  categoryChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8, borderWidth: 1, borderColor: '#E5E5EA' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  topBarCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  topBarTitle: { fontSize: 24, fontFamily: F.bold, color: '#111827', letterSpacing: -0.5 },
+  adPill: { backgroundColor: '#F3F4F6', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  adPillText: { fontSize: 10, color: '#6B7280', fontFamily: F.bold, letterSpacing: 0.5 },
+  headerSubtitle: { fontSize: 14, fontFamily: F.medium, color: '#6B7280', paddingHorizontal: 16, marginBottom: 20, lineHeight: 20 },
+  categoryRow: { marginBottom: 20 },
+  categoryChip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 10, marginRight: 10, borderWidth: 1.5, borderColor: '#F2F2F7' },
   categoryChipActive: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
-  categoryLabel: { fontSize: 13, color: '#57636C', fontWeight: '500' },
+  categoryLabel: { fontSize: 13, color: '#4B5563', fontFamily: F.semibold },
   categoryLabelActive: { color: '#fff' },
-  heroCard: { marginHorizontal: 16, marginBottom: 20, borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  heroImage: { width: '100%', height: 280, justifyContent: 'space-between' },
-  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 14 },
-  heroBadge: { backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
-  heroBadgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  heroDiscount: { backgroundColor: '#22C55E', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
-  heroDiscountText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  heroBottom: { backgroundColor: 'rgba(0,0,0,0.55)', borderBottomLeftRadius: 20, borderBottomRightRadius: 20, padding: 16 },
-  heroPartnerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  heroPartner: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
-  sponsoredDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: 6 },
-  heroTitle: { fontSize: 22, fontWeight: '700', color: '#fff', marginBottom: 2 },
-  heroSubtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginBottom: 10 },
-  heroPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  heroPrice: { fontSize: 22, fontWeight: '700', color: '#22C55E' },
-  heroOriginalPrice: { fontSize: 14, color: 'rgba(255,255,255,0.5)', textDecorationLine: 'line-through' },
-  bookHeroBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#22C55E', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8, marginLeft: 'auto' },
-  bookHeroBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  sectionCount: { fontSize: 13, color: '#8E8E93' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16 },
-  dealCard: { width: cardWidth, backgroundColor: '#fff', borderRadius: 16, marginBottom: 14, borderWidth: 0.5, borderColor: '#E5E5EA', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  dealImage: { width: '100%', height: 130, justifyContent: 'space-between' },
-  dealTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 8 },
-  dealTagWrap: { backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  dealTag: { fontSize: 10, color: '#fff', fontWeight: '600' },
-  dealDiscountWrap: { backgroundColor: '#22C55E', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
-  dealDiscount: { fontSize: 10, color: '#fff', fontWeight: '700' },
-  dealContent: { padding: 10 },
-  dealBadge: { fontSize: 11, color: '#57636C', marginBottom: 2 },
-  dealTitle: { fontSize: 13, fontWeight: '600', color: '#111827', marginBottom: 4, lineHeight: 18 },
-  dealPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
-  dealPrice: { fontSize: 14, fontWeight: '700', color: '#22C55E' },
-  dealOriginal: { fontSize: 11, color: '#8E8E93', textDecorationLine: 'line-through' },
-  dealFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dealPartner: { fontSize: 10, color: '#8E8E93' },
-  dealBookBtn: { backgroundColor: '#22C55E', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
-  dealBookBtnText: { color: '#fff', fontSize: 11, fontWeight: '600' },
+  heroCard: { marginHorizontal: 16, marginBottom: 24, borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  heroImage: { width: '100%', height: 320, justifyContent: 'space-between' },
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
+  heroBadge: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  heroBadgeText: { color: '#fff', fontSize: 12, fontFamily: F.bold },
+  heroDiscount: { backgroundColor: '#22C55E', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  heroDiscountText: { color: '#fff', fontSize: 12, fontFamily: F.bold },
+  heroBottom: { backgroundColor: 'rgba(0,0,0,0.45)', padding: 20 },
+  heroPartnerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  heroPartner: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontFamily: F.medium },
+  sponsoredDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.6)', marginHorizontal: 8 },
+  heroTitle: { fontSize: 26, fontFamily: F.bold, color: '#fff', marginBottom: 4, letterSpacing: -0.5 },
+  heroSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginBottom: 16, fontFamily: F.medium },
+  heroPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroPrice: { fontSize: 24, fontFamily: F.bold, color: '#4ADE80' },
+  heroOriginalPrice: { fontSize: 15, color: 'rgba(255,255,255,0.5)', textDecorationLine: 'line-through', fontFamily: F.medium },
+  bookHeroBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#22C55E', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 10, marginLeft: 'auto' },
+  bookHeroBtnText: { color: '#fff', fontSize: 15, fontFamily: F.bold },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, marginBottom: 16 },
+  sectionTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827' },
+  sectionCount: { fontSize: 13, fontFamily: F.medium, color: '#6B7280' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 },
+  dealCard: { width: cardWidth + 8, backgroundColor: '#fff', borderRadius: 20, marginBottom: 16, marginHorizontal: 6, borderWidth: 1, borderColor: '#F2F2F7', overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  dealImage: { width: '100%', height: 150, justifyContent: 'space-between' },
+  dealTopRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 10 },
+  dealTagWrap: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  dealTag: { fontSize: 10, color: '#fff', fontFamily: F.bold, letterSpacing: 0.5 },
+  dealDiscountWrap: { backgroundColor: '#22C55E', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  dealDiscount: { fontSize: 10, color: '#fff', fontFamily: F.bold },
+  dealContent: { padding: 14 },
+  dealBadge: { fontSize: 11, fontFamily: F.semibold, color: '#6B7280', marginBottom: 4 },
+  dealTitle: { fontSize: 14, fontFamily: F.bold, color: '#111827', marginBottom: 6, lineHeight: 20 },
+  dealPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  dealPrice: { fontSize: 16, fontFamily: F.bold, color: '#22C55E' },
+  dealOriginal: { fontSize: 12, color: '#9CA3AF', textDecorationLine: 'line-through', fontFamily: F.medium },
+  dealFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F2F2F7', paddingTop: 12 },
+  dealPartner: { fontSize: 11, color: '#9CA3AF', fontFamily: F.medium },
+  dealBookBtn: { backgroundColor: '#F0FDF4', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: '#22C55E' },
+  dealBookBtnText: { color: '#22C55E', fontSize: 12, fontFamily: F.bold },
+
   partnersSection: { marginHorizontal: 16, marginTop: 8, backgroundColor: '#F9FAFB', borderRadius: 16, padding: 16, marginBottom: 16 },
   partnersTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 4 },
   partnersSubtitle: { fontSize: 12, color: '#8E8E93', marginBottom: 12, lineHeight: 18 },
