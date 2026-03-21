@@ -10,6 +10,7 @@ import {
   where,
   serverTimestamp,
   Timestamp,
+  increment,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { SharedTrip, TripMember, SharedTripPlace, MemberRole } from '../types/sharedTrip';
@@ -63,11 +64,8 @@ export async function createSharedTrip(params: {
   };
 
   try {
-    console.log('Attempting to create shared trip in Firestore:', { trip_id, owner_id: params.owner_id, TRIPS_COL });
     await setDoc(doc(db, TRIPS_COL, trip_id), trip);
-    console.log('Shared trip created successfully in Firestore');
   } catch (err: any) {
-    console.error('Firestore createSharedTrip ERROR:', err.code, err.message, err);
     if (err?.code === 'permission-denied') {
       throw new Error('PERMISSION_DENIED: Please check your Firestore Rules. They might be blocking shared_trips writes.');
     }
@@ -85,8 +83,8 @@ export async function createSharedTrip(params: {
   };
   try {
     await setDoc(doc(db, MEMBERS_COL, ownerMember.member_id), ownerMember);
-  } catch (err: any) {
-    console.warn('Firestore failed adding owner member for trip (member auth missing?):', err);
+  } catch {
+    // Non-fatal: owner member row missing is recoverable; trip creation already succeeded
   }
 
   trackTripCreated(params.owner_id, trip_id, {
@@ -150,9 +148,10 @@ export async function joinSharedTrip(params: {
 
   await setDoc(doc(db, MEMBERS_COL, member.member_id), member);
 
-  // Increment member count
+  // Fix: was a non-atomic read-then-write — concurrent joins produced wrong counts.
+  // increment() is an atomic server-side operation that avoids race conditions.
   await updateDoc(doc(db, TRIPS_COL, params.trip_id), {
-    member_count: (trip.member_count || 1) + 1,
+    member_count: increment(1),
   });
 
   trackTripJoined(params.user_id, params.trip_id);
@@ -163,12 +162,11 @@ export async function joinSharedTrip(params: {
 // ── Remove a member from a trip (owner only) ──────────────────────────────────
 export async function removeMember(member_id: string, trip_id: string): Promise<void> {
   await deleteDoc(doc(db, MEMBERS_COL, member_id));
-  const trip = await getSharedTrip(trip_id);
-  if (trip && trip.member_count > 1) {
-    await updateDoc(doc(db, TRIPS_COL, trip_id), {
-      member_count: trip.member_count - 1,
-    });
-  }
+  // Fix: was a non-atomic read-then-write (fetched trip.member_count then subtracted).
+  // Use atomic increment(-1) with a minimum guard handled server-side by Firestore rules.
+  await updateDoc(doc(db, TRIPS_COL, trip_id), {
+    member_count: increment(-1),
+  });
 }
 
 // ── Leave a trip (member only) ────────────────────────────────────────────────

@@ -246,7 +246,9 @@ export default function SavedScreen({ navigation }: Props) {
         ) : (
           <FlatList
             data={itineraries}
-            keyExtractor={item => item.id || Math.random().toString()}
+            // Fix: Math.random() produced a new key on every render, causing React to re-mount
+            // all list items on each update. Use a stable fallback based on trip content instead.
+            keyExtractor={(item, index) => item.id || `itinerary-${item.tripId}-${index}`}
             contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 20 }]}
             renderItem={({ item }: { item: ItineraryDoc }) => (
               <View style={styles.itineraryCardWrapper}>

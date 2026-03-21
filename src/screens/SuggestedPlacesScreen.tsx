@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image,
-  Linking, Platform, Alert, Modal, TouchableWithoutFeedback, FlatList,
+  View, Text, StyleSheet, TouchableOpacity,
+  Platform, Modal, TouchableWithoutFeedback, FlatList,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,11 +76,9 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     } else {
       const isItineraryFull = selectedForItinerary.length >= maxPlaces; // Use maxPlaces
       if (isItineraryFull) {
-        if (isGuest || !isAuthenticated) {
-          setShowUpgradeModal(true);
-        } else {
-          setShowPlaceLimitModal(true);
-        }
+        // Only guests have a finite maxPlaces; authenticated users have Infinity so
+        // this branch is only reachable for guests — show upgrade modal.
+        setShowUpgradeModal(true);
         return;
       }
       setSelectedForItinerary(prev => [...prev, place]);

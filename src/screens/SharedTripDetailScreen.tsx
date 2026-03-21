@@ -20,7 +20,8 @@ import AppHeader from '../components/AppHeader';
 import PlaceCard from '../components/PlaceCard';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import { useSharedTripStore } from '../store/useSharedTripStore';
-import { useBookingLinksStore } from '../store/bookingStore';
+// Fix: corrected import path — bookingStore does not exist; the store is useBookingLinksStore
+import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import {
   getSharedTrip,
   getTripMembers,

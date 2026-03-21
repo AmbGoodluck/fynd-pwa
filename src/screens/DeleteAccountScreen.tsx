@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { auth, db } from '../services/firebase';
 import { useAuthStore } from '../store/useAuthStore';
 
 type Props = { navigation: any };
@@ -39,8 +41,35 @@ export default function DeleteAccountScreen({ navigation }: Props) {
     }
   }, [showModal]);
 
-  const handleDelete = () => {
-    setShowModal(true);
+  const handleDelete = async () => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      // No active Firebase session — just clear local state and navigate
+      await logout();
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+      return;
+    }
+    try {
+      // Fix: auth user was never actually deleted — Firebase account persisted after "Account Deleted" screen
+      // Delete Firestore user and subscription docs; Firebase rules will block other collections
+      await Promise.all([
+        deleteDoc(doc(db, 'users', firebaseUser.uid)),
+        deleteDoc(doc(db, 'subscriptions', firebaseUser.uid)),
+      ]);
+      // Permanently remove the Firebase Auth account (requires recent sign-in)
+      await firebaseUser.delete();
+      setShowModal(true);
+    } catch (err: any) {
+      if (err?.code === 'auth/requires-recent-login') {
+        Alert.alert(
+          'Re-authentication Required',
+          'For security, please sign out and sign back in before deleting your account.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to delete account. Please try again.');
+      }
+    }
   };
 
   return (

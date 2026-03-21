@@ -5,7 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { usePremiumStore } from '../store/usePremiumStore';
+import { useTripStore } from '../store/useTripStore';
+import { useTempItineraryStore } from '../store/useTempItineraryStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+// Fix: F was used throughout StyleSheet.create but never imported — caused runtime TypeError
+import { F } from '../theme/fonts';
 
 type Props = { navigation: any };
 
@@ -30,6 +34,10 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleLogout = async () => {
     try { await firebaseLogout(); } catch { /* ignore */ }
     guestLogout();
+    // Fix: logout only cleared auth + guest stores; trip and temp-itinerary state persisted
+    // across sessions, potentially leaking the previous user's data to the next user on device.
+    useTripStore.getState().reset();
+    useTempItineraryStore.getState().clear();
     navigation.reset({ index: 0, routes: [{ name: 'AuthChoice' }] });
   };
 

@@ -1,3 +1,7 @@
+// DEAD CODE — this file is not imported anywhere in the codebase.
+// All active Firestore operations are in src/services/database.ts.
+// Do not use this file; it duplicates database.ts with a stale schema
+// (missing isPremium, travelPreferences typed fields, subscription limits, etc.).
 import { doc, setDoc, getDoc, addDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
