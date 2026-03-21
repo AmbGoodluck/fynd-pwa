@@ -78,6 +78,22 @@ export default function JoinTripScreen({ navigation, route }: Props) {
 
   const handleJoin = async () => {
     if (!trip) return;
+
+    // Shared trips require a real account — guests cannot join because the
+    // membership would be tied to a random session ID that won't persist.
+    if (!authUser) {
+      Alert.alert(
+        'Sign In Required',
+        'You need a Fynd account to join shared trips. Sign in or create a free account to continue.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Login') },
+          { text: 'Register', onPress: () => navigation.navigate('Register') },
+        ]
+      );
+      return;
+    }
+
     setJoining(true);
     try {
       await joinSharedTrip({
@@ -252,10 +268,15 @@ export default function JoinTripScreen({ navigation, route }: Props) {
           >
             {joining ? (
               <ActivityIndicator color="#fff" />
-            ) : (
+            ) : authUser ? (
               <>
                 <Ionicons name="people-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.primaryBtnText}>Join Trip</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="log-in-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryBtnText}>Sign In to Join</Text>
               </>
             )}
           </TouchableOpacity>

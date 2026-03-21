@@ -24,6 +24,9 @@ export interface SharedTrip {
   places: SharedTripPlace[];
   visibility: 'shared';
   member_count: number;
+  /** Firebase Auth UIDs of every member (owner + joiners). Used for Firestore
+   *  array-contains queries and security rule membership checks. */
+  members: string[];
 }
 
 export interface TripMember {

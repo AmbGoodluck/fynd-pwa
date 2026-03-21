@@ -200,6 +200,23 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
   const handleShareTrip = async () => {
     if (stops.length === 0 || sharing) return;
+
+    // Shared trips require a real Firebase account so the trip can be retrieved
+    // across devices.  Guests have no auth.currentUser, so Firestore writes would
+    // be rejected by security rules — show a prompt instead of a permission error.
+    if (isGuest || !authUser) {
+      Alert.alert(
+        'Sign In Required',
+        'Create a free account to share trips with others and access them on any device.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Sign In', onPress: () => navigation.navigate('Login') },
+          { text: 'Register', onPress: () => navigation.navigate('Register') },
+        ]
+      );
+      return;
+    }
+
     setSharing(true);
     try {
       const today = new Date().toLocaleDateString('en-US', {

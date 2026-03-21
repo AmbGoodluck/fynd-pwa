@@ -147,7 +147,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await removeMember(member.member_id, trip_id);
+              await removeMember(member.member_id, trip_id, member.user_id);
               setMembers((prev) => prev.filter((m) => m.member_id !== member.member_id));
               removeMemberLocally(member.member_id);
               if (trip) setTrip({ ...trip, member_count: Math.max(1, trip.member_count - 1) });

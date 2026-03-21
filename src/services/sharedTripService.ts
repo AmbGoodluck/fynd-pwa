@@ -11,6 +11,8 @@ import {
   serverTimestamp,
   Timestamp,
   increment,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { SharedTrip, TripMember, SharedTripPlace, MemberRole } from '../types/sharedTrip';
@@ -61,6 +63,9 @@ export async function createSharedTrip(params: {
     places: params.places,
     visibility: 'shared',
     member_count: 1,
+    // members[] stores Firebase Auth UIDs for Firestore security-rule membership checks
+    // and efficient array-contains queries.
+    members: [params.owner_id],
   };
 
   try {
@@ -148,10 +153,11 @@ export async function joinSharedTrip(params: {
 
   await setDoc(doc(db, MEMBERS_COL, member.member_id), member);
 
-  // Fix: was a non-atomic read-then-write — concurrent joins produced wrong counts.
-  // increment() is an atomic server-side operation that avoids race conditions.
+  // Atomically increment the count and add user to the members[] array.
+  // arrayUnion is idempotent — safe even if called twice with the same user_id.
   await updateDoc(doc(db, TRIPS_COL, params.trip_id), {
     member_count: increment(1),
+    members: arrayUnion(params.user_id),
   });
 
   trackTripJoined(params.user_id, params.trip_id);
@@ -160,12 +166,12 @@ export async function joinSharedTrip(params: {
 }
 
 // ── Remove a member from a trip (owner only) ──────────────────────────────────
-export async function removeMember(member_id: string, trip_id: string): Promise<void> {
+// user_id is required to keep the members[] array in the trip document in sync.
+export async function removeMember(member_id: string, trip_id: string, user_id: string): Promise<void> {
   await deleteDoc(doc(db, MEMBERS_COL, member_id));
-  // Fix: was a non-atomic read-then-write (fetched trip.member_count then subtracted).
-  // Use atomic increment(-1) with a minimum guard handled server-side by Firestore rules.
   await updateDoc(doc(db, TRIPS_COL, trip_id), {
     member_count: increment(-1),
+    members: arrayRemove(user_id),
   });
 }
 
@@ -173,7 +179,7 @@ export async function removeMember(member_id: string, trip_id: string): Promise<
 export async function leaveTrip(trip_id: string, user_id: string): Promise<void> {
   const membership = await getMembership(trip_id, user_id);
   if (!membership) return;
-  await removeMember(membership.member_id, trip_id);
+  await removeMember(membership.member_id, trip_id, user_id);
 }
 
 // ── Delete a trip and all its members (owner only) ────────────────────────────
