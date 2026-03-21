@@ -97,7 +97,7 @@ export const useGuestStore = create<GuestStore>()(
               city: savedPlace.city || '',
             });
           } catch (e) {
-            console.error('Failed to sync saved place to Firestore', e);
+            if (__DEV__) console.error('Failed to sync saved place to Firestore', e);
           }
         }
       },
@@ -113,7 +113,7 @@ export const useGuestStore = create<GuestStore>()(
               await deleteSavedPlace(docId, user.id);
             }
           } catch (e) {
-            console.error('Failed to delete saved place from Firestore', e);
+            if (__DEV__) console.error('Failed to delete saved place from Firestore', e);
           }
         }
       },
@@ -138,7 +138,7 @@ export const useGuestStore = create<GuestStore>()(
               set({ savedPlaces: mapped });
             }
           } catch (e) {
-            console.error('Failed to hydrate saved places', e);
+            if (__DEV__) console.error('Failed to hydrate saved places', e);
           }
         }
       },

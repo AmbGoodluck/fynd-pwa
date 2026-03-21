@@ -142,7 +142,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           
           await saveItinerary(authUser.id, tripData.tripId || 'manual', itineraryData);
         } catch (e) {
-          console.error('Failed to sync itinerary to cloud', e);
+          if (__DEV__) console.error('Failed to sync itinerary to cloud', e);
         }
       };
       saveToCloud();

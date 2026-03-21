@@ -53,7 +53,7 @@ import SuggestedPlacesScreen from '../screens/SuggestedPlacesScreen';
 
 // ── Settings ──────────────────────────────────────────────────────────────────
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
-// Fix: DeleteAccountScreen was never imported but AccountSettingsScreen navigates to 'DeleteAccount'
+
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import LegalScreen from '../screens/LegalScreen';
 import LegalDetailScreen from '../screens/LegalDetailScreen';
@@ -319,7 +319,7 @@ export default function AppNavigator() {
           {/* ── Profile / settings ────────────────────── */}
           <Stack.Screen name="Profile"          component={ProfileScreen} />
           <Stack.Screen name="AccountSettings"  component={AccountSettingsScreen} />
-          {/* Fix: DeleteAccount was never registered — AccountSettingsScreen navigates here */}
+
           <Stack.Screen name="DeleteAccount"    component={DeleteAccountScreen} />
           <Stack.Screen name="Legal"            component={LegalScreen} />
           <Stack.Screen name="LegalDetail"      component={LegalDetailScreen} />

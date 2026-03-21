@@ -40,7 +40,7 @@ export default function SavedScreen({ navigation }: Props) {
       setLoadingItineraries(true);
       getRecentItineraries(user.id, 20)
         .then(res => setItineraries(res))
-        .catch(err => console.error('Failed to load itineraries:', err))
+        .catch(err => { if (__DEV__) console.error('Failed to load itineraries:', err); })
         .finally(() => setLoadingItineraries(false));
     }
   }, [activeTab, isAuthenticated, user]);
@@ -246,8 +246,6 @@ export default function SavedScreen({ navigation }: Props) {
         ) : (
           <FlatList
             data={itineraries}
-            // Fix: Math.random() produced a new key on every render, causing React to re-mount
-            // all list items on each update. Use a stable fallback based on trip content instead.
             keyExtractor={(item, index) => item.id || `itinerary-${item.tripId}-${index}`}
             contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 20 }]}
             renderItem={({ item }: { item: ItineraryDoc }) => (

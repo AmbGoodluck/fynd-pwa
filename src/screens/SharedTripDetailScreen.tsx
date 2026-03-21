@@ -20,7 +20,6 @@ import AppHeader from '../components/AppHeader';
 import PlaceCard from '../components/PlaceCard';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import { useSharedTripStore } from '../store/useSharedTripStore';
-// Fix: corrected import path — bookingStore does not exist; the store is useBookingLinksStore
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import {
   getSharedTrip,
@@ -35,8 +34,6 @@ import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
 
 type Props = { navigation: any; route?: any };
-
-
 
 // ── Member Avatar ─────────────────────────────────────────────────────────────
 function MemberAvatar({
@@ -81,7 +78,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   const { sessionUserId, sessionUserName, setActiveTrip, setActiveMembers, removeMemberLocally, removeJoinedTrip, removeMyTrip } =
     useSharedTripStore();
-  const { savedPlaces, savePlace } = useGuestStore();
+  const { savePlace } = useGuestStore();
   const { user: authUser } = useAuthStore();
   // Prefer Firebase Auth UID so owner check works correctly for authenticated users
   const effectiveUserId = authUser?.id || sessionUserId;
@@ -92,12 +89,11 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [notFound, setNotFound] = useState(false);
   const [removedFromTrip, setRemovedFromTrip] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
 
-  const applyBookingFeedback = useBookingLinksStore((s: any) => s.applyFeedback);
+  const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
 
   const { bottom: bottomInset } = useSafeAreaInsets();
 
@@ -225,7 +221,6 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         bookingUrl: p.bookingUrl,
       } as any);
     });
-    setSaved(true);
     setShowSaveModal(false);
     Alert.alert('Saved!', 'All places from this trip have been added to your Saved list.');
   };
