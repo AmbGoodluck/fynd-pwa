@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Linking,
+  View, Text, StyleSheet, TouchableOpacity, Pressable, Linking,
   Alert, Modal, Image, Platform, TextInput, Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -523,36 +523,20 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Share Trip Modal */}
-      <Modal
-        visible={showShareModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowShareModal(false)}
-      >
-        {/*
-          Overlay container — plain View, not touchable.
-          Inside we render TWO siblings:
-            1. An absoluteFill TouchableOpacity (the dim background dismiss area)
-            2. The sheet View (rendered on top in DOM/RN layer order)
-          Because they are siblings — NOT ancestor/descendant — clicks on the
-          sheet never propagate to the background TouchableOpacity on web or native.
-        */}
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={StyleSheet.absoluteFill}
-            activeOpacity={1}
-            onPress={() => setShowShareModal(false)}
-          />
+      {/* Share Trip Overlay — inline absolute overlay, no Modal portal.
+          Flex column: Pressable backdrop (flex:1) sits ABOVE the sheet in
+          normal flow — they do not overlap so no z-index or event-bubbling
+          hacks are needed. Works identically on web and native. */}
+      {showShareModal && (
+        <View style={styles.shareOverlay}>
+          <Pressable style={styles.shareBackdrop} onPress={() => setShowShareModal(false)} />
           <View style={styles.shareModalSheet}>
             <View style={styles.modalHandle} />
             <View style={styles.shareModalIconWrap}>
               <Ionicons name="share-social-outline" size={28} color="#22C55E" />
             </View>
             <Text style={styles.shareModalTitle}>Share Trip</Text>
-            <Text style={styles.shareModalBody}>
-              Add up to 7 members to trip
-            </Text>
+            <Text style={styles.shareModalBody}>Add up to 7 members to trip</Text>
 
             <View style={styles.shareLinkBox}>
               <TextInput
@@ -593,7 +577,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      )}
 
       {/* Long-press Place Preview */}
       <PlacePreviewModal
@@ -748,14 +732,19 @@ const styles = StyleSheet.create({
   },
   modalCancelText: { fontSize: 15, color: '#57636C', fontWeight: '500' },
 
-  // Share Trip Modal
+  // Share Trip Overlay (no Modal — inline absolute overlay)
+  shareOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 999,
+  },
+  shareBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
   shareModalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 40, alignItems: 'center',
-    // zIndex needed on web: the absoluteFill background is position:absolute
-    // and stacks above normal-flow elements regardless of DOM order.
-    // zIndex: 1 ensures the sheet is clickable on top of the background.
-    zIndex: 1,
   },
   shareModalIconWrap: {
     width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0FDF4',
