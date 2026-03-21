@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Linking,
   Alert, Modal, Image, Platform, TextInput, Animated,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F } from '../theme/fonts';
@@ -531,60 +530,69 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         animationType="slide"
         onRequestClose={() => setShowShareModal(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowShareModal(false)}>
-          <View style={styles.modalOverlay}>
-            {/* onStartShouldSetResponder claims the touch event so it doesn't
-                bubble up to the overlay's TouchableWithoutFeedback on web */}
-            <View style={styles.shareModalSheet} onStartShouldSetResponder={() => true}>
-              <View style={styles.modalHandle} />
-              <View style={styles.shareModalIconWrap}>
-                <Ionicons name="share-social-outline" size={28} color="#22C55E" />
-              </View>
-              <Text style={styles.shareModalTitle}>Share Trip</Text>
-              <Text style={styles.shareModalBody}>
-                Add up to 7 members to trip
-              </Text>
-
-              <View style={styles.shareLinkBox}>
-                <TextInput
-                  style={styles.shareLinkText}
-                  value={shareLink}
-                  editable={false}
-                  selectTextOnFocus
-                  multiline={false}
-                  numberOfLines={1}
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
-                onPress={handleCopyFromModal}
-              >
-                <Ionicons
-                  name={linkCopied ? 'checkmark-circle-outline' : 'copy-outline'}
-                  size={18}
-                  color="#fff"
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.copyBtnText}>
-                  {linkCopied ? 'Copied!' : 'Copy Link'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.viewTripsBtn}
-                onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
-              >
-                <Ionicons name="people-outline" size={15} color="#22C55E" style={{ marginRight: 6 }} />
-                <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
+        {/*
+          Overlay container — plain View, not touchable.
+          Inside we render TWO siblings:
+            1. An absoluteFill TouchableOpacity (the dim background dismiss area)
+            2. The sheet View (rendered on top in DOM/RN layer order)
+          Because they are siblings — NOT ancestor/descendant — clicks on the
+          sheet never propagate to the background TouchableOpacity on web or native.
+        */}
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowShareModal(false)}
+          />
+          <View style={styles.shareModalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.shareModalIconWrap}>
+              <Ionicons name="share-social-outline" size={28} color="#22C55E" />
             </View>
+            <Text style={styles.shareModalTitle}>Share Trip</Text>
+            <Text style={styles.shareModalBody}>
+              Add up to 7 members to trip
+            </Text>
+
+            <View style={styles.shareLinkBox}>
+              <TextInput
+                style={styles.shareLinkText}
+                value={shareLink}
+                editable={false}
+                selectTextOnFocus
+                multiline={false}
+                numberOfLines={1}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
+              onPress={handleCopyFromModal}
+            >
+              <Ionicons
+                name={linkCopied ? 'checkmark-circle-outline' : 'copy-outline'}
+                size={18}
+                color="#fff"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.copyBtnText}>
+                {linkCopied ? 'Copied!' : 'Copy Link'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.viewTripsBtn}
+              onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
+            >
+              <Ionicons name="people-outline" size={15} color="#22C55E" style={{ marginRight: 6 }} />
+              <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableWithoutFeedback>
+        </View>
       </Modal>
 
       {/* Long-press Place Preview */}
