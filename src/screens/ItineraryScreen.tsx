@@ -752,6 +752,10 @@ const styles = StyleSheet.create({
   shareModalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 40, alignItems: 'center',
+    // zIndex needed on web: the absoluteFill background is position:absolute
+    // and stacks above normal-flow elements regardless of DOM order.
+    // zIndex: 1 ensures the sheet is clickable on top of the background.
+    zIndex: 1,
   },
   shareModalIconWrap: {
     width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0FDF4',
