@@ -18,6 +18,7 @@ import {
   joinSharedTrip,
 } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';
+import { useAuthStore } from '../store/useAuthStore';
 import type { SharedTrip } from '../types/sharedTrip';
 
 type Props = { navigation: any; route?: any };
@@ -26,6 +27,10 @@ export default function JoinTripScreen({ navigation, route }: Props) {
   const trip_id: string = route?.params?.trip_id ?? '';
 
   const { sessionUserId, sessionUserName, addJoinedTrip } = useSharedTripStore();
+  const { user: authUser } = useAuthStore();
+  // Use Firebase Auth identity when available so membership is tied to the account
+  const effectiveUserId = authUser?.id || sessionUserId;
+  const effectiveUserName = authUser?.fullName || authUser?.email?.split('@')[0] || sessionUserName;
 
   const [trip, setTrip] = useState<SharedTrip | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +49,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
       try {
         const [fetchedTrip, membership] = await Promise.all([
           getSharedTrip(trip_id),
-          getMembership(trip_id, sessionUserId),
+          getMembership(trip_id, effectiveUserId),
         ]);
 
         if (!fetchedTrip) {
@@ -77,8 +82,8 @@ export default function JoinTripScreen({ navigation, route }: Props) {
     try {
       await joinSharedTrip({
         trip_id: trip.trip_id,
-        user_id: sessionUserId,
-        user_name: sessionUserName,
+        user_id: effectiveUserId,
+        user_name: effectiveUserName,
       });
       addJoinedTrip(trip);
       navigation.reset({

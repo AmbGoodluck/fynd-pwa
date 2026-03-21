@@ -27,10 +27,12 @@ import {
   getTripMembers,
   removeMember,
   leaveTrip,
+  deleteSharedTrip,
   buildShareLink,
 } from '../services/sharedTripService';
 import type { SharedTrip, TripMember, SharedTripPlace } from '../types/sharedTrip';
 import { useGuestStore } from '../store/useGuestStore';
+import { useAuthStore } from '../store/useAuthStore';
 
 type Props = { navigation: any; route?: any };
 
@@ -77,9 +79,12 @@ function MemberAvatar({
 export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const trip_id: string = route?.params?.trip_id ?? '';
 
-  const { sessionUserId, sessionUserName, setActiveTrip, setActiveMembers, removeMemberLocally, removeJoinedTrip } =
+  const { sessionUserId, sessionUserName, setActiveTrip, setActiveMembers, removeMemberLocally, removeJoinedTrip, removeMyTrip } =
     useSharedTripStore();
   const { savedPlaces, savePlace } = useGuestStore();
+  const { user: authUser } = useAuthStore();
+  // Prefer Firebase Auth UID so owner check works correctly for authenticated users
+  const effectiveUserId = authUser?.id || sessionUserId;
 
   const [trip, setTrip] = useState<SharedTrip | null>(null);
   const [members, setMembers] = useState<TripMember[]>([]);
@@ -96,7 +101,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   const { bottom: bottomInset } = useSafeAreaInsets();
 
-  const myMembership = members.find((m) => m.user_id === sessionUserId);
+  const myMembership = members.find((m) => m.user_id === effectiveUserId);
   const isOwner = myMembership?.role === 'owner';
 
   const loadData = useCallback(async () => {
@@ -111,7 +116,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         setNotFound(true);
       } else {
         // Check if current user was removed
-        const membershipExists = fetchedMembers.some((m) => m.user_id === sessionUserId);
+        const membershipExists = fetchedMembers.some((m) => m.user_id === effectiveUserId);
         if (!membershipExists) {
           setRemovedFromTrip(true);
         } else {
@@ -155,6 +160,30 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
     );
   };
 
+  // ── Owner: delete trip entirely ───────────────────────────────────────────
+  const handleDeleteTrip = () => {
+    Alert.alert(
+      'Delete Trip',
+      `Delete "${trip?.trip_name}"? This will remove it for all members and cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteSharedTrip(trip_id);
+              removeMyTrip(trip_id);
+              navigation.goBack();
+            } catch {
+              Alert.alert('Error', 'Could not delete trip. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // ── Member: leave trip ────────────────────────────────────────────────────
   const handleLeave = () => {
     Alert.alert(
@@ -167,7 +196,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await leaveTrip(trip_id, sessionUserId);
+              await leaveTrip(trip_id, effectiveUserId);
               removeJoinedTrip(trip_id);
               navigation.goBack();
             } catch {
@@ -361,7 +390,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               <MemberAvatar
                 key={m.member_id}
                 member={m}
-                isCurrentUser={m.user_id === sessionUserId}
+                isCurrentUser={m.user_id === effectiveUserId}
                 isOwnerViewing={isOwner}
                 onRemove={() => handleRemoveMember(m)}
               />
@@ -402,7 +431,12 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           <Text style={styles.mapBtnText}>View Trip Map</Text>
         </TouchableOpacity>
 
-        {!isOwner && (
+        {isOwner ? (
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteTrip}>
+            <Ionicons name="trash-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+            <Text style={styles.deleteBtnText}>Delete Trip</Text>
+          </TouchableOpacity>
+        ) : (
           <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
             <Text style={styles.leaveBtnText}>Leave Trip</Text>
           </TouchableOpacity>
@@ -578,6 +612,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   leaveBtnText: { color: '#EF4444', fontSize: 14, fontFamily: F.medium },
+  deleteBtn: {
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FFF5F5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteBtnText: { color: '#EF4444', fontSize: 14, fontFamily: F.semibold },
 
   primaryBtn: {
     width: '100%',

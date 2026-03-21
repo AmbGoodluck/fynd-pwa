@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import AppHeader from '../components/AppHeader';
 import { useSharedTripStore } from '../store/useSharedTripStore';
+import { useAuthStore } from '../store/useAuthStore';
 import {
   getMyCreatedTrips,
   getJoinedTrips,
@@ -115,14 +116,19 @@ export default function SharedTripsScreen({ navigation }: Props) {
     removeMyTrip,
   } = useSharedTripStore();
 
+  const { user: authUser } = useAuthStore();
+  // Prefer the Firebase Auth UID so trips are tied to the account and accessible
+  // across devices. Fall back to the local session ID for guest users.
+  const effectiveUserId = authUser?.id || sessionUserId;
+
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadTrips = useCallback(async () => {
     try {
       const [created, joined] = await Promise.all([
-        getMyCreatedTrips(sessionUserId),
-        getJoinedTrips(sessionUserId),
+        getMyCreatedTrips(effectiveUserId),
+        getJoinedTrips(effectiveUserId),
       ]);
       setMyTrips(created);
       setJoinedTrips(joined);
@@ -132,7 +138,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [sessionUserId]);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     loadTrips();

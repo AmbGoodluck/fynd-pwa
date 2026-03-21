@@ -554,6 +554,14 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               </Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={styles.viewTripsBtn}
+              onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
+            >
+              <Ionicons name="people-outline" size={15} color="#22C55E" style={{ marginRight: 6 }} />
+              <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
               <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
@@ -745,6 +753,18 @@ const styles = StyleSheet.create({
   },
   copyBtnDone: { backgroundColor: '#16A34A' },
   copyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  viewTripsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    marginBottom: 8,
+  },
+  viewTripsBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#22C55E' },
 
   copiedToast: {
     position: 'absolute',
