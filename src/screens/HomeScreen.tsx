@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, FlatList, useWindowDimensions, Image, Modal,
-  TouchableWithoutFeedback,
+  TouchableWithoutFeedback, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,9 +78,9 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* ── Top bar — fixed, outside scroll ──────────────── */}
-      <View style={styles.topBar}>
+    <SafeAreaView style={styles.container} edges={Platform.OS === 'web' ? [] : ['top']}>
+      {/* ── Top bar — native only; web uses PWATopBar in AppNavigator ── */}
+      {Platform.OS !== 'web' && <View style={styles.topBar}>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
         <View style={styles.premiumBadge}>
           <Ionicons name="star" size={10} color="#fff" />
@@ -97,7 +97,7 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.profileInitial}>{displayName?.[0]?.toUpperCase() ?? '?'}</Text>
         </TouchableOpacity>
-      </View>
+      </View>}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
