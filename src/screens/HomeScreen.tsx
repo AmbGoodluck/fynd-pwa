@@ -10,7 +10,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
 import { useRecentTripStore } from '../store/useRecentTripStore';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { F } from '../theme/fonts';
 
 
@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
 
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
 

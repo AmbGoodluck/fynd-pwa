@@ -4,7 +4,7 @@ import {
   Image, ActivityIndicator, Alert, Linking, Platform, ScrollView,
   Modal, TouchableWithoutFeedback,
 } from 'react-native';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -37,7 +37,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const [showGuestModal, setShowGuestModal] = useState(false);
   const { isGuest } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
 
   useEffect(() => {
     if (isGuest || !isAuthenticated) {

@@ -20,7 +20,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { useTripStore } from '../store/useTripStore';
 import { saveItinerary } from '../services/database';
 import { Timestamp } from 'firebase/firestore';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -98,7 +98,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const { addMyTrip, sessionUserId, sessionUserName } = useSharedTripStore();
   const { user: authUser } = useAuthStore();
   const { isGuest } = useGuestStore();
-  const tabBarHeight = Platform.OS === 'web' ? useBottomTabBarHeight() : 0;
+  const tabBarHeight = useTabBarHeight();
 
   // Always use the real auth user identity when available.
   // Guests fall back to the persisted random sessionUserId.

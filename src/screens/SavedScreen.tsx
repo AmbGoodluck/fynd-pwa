@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore, type SavedPlace } from '../store/useGuestStore';
 import { useTempItineraryStore, TEMP_MAX_PLACES } from '../store/useTempItineraryStore';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
 import { F } from '../theme/fonts';
@@ -22,7 +22,7 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showGate, setShowGate] = useState(false);

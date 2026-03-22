@@ -5,7 +5,7 @@ import {
   PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
@@ -116,7 +116,7 @@ type Props = { navigation: any };
 export default function CreateTripScreen({ navigation }: Props) {
   const [step, setStep] = useState(1);
 
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
 
   // Step 1 state
   const [destination, setDestination] = useState('');

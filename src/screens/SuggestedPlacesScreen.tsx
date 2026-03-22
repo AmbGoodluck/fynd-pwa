@@ -14,7 +14,6 @@ import GuestGateModal from '../components/GuestGateModal';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import PlaceCard from '../components/PlaceCard';
 import { useTripStore } from '../store/useTripStore';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { detectBooking } from '../services/bookingDetectionService';
@@ -37,7 +36,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   const { bottom: bottomInset } = useSafeAreaInsets();
   const { isGuest, savePlace, unsavePlace, isPlaceSaved, savedPlaces } = useGuestStore();
-  const tabBarHeight = useBottomTabBarHeight();
   const { isPremium } = usePremiumStore();
   const { isAuthenticated } = useAuthStore();
   const { incrementItineraryCount } = usePremiumStore();
@@ -248,7 +246,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         { paddingBottom: Math.max(12, bottomInset) },
         // On web the tab bar is position:absolute, so it floats above our content.
         // Add explicit margin so the CTA button sits fully above the tab bar.
-        Platform.OS === 'web' && { marginBottom: tabBarHeight },
+        Platform.OS === 'web' && { marginBottom: bottomInset },
       ]}>
         <TouchableOpacity
           style={[styles.ctaBtn, selectedForItinerary.length === 0 && styles.ctaBtnDisabled]}
