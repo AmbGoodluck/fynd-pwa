@@ -23,6 +23,8 @@ import { submitFeedback } from '../services/feedbackService';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
+import { useRecentTripStore } from '../store/useRecentTripStore';
+import { saveUserTrip } from '../services/userTripService';
 import { openInExternalMaps, openRouteInMaps } from '../services/mapsIntent';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -466,6 +468,8 @@ export default function MapScreen({ navigation, route }: Props) {
   const [navInfo, setNavInfo] = useState<{ distance: string; duration: string } | null>(null);
   const [nextStopInfo, setNextStopInfo] = useState<{ distance: string; duration: string; stopName: string } | null>(null);
   const mapLoadStartRef = useRef<number>(Date.now());
+  // Prevent duplicate trip saves within the same map session
+  const navigateSavedRef = useRef(false);
 
   const mapsJsUrl = useMemo(
     () => `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initMap&loading=async`,
@@ -626,6 +630,30 @@ export default function MapScreen({ navigation, route }: Props) {
 
   const openFullRoute = () => {
     if (stops.length === 0) return;
+
+    // Persist trip on first Navigate tap — idempotent within this session
+    if (!navigateSavedRef.current) {
+      navigateSavedRef.current = true;
+      const uid = useAuthStore.getState().user?.id;
+      if (uid) {
+        const city = useTripStore.getState().destination || 'Unknown';
+        const places = stops.map((s) => ({
+          id: s.id,
+          name: s.name,
+          address: s.description ?? '',
+          image: s.image,
+          coordinate: s.coordinate,
+          rating: s.rating !== undefined ? parseFloat(s.rating) : undefined,
+        }));
+        saveUserTrip({ user_id: uid, city, places, is_shared: false })
+          .then((saved) => useRecentTripStore.getState().prependTrip(saved))
+          .catch(() => {
+            // Offline — Firestore queues the write; allow retry next tap
+            navigateSavedRef.current = false;
+          });
+      }
+    }
+
     openRouteInMaps(
       stops.map(s => ({
         latitude: s.coordinate.latitude,

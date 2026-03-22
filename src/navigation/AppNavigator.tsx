@@ -17,6 +17,10 @@ import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
 import PWATopBar from '../components/PWATopBar';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { getUserTrips } from '../services/userTripService';
+import { getMyCreatedTrips, getJoinedTrips } from '../services/sharedTripService';
+import { useRecentTripStore } from '../store/useRecentTripStore';
+import { useSharedTripStore } from '../store/useSharedTripStore';
 
 // ── Core flow ──────────────────────────────────────────────────────────────────
 import LogoScreen from '../screens/LogoScreen';
@@ -259,6 +263,10 @@ export default function AppNavigator() {
       if (!user) {
         useGuestStore.getState().logout();
         useAuthStore.getState().setUser(null);
+        // Clear persisted trip state on logout
+        useRecentTripStore.getState().clearRecentTrips();
+        useSharedTripStore.getState().setMyTrips([]);
+        useSharedTripStore.getState().setJoinedTrips([]);
       } else {
         const currentId = useAuthStore.getState().user?.id;
         if (currentId !== user.uid) {
@@ -275,6 +283,19 @@ export default function AppNavigator() {
           } catch {
             // Firestore unavailable — auth still valid, LogoScreen handles primary flow.
           }
+
+          // Hydrate recent + shared trips in parallel — non-blocking
+          Promise.all([
+            getUserTrips(user.uid),
+            getMyCreatedTrips(user.uid),
+            getJoinedTrips(user.uid),
+          ]).then(([recentTrips, myTrips, joinedTrips]) => {
+            useRecentTripStore.getState().setRecentTrips(recentTrips);
+            useSharedTripStore.getState().setMyTrips(myTrips);
+            useSharedTripStore.getState().setJoinedTrips(joinedTrips);
+          }).catch(() => {
+            // Network unavailable — cached state from Zustand persist is used
+          });
         }
       }
     });

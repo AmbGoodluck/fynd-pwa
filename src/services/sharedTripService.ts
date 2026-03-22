@@ -212,6 +212,22 @@ export async function getJoinedTrips(user_id: string): Promise<SharedTrip[]> {
   return trips.filter(Boolean) as SharedTrip[];
 }
 
+// ── Get all trips for a user (owned + joined, deduplicated) ──────────────────
+// Runs two queries in parallel (Firestore does not support OR across different
+// fields in a single query) and merges by trip_id.
+export async function getSharedTripsForUser(userId: string): Promise<SharedTrip[]> {
+  const [created, joined] = await Promise.all([
+    getMyCreatedTrips(userId),
+    getJoinedTrips(userId),
+  ]);
+  const seen = new Set<string>();
+  return [...created, ...joined].filter((t) => {
+    if (seen.has(t.trip_id)) return false;
+    seen.add(t.trip_id);
+    return true;
+  });
+}
+
 // ── Generate share link ───────────────────────────────────────────────────────
 export function buildShareLink(trip_id: string): string {
   return `https://app.fyndplaces.com/trip/${trip_id}`;

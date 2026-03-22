@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   progressActive: { backgroundColor: '#22C55E' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 4 },
   sectionTitle: { fontSize: 27, fontFamily: F.bold, color: '#111827', marginBottom: 16, marginTop: 10 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },

@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
+import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { F } from '../theme/fonts';
 
@@ -36,6 +37,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
+  const { recentTrips } = useRecentTripStore();
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
@@ -168,15 +170,39 @@ export default function HomeScreen({ navigation }: Props) {
           ))}
         </ScrollView>
 
-        {/* ── Recent Trip (session-based) ───────────────────── */}
+        {/* ── Recent Trips ──────────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
             <Ionicons name="calendar-outline" size={18} color="#111827" />
-            <Text style={styles.sectionTitle}>Recent Trip</Text>
+            <Text style={styles.sectionTitle}>Recent Trips</Text>
           </View>
         </View>
 
-        {hasSessionTrip ? (
+        {recentTrips.length > 0 ? (
+          // Firestore-backed list (populated after login + after Navigate tap)
+          recentTrips.slice(0, 3).map((trip) => (
+            <TouchableOpacity
+              key={trip.trip_id}
+              style={styles.recentTripCard}
+              onPress={() => navigation.navigate('Create Trip')}
+            >
+              <View style={styles.recentTripContent}>
+                <View style={styles.recentTripIcon}>
+                  <Ionicons name="location" size={24} color="#22C55E" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recentTripDest}>{trip.city}</Text>
+                  <Text style={styles.recentTripMeta}>
+                    {trip.places.length} place{trip.places.length !== 1 ? 's' : ''}
+                    {trip.places[0] ? ` · ${trip.places[0].name}` : ''}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </View>
+            </TouchableOpacity>
+          ))
+        ) : hasSessionTrip ? (
+          // Session fallback — shown before first login / before first Navigate tap
           <TouchableOpacity
             style={styles.recentTripCard}
             onPress={() => navigation.navigate('Create Trip')}

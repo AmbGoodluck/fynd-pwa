@@ -76,7 +76,7 @@ function MemberAvatar({
 export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const trip_id: string = route?.params?.trip_id ?? '';
 
-  const { sessionUserId, sessionUserName, setActiveTrip, setActiveMembers, removeMemberLocally, removeJoinedTrip, removeMyTrip } =
+  const { sessionUserId, sessionUserName, setActiveTrip, setActiveMembers, removeMemberLocally, removeJoinedTrip, removeMyTrip, addMyTrip } =
     useSharedTripStore();
   const { savePlace } = useGuestStore();
   const { user: authUser } = useAuthStore();
@@ -167,11 +167,16 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            if (!trip) return;
+            const savedTrip = trip;
+            // Optimistic: remove from store and navigate back immediately
+            removeMyTrip(trip_id);
+            navigation.goBack();
             try {
               await deleteSharedTrip(trip_id);
-              removeMyTrip(trip_id);
-              navigation.goBack();
             } catch {
+              // Rollback: restore trip in store; alert appears on the list screen
+              addMyTrip(savedTrip);
               Alert.alert('Error', 'Could not delete trip. Please try again.');
             }
           },

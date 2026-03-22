@@ -1,8 +1,13 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported, logEvent as firebaseLogEvent, Analytics } from 'firebase/analytics';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { configureGoogle } from './authService';
 
@@ -48,6 +53,19 @@ export function logEvent(event: string, params?: Record<string, any>) {
 }
 
 export { auth };
-export const db = getFirestore(app);
+
+// Enable offline persistence on web via IndexedDB.
+// initializeFirestore must be called before any getFirestore() call on the
+// same app instance — the try/catch handles the "already initialized" case.
+let db: ReturnType<typeof getFirestore>;
+try {
+  db = Platform.OS === 'web'
+    ? initializeFirestore(app, { localCache: persistentLocalCache() })
+    : getFirestore(app);
+} catch {
+  db = getFirestore(app);
+}
+export { db };
+
 export const storage = getStorage(app);
 export default app;

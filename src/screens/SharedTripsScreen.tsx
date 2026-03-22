@@ -114,6 +114,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
     setMyTrips,
     setJoinedTrips,
     removeMyTrip,
+    addMyTrip,
   } = useSharedTripStore();
 
   const { user: authUser } = useAuthStore();
@@ -163,10 +164,13 @@ export default function SharedTripsScreen({ navigation }: Props) {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            // Optimistic: remove immediately so the UI responds without waiting
+            removeMyTrip(trip.trip_id);
             try {
               await deleteSharedTrip(trip.trip_id);
-              removeMyTrip(trip.trip_id);
             } catch {
+              // Rollback: restore the trip if Firestore delete failed
+              addMyTrip(trip);
               Alert.alert('Error', 'Could not delete trip. Please try again.');
             }
           },
