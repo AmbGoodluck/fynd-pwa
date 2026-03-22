@@ -12,17 +12,20 @@ type Props = {
   duration?: string;
   rating?: number;
   photoUrl?: string;
-  
+
+  // Layout
+  horizontal?: boolean;
+
   // Badge
   indexBadge?: number;
 
   // Actions
   onSave?: () => void;
   isSaved?: boolean;
-  
+
   onAdd?: () => void;
   isAdded?: boolean;
-  
+
   onNavigate?: () => void;
   onBook?: () => void;
 };
@@ -35,6 +38,7 @@ const PlaceCard = React.memo(function PlaceCard({
   duration,
   rating,
   photoUrl,
+  horizontal,
   indexBadge,
   onSave,
   isSaved,
@@ -44,12 +48,89 @@ const PlaceCard = React.memo(function PlaceCard({
   onBook,
 }: Props) {
   const fallbackImage = FALLBACK_IMAGE;
-  
+
+  if (horizontal) {
+    return (
+      <View style={[styles.card, styles.cardH]}>
+        {/* Left: image */}
+        <View style={styles.imageContainerH}>
+          <Image source={{ uri: photoUrl || fallbackImage }} style={styles.imageH} />
+          {onSave && (
+            <TouchableOpacity style={styles.heartBtnTL} onPress={onSave}>
+              <Ionicons
+                name={isSaved ? 'heart' : 'heart-outline'}
+                size={16}
+                color={isSaved ? '#EF4444' : '#fff'}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Right: content */}
+        <View style={styles.bodyH}>
+          <Text style={styles.nameH} numberOfLines={1}>{name}</Text>
+
+          {(description || category) ? (
+            <Text style={styles.descriptionH} numberOfLines={2}>{description || category}</Text>
+          ) : null}
+
+          <View style={styles.metaRowH}>
+            {distance ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="walk-outline" size={12} color="#57636C" />
+                <Text style={styles.metaText}>{distance}</Text>
+              </View>
+            ) : null}
+            {duration ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={12} color="#57636C" />
+                <Text style={styles.metaText}>{duration}</Text>
+              </View>
+            ) : null}
+            {rating != null ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="star" size={12} color="#F59E0B" />
+                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {(onAdd || onBook) ? (
+            <View style={styles.actionRowH}>
+              {onBook ? (
+                <TouchableOpacity style={styles.bookBtnH} onPress={onBook}>
+                  <Text style={styles.bookBtnHText}>Book Now</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#1D4ED8" />
+                </TouchableOpacity>
+              ) : null}
+              {onAdd ? (
+                <TouchableOpacity
+                  style={[styles.addBtnH, isAdded && styles.addBtnHSelected]}
+                  onPress={onAdd}
+                >
+                  <Ionicons
+                    name={isAdded ? 'checkmark-circle' : 'add-circle-outline'}
+                    size={14}
+                    color="#fff"
+                  />
+                  <Text style={styles.addBtnHText}>
+                    {isAdded ? 'Added' : 'Add to Itinerary'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
+  // ── Default vertical layout ──────────────────────────────────
   return (
     <View style={styles.card}>
       <View style={styles.imageContainer}>
         <Image source={{ uri: photoUrl || fallbackImage }} style={styles.image} />
-        
+
         {indexBadge !== undefined && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{indexBadge}</Text>
@@ -69,7 +150,7 @@ const PlaceCard = React.memo(function PlaceCard({
 
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>{name}</Text>
-        
+
         {description ? (
           <Text style={styles.description} numberOfLines={2}>{description}</Text>
         ) : category ? (
@@ -97,7 +178,6 @@ const PlaceCard = React.memo(function PlaceCard({
           ) : null}
         </View>
 
-        {/* Action Row */}
         {(onAdd || onNavigate || onBook) && (
           <View style={styles.actionRow}>
             {onAdd && (
@@ -105,7 +185,7 @@ const PlaceCard = React.memo(function PlaceCard({
                 style={[styles.addBtn, isAdded && styles.addBtnSelected]}
                 onPress={onAdd}
               >
-                <Ionicons name={isAdded ? "checkmark-circle" : "add-circle-outline"} size={16} color={isAdded ? "#fff" : "#22C55E"} />
+                <Ionicons name={isAdded ? 'checkmark-circle' : 'add-circle-outline'} size={16} color={isAdded ? '#fff' : '#22C55E'} />
                 <Text style={[styles.addBtnText, isAdded && styles.addBtnTextSelected]}>
                   {isAdded ? 'Added' : 'Add to Itinerary'}
                 </Text>
@@ -133,6 +213,7 @@ const PlaceCard = React.memo(function PlaceCard({
 });
 
 const styles = StyleSheet.create({
+  // ── Vertical (default) ─────────────────────────────────────────
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -232,6 +313,70 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   navBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
+
+  // ── Horizontal variant ─────────────────────────────────────────
+  cardH: {
+    flexDirection: 'row',
+    borderRadius: 18,
+    marginBottom: 12,
+    minHeight: 130,
+  },
+  imageContainerH: {
+    width: 110,
+  },
+  imageH: {
+    width: 110,
+    height: 130,
+    resizeMode: 'cover',
+  },
+  heartBtnTL: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bodyH: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  nameH: { fontSize: 15, fontFamily: F.bold, color: '#111827', marginBottom: 3 },
+  descriptionH: { fontSize: 12, fontFamily: F.regular, color: '#6B7280', lineHeight: 17, marginBottom: 6, flex: 1 },
+  metaRowH: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 },
+  actionRowH: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  bookBtnH: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    backgroundColor: '#EFF6FF',
+  },
+  bookBtnHText: { fontSize: 11, fontFamily: F.semibold, color: '#1D4ED8' },
+  addBtnH: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#22C55E',
+  },
+  addBtnHSelected: { backgroundColor: '#16A34A' },
+  addBtnHText: { fontSize: 11, fontFamily: F.semibold, color: '#fff' },
 });
 
 export default PlaceCard;

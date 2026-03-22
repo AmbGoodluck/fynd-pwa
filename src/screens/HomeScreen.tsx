@@ -14,6 +14,7 @@ import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { F } from '../theme/fonts';
 import PWATopBar from '../components/PWATopBar';
 import { LOGO_SIZE } from '../theme/sizes';
+import { FALLBACK_IMAGE } from '../constants';
 
 
 const BANNER_IMAGES = [
@@ -179,52 +180,64 @@ export default function HomeScreen({ navigation }: Props) {
           ))}
         </ScrollView>
 
-        {/* ── Recent Trips ──────────────────────────────────── */}
+        {/* ── Recent Itineraries ────────────────────────────── */}
         <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
             <Ionicons name="calendar-outline" size={18} color="#111827" />
-            <Text style={styles.sectionTitle}>Recent Trips</Text>
+            <Text style={styles.sectionTitle}>Recent Itineraries</Text>
           </View>
+          {recentTrips.length > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate('Saved')} style={styles.seeAllBtn}>
+              <Text style={styles.seeAllText}>See All</Text>
+              <Ionicons name="chevron-forward" size={15} color="#22C55E" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {recentTrips.length > 0 ? (
-          // Firestore-backed list (populated after login + after Navigate tap)
-          recentTrips.slice(0, 3).map((trip) => (
-            <TouchableOpacity
-              key={trip.trip_id}
-              style={styles.recentTripCard}
-              onPress={() => navigation.navigate('Itinerary', {
-                places: trip.places.map(p => ({
-                  placeId: p.id,
-                  name: p.name,
-                  address: p.address,
-                  rating: p.rating ?? 0,
-                  description: p.description ?? '',
-                  photoRef: '',
-                  photoUrl: p.image,
-                  coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
-                })),
-                destination: trip.city || 'Your Trip',
-                tripId: trip.trip_id,
-              })}
-            >
-              <View style={styles.recentTripContent}>
-                <View style={styles.recentTripIcon}>
-                  <Ionicons name="location" size={24} color="#22C55E" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.recentTripDest}>{trip.city || 'Your Trip'}</Text>
-                  <Text style={styles.recentTripMeta}>
-                    {trip.places.length} place{trip.places.length !== 1 ? 's' : ''}
-                    {trip.places[0] ? ` · ${trip.places[0].name}` : ''}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-              </View>
-            </TouchableOpacity>
-          ))
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.itineraryRow}
+            contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
+          >
+            {recentTrips.slice(0, 6).map((trip) => {
+              const coverImage = trip.places[0]?.image || FALLBACK_IMAGE;
+              const dateLabel = new Date(trip.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+              return (
+                <TouchableOpacity
+                  key={trip.trip_id}
+                  style={styles.itineraryCard}
+                  onPress={() => navigation.navigate('Itinerary', {
+                    places: trip.places.map(p => ({
+                      placeId: p.id,
+                      name: p.name,
+                      address: p.address,
+                      rating: p.rating ?? 0,
+                      description: p.description ?? '',
+                      photoRef: '',
+                      photoUrl: p.image,
+                      coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
+                    })),
+                    destination: trip.city || 'Your Trip',
+                    tripId: trip.trip_id,
+                  })}
+                >
+                  <ImageBackground
+                    source={{ uri: coverImage }}
+                    style={styles.itineraryCardBg}
+                    imageStyle={styles.itineraryCardImg}
+                  >
+                    <View style={styles.itineraryCardOverlay}>
+                      <Text style={styles.itineraryCardCity} numberOfLines={1}>{trip.city || 'Your Trip'}</Text>
+                      <Text style={styles.itineraryCardDate}>{dateLabel}</Text>
+                    </View>
+                  </ImageBackground>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         ) : hasSessionTrip ? (
-          // Session fallback — shown before first login / before first Navigate tap
           <TouchableOpacity
             style={styles.recentTripCard}
             onPress={() => navigation.navigate('Create Trip')}
@@ -375,6 +388,30 @@ const styles = StyleSheet.create({
   serviceLabel: { fontSize: 12, textAlign: 'center', color: '#4B5563', fontFamily: F.semibold },
   recentTripDest: { fontSize: 17, fontFamily: F.bold, color: '#111827', marginBottom: 4 },
   recentTripMeta: { fontSize: 14, fontFamily: F.medium, color: '#6B7280' },
+  itineraryRow: { marginBottom: 24 },
+  itineraryCard: {
+    width: 140,
+    height: 140,
+    borderRadius: 20,
+    marginRight: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  itineraryCardBg: { flex: 1 },
+  itineraryCardImg: { borderRadius: 20 },
+  itineraryCardOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.38)',
+    borderRadius: 20,
+    justifyContent: 'flex-end',
+    padding: 12,
+  },
+  itineraryCardCity: { fontSize: 14, fontFamily: F.bold, color: '#fff', letterSpacing: -0.2 },
+  itineraryCardDate: { fontSize: 11, fontFamily: F.medium, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   emptyCard: {
     alignItems: 'center', paddingVertical: 40,
     marginHorizontal: 20, borderRadius: 28,

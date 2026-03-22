@@ -160,11 +160,13 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         delayLongPress={350}
       >
         <PlaceCard
+          horizontal
           name={item.name}
           description={item.description || item.category}
           photoUrl={item.photoUrl}
           rating={item.rating}
           distance={item.distanceKm ? `${item.distanceKm} km` : undefined}
+          duration={item.walkMinutes ? `${item.walkMinutes} min` : undefined}
           isSaved={saved}
           onSave={() => handleSave(item)}
           isAdded={isSelected}
