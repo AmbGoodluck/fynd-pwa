@@ -476,7 +476,15 @@ export default function MapScreen({ navigation, route }: Props) {
     [],
   );
 
-  // Build HTML once — stops are baked in; user location + activeIdx are pushed via  // Request live user location on mount and track consistently
+  // Build HTML once — stops are baked in; user location + activeIdx are pushed
+  // live via injectJavaScript so the WebView never needs to reload.
+  const mapHtml = useMemo(
+    () => buildTripHtml(hasStops ? stops : tabStops, mapsJsUrl),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [], // intentionally empty — stops don't change mid-session
+  );
+
+  // Request live user location on mount and track consistently
   useEffect(() => {
     async function startLocationTracking() {
       let locationSubscription: Location.LocationSubscription | null = null;
@@ -1468,6 +1476,5 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#22C55E', shadowOpacity: 0.45, shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 }, elevation: 8, zIndex: 20,
-    zIndex: 20,
   },
 });

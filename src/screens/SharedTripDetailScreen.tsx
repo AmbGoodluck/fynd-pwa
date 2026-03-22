@@ -89,6 +89,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [notFound, setNotFound] = useState(false);
   const [removedFromTrip, setRemovedFromTrip] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
@@ -226,6 +227,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         bookingUrl: p.bookingUrl,
       } as any);
     });
+    setSaved(true);
     setShowSaveModal(false);
     Alert.alert('Saved!', 'All places from this trip have been added to your Saved list.');
   };
