@@ -9,14 +9,24 @@ let currentModel = 'gpt-4o';
 // Restrict to known origins only — add your production domain here
 const ALLOWED_ORIGINS = [
   'https://app.fyndplaces.com',
+  'https://fynd-pwa.pages.dev',
+  'https://fynd-app.pages.dev',
   'http://localhost:8081',
   'http://localhost:19006',
   'http://localhost:3000',
 ];
 
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Allow all Cloudflare Pages preview deployments (*.pages.dev)
+  if (/^https:\/\/[a-z0-9-]+\.(fynd-pwa|fynd-app)\.pages\.dev$/.test(origin)) return true;
+  return false;
+}
+
 function getCorsHeaders(request) {
   const origin = (request && request.headers.get('Origin')) || '';
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allowed = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
