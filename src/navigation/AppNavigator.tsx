@@ -15,6 +15,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
+import PWATopBar from '../components/PWATopBar';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
 // ── Core flow ──────────────────────────────────────────────────────────────────
@@ -115,6 +116,10 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
 
   return (
     <View style={{ flex: 1 }}>
+      <PWATopBar
+        onSharedTripsPress={() => stackNavigation?.navigate('SharedTrips')}
+        onProfilePress={() => stackNavigation?.navigate('Profile')}
+      />
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ color, focused }) => {
