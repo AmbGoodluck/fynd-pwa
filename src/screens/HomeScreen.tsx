@@ -12,6 +12,7 @@ import { useTripStore } from '../store/useTripStore';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { F } from '../theme/fonts';
+import PWATopBar from '../components/PWATopBar';
 
 
 const BANNER_IMAGES = [
@@ -79,7 +80,14 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={Platform.OS === 'web' ? [] : ['top']}>
-      {/* ── Top bar — native only; web uses PWATopBar in AppNavigator ── */}
+      {/* ── Web: PWATopBar replaces native topBar ─────────────────── */}
+      {Platform.OS === 'web' && (
+        <PWATopBar
+          onSharedTripsPress={() => navigation.navigate('SharedTrips')}
+          onProfilePress={() => navigation.navigate('Profile')}
+        />
+      )}
+      {/* ── Native only topBar ──────────────────────────────────────── */}
       {Platform.OS !== 'web' && <View style={styles.topBar}>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
         <View style={styles.premiumBadge}>

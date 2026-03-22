@@ -104,10 +104,6 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <PWATopBar
-        onSharedTripsPress={() => stackNavigation?.navigate('SharedTrips')}
-        onProfilePress={() => stackNavigation?.navigate('Profile')}
-      />
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ color, focused }) => {
