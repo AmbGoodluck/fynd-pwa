@@ -116,7 +116,7 @@ export default function SavedScreen({ navigation }: Props) {
       {/* Top bar */}
       <View style={styles.topBar}>
         <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        <Text style={styles.topBarTitle}>Fynd</Text>
+        <Text style={styles.topBarTitle}>Saved</Text>
         <TouchableOpacity
           style={styles.avatarCircle}
           onPress={() => navigation.navigate('Profile')}
@@ -125,10 +125,8 @@ export default function SavedScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Header & Tabs */}
+      {/* Tabs */}
       <View style={styles.header}>
-        <Text style={styles.title}>Saved</Text>
-        
         <View style={styles.tabRow}>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'places' && styles.tabActive]}
@@ -238,19 +236,40 @@ export default function SavedScreen({ navigation }: Props) {
                 <View style={styles.recentTripsSection}>
                   <Text style={styles.recentTripsSectionTitle}>Recent Trips</Text>
                   {recentTrips.map((trip) => (
-                    <View key={trip.trip_id} style={styles.recentTripCard}>
+                    <TouchableOpacity
+                      key={trip.trip_id}
+                      style={styles.recentTripCard}
+                      onPress={() => navigation.navigate('Itinerary', {
+                        places: trip.places.map(p => ({
+                          placeId: p.id,
+                          name: p.name,
+                          address: p.address,
+                          rating: p.rating ?? 0,
+                          description: p.description ?? '',
+                          photoRef: '',
+                          photoUrl: p.image,
+                          coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
+                        })),
+                        destination: trip.city || 'Your Trip',
+                        tripId: trip.trip_id,
+                      })}
+                    >
                       <View style={styles.recentTripRow}>
                         <View style={styles.recentTripIconWrap}>
                           <Ionicons name="location-outline" size={22} color="#22C55E" />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.recentTripCity}>{trip.city}</Text>
+                          <Text style={styles.recentTripCity}>{trip.city || 'Your Trip'}</Text>
                           <Text style={styles.recentTripMeta}>
                             {trip.places.length} place{trip.places.length !== 1 ? 's' : ''} · {new Date(trip.created_at).toLocaleDateString()}
                           </Text>
                         </View>
+                        <View style={styles.addToRouteBtn}>
+                          <Text style={styles.addToRouteBtnText}>Add to Route</Text>
+                          <Ionicons name="chevron-forward" size={14} color="#22C55E" />
+                        </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               )}
@@ -600,4 +619,10 @@ const styles = StyleSheet.create({
   },
   recentTripCity: { fontSize: 15, fontFamily: F.bold, color: '#111827', marginBottom: 3 },
   recentTripMeta: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
+  addToRouteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F0FDF4', borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  addToRouteBtnText: { fontSize: 12, color: '#22C55E', fontFamily: F.bold },
 });

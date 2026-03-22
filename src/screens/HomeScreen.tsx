@@ -193,14 +193,27 @@ export default function HomeScreen({ navigation }: Props) {
             <TouchableOpacity
               key={trip.trip_id}
               style={styles.recentTripCard}
-              onPress={() => navigation.navigate('Create Trip')}
+              onPress={() => navigation.navigate('Itinerary', {
+                places: trip.places.map(p => ({
+                  placeId: p.id,
+                  name: p.name,
+                  address: p.address,
+                  rating: p.rating ?? 0,
+                  description: p.description ?? '',
+                  photoRef: '',
+                  photoUrl: p.image,
+                  coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
+                })),
+                destination: trip.city || 'Your Trip',
+                tripId: trip.trip_id,
+              })}
             >
               <View style={styles.recentTripContent}>
                 <View style={styles.recentTripIcon}>
                   <Ionicons name="location" size={24} color="#22C55E" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.recentTripDest}>{trip.city}</Text>
+                  <Text style={styles.recentTripDest}>{trip.city || 'Your Trip'}</Text>
                   <Text style={styles.recentTripMeta}>
                     {trip.places.length} place{trip.places.length !== 1 ? 's' : ''}
                     {trip.places[0] ? ` · ${trip.places[0].name}` : ''}
