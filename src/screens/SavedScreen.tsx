@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore, type SavedPlace } from '../store/useGuestStore';
 import { useTempItineraryStore, TEMP_MAX_PLACES } from '../store/useTempItineraryStore';
+import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
@@ -22,6 +23,7 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
+  const { recentTrips } = useRecentTripStore();
   const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -225,89 +227,118 @@ export default function SavedScreen({ navigation }: Props) {
         )
       ) : (
         /* Itineraries Tab */
-        loadingItineraries ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Loading trips...</Text>
-          </View>
-        ) : itineraries.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="map-outline" size={56} color="#E5E5EA" />
-            <Text style={styles.emptyTitle}>No recent trips</Text>
-            <Text style={styles.emptyText}>
-              Trips you generate will be saved here automatically.
-            </Text>
-            <TouchableOpacity
-              style={styles.exploreBtn}
-              onPress={() => navigation.navigate('Create Trip')}
-            >
-              <Text style={styles.exploreBtnText}>Generate Itinerary</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <FlatList
-            data={itineraries}
-            keyExtractor={(item, index) => item.id || `itinerary-${item.tripId}-${index}`}
-            contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 20 }]}
-            renderItem={({ item }: { item: ItineraryDoc }) => (
-              <View style={styles.itineraryCardWrapper}>
-                <TouchableOpacity
-                  style={styles.itineraryCard}
-                  onPress={() => navigation.navigate('Itinerary', {
-                    places: item.stops.map(s => ({
-                      placeId: s.placeId,
-                      name: s.placeName,
-                      photoUrl: s.imageUrl,
-                      category: '',
-                      description: s.shortDescription,
-                      rating: s.rating,
-                      distanceKm: s.distanceKm,
-                      walkMinutes: s.travelTimeMinutes,
-                      coordinates: { lat: s.latitude, lng: s.longitude }
-                    } as any)),
-                    destination: item.destination,
-                    tripId: item.tripId
-                  })}
-                >
-                  <Image source={{ uri: item.coverPhotoUrl || FALLBACK_IMAGE }} style={styles.itineraryImage} />
-                  <View style={styles.itineraryDetails}>
-                    <Text style={styles.itineraryTitle}>{item.destination}</Text>
-                    <Text style={styles.itinerarySub}>
-                      {item.totalStops} places • {item.createdAt ? new Date(item.createdAt.toMillis()).toLocaleDateString() : 'Recent'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.deleteItineraryBtn} 
-                  onPress={() => {
-                    Alert.alert(
-                      'Delete Trip',
-                      'Are you sure you want to delete this trip?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        { 
-                          text: 'Delete', 
-                          style: 'destructive',
-                          onPress: async () => {
-                            if (item.id) {
-                              try {
-                                await deleteItinerary(item.id);
-                                setItineraries(prev => prev.filter(i => i.id !== item.id));
-                              } catch (e) {
-                                Alert.alert('Error', 'Failed to delete itinerary.');
+        <FlatList
+          data={[]}
+          keyExtractor={() => ''}
+          renderItem={() => null}
+          ListHeaderComponent={
+            <>
+              {/* Recent Trips from session store */}
+              {recentTrips.length > 0 && (
+                <View style={styles.recentTripsSection}>
+                  <Text style={styles.recentTripsSectionTitle}>Recent Trips</Text>
+                  {recentTrips.map((trip) => (
+                    <View key={trip.trip_id} style={styles.recentTripCard}>
+                      <View style={styles.recentTripRow}>
+                        <View style={styles.recentTripIconWrap}>
+                          <Ionicons name="location-outline" size={22} color="#22C55E" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.recentTripCity}>{trip.city}</Text>
+                          <Text style={styles.recentTripMeta}>
+                            {trip.places.length} place{trip.places.length !== 1 ? 's' : ''} · {new Date(trip.created_at).toLocaleDateString()}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Firestore-backed itineraries */}
+              {loadingItineraries ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>Loading trips...</Text>
+                </View>
+              ) : itineraries.length === 0 && recentTrips.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="map-outline" size={56} color="#E5E5EA" />
+                  <Text style={styles.emptyTitle}>No recent trips</Text>
+                  <Text style={styles.emptyText}>
+                    Trips you generate will be saved here automatically.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.exploreBtn}
+                    onPress={() => navigation.navigate('Create Trip')}
+                  >
+                    <Text style={styles.exploreBtnText}>Generate Itinerary</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : itineraries.length > 0 ? (
+                itineraries.map((item, index) => (
+                  <View key={item.id || `itinerary-${item.tripId}-${index}`} style={styles.itineraryCardWrapper}>
+                    <TouchableOpacity
+                      style={styles.itineraryCard}
+                      onPress={() => navigation.navigate('Itinerary', {
+                        places: item.stops.map(s => ({
+                          placeId: s.placeId,
+                          name: s.placeName,
+                          photoUrl: s.imageUrl,
+                          category: '',
+                          description: s.shortDescription,
+                          rating: s.rating,
+                          distanceKm: s.distanceKm,
+                          walkMinutes: s.travelTimeMinutes,
+                          coordinates: { lat: s.latitude, lng: s.longitude }
+                        } as any)),
+                        destination: item.destination,
+                        tripId: item.tripId
+                      })}
+                    >
+                      <Image source={{ uri: item.coverPhotoUrl || FALLBACK_IMAGE }} style={styles.itineraryImage} />
+                      <View style={styles.itineraryDetails}>
+                        <Text style={styles.itineraryTitle}>{item.destination}</Text>
+                        <Text style={styles.itinerarySub}>
+                          {item.totalStops} places • {item.createdAt ? new Date(item.createdAt.toMillis()).toLocaleDateString() : 'Recent'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteItineraryBtn}
+                      onPress={() => {
+                        Alert.alert(
+                          'Delete Trip',
+                          'Are you sure you want to delete this trip?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Delete',
+                              style: 'destructive',
+                              onPress: async () => {
+                                if (item.id) {
+                                  try {
+                                    await deleteItinerary(item.id);
+                                    setItineraries(prev => prev.filter(i => i.id !== item.id));
+                                  } catch (e) {
+                                    Alert.alert('Error', 'Failed to delete itinerary.');
+                                  }
+                                }
                               }
                             }
-                          }
-                        }
-                      ]
-                    );
-                  }}
-                >
-                  <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                </TouchableOpacity>
-              </View>
-            )}
-          />
-        )
+                          ]
+                        );
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))
+              ) : null}
+            </>
+          }
+          contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 20 }]}
+          showsVerticalScrollIndicator={false}
+        />
       )}
 
       {/* Temp itinerary banner (Floating) */}
@@ -555,4 +586,18 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
   ghostBtn: { paddingVertical: 14, paddingHorizontal: 20 },
   ghostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
+  recentTripsSection: { marginBottom: 20 },
+  recentTripsSectionTitle: { fontSize: 16, fontFamily: F.bold, color: '#111827', marginBottom: 10 },
+  recentTripCard: {
+    backgroundColor: '#fff', borderRadius: 16, marginBottom: 10,
+    borderWidth: 1, borderColor: '#F2F2F7',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  recentTripRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  recentTripIconWrap: {
+    width: 42, height: 42, borderRadius: 14,
+    backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
+  },
+  recentTripCity: { fontSize: 15, fontFamily: F.bold, color: '#111827', marginBottom: 3 },
+  recentTripMeta: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
 });

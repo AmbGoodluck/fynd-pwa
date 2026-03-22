@@ -8,10 +8,10 @@
 
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Platform, Image,
+  View, TouchableOpacity, StyleSheet, Platform, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { F } from '../theme/fonts';
+import { LOGO_SIZE } from '../theme/sizes';
 
 interface Props {
   onSharedTripsPress: () => void;
@@ -24,14 +24,11 @@ export default function PWATopBar({ onSharedTripsPress, onProfilePress }: Props)
   return (
     <View style={styles.bar}>
       {/* Logo mark */}
-      <View style={styles.brand}>
-        <Image
-          source={require('../../assets/logo-icon.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.brandText}>Fynd</Text>
-      </View>
+      <Image
+        source={require('../../assets/logo-icon.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
 
       {/* Right actions */}
       <View style={styles.actions}>
@@ -81,20 +78,9 @@ const styles = StyleSheet.create({
       ? ({ paddingTop: 'env(safe-area-inset-top, 0px)' } as any)
       : {}),
   },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   logo: {
-    width: 28,
-    height: 28,
-  },
-  brandText: {
-    fontSize: 18,
-    fontFamily: F.bold,
-    color: '#111827',
-    letterSpacing: 0.3,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
   },
   actions: {
     flexDirection: 'row',

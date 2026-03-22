@@ -13,6 +13,7 @@ import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { F } from '../theme/fonts';
 import PWATopBar from '../components/PWATopBar';
+import { LOGO_SIZE } from '../theme/sizes';
 
 
 const BANNER_IMAGES = [
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16,
   },
-  logo: { width: 50, height: 44, resizeMode: 'contain' },
+  logo: { width: LOGO_SIZE, height: LOGO_SIZE, resizeMode: 'contain' },
   premiumBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: '#22C55E', borderRadius: 10,

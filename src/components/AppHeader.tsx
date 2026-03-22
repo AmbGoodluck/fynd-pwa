@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { LOGO_SIZE } from '../theme/sizes';
 
 type Props = {
   title: string;
@@ -69,8 +70,8 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 2 },
   logoIcon: {
-    width: 38,
-    height: 38,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     resizeMode: 'contain',
   },
   titleRow: {
