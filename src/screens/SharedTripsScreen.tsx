@@ -124,6 +124,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
   const { user: authUser } = useAuthStore();
   const effectiveUserId = authUser?.id || sessionUserId;
 
+  const [activeTab, setActiveTab] = useState<'created' | 'joined'>('created');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
@@ -182,6 +183,26 @@ export default function SharedTripsScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="Shared Trips" onBack={() => navigation.goBack()} />
 
+      {/* ── Tab Bar ──────────────────────────────────────────── */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'created' && styles.tabActive]}
+          onPress={() => setActiveTab('created')}
+        >
+          <Text style={[styles.tabText, activeTab === 'created' && styles.tabTextActive]}>
+            My Trips {myTrips.length > 0 ? `(${myTrips.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'joined' && styles.tabActive]}
+          onPress={() => setActiveTab('joined')}
+        >
+          <Text style={[styles.tabText, activeTab === 'joined' && styles.tabTextActive]}>
+            Shared With Me {joinedTrips.length > 0 ? `(${joinedTrips.length})` : ''}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#22C55E" />
@@ -198,52 +219,50 @@ export default function SharedTripsScreen({ navigation }: Props) {
             />
           }
         >
-          {/* ── Trips I Created ─────────────────────────────── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Trips I Created</Text>
-            {myTrips.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Ionicons name="map-outline" size={36} color="#D1D5DB" />
-                <Text style={styles.emptyText}>No trips created yet</Text>
-                <Text style={styles.emptyHint}>
-                  Share an itinerary to invite your team
-                </Text>
-              </View>
-            ) : (
-              myTrips.map((t) => (
-                <TripCard
-                  key={t.trip_id}
-                  trip={t}
-                  isOwner
-                  onPress={() => openTrip(t)}
-                  onDelete={() => setPendingDeleteTrip(t)}
-                />
-              ))
-            )}
-          </View>
-
-          {/* ── Trips Shared With Me ─────────────────────────── */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Trips Shared With Me</Text>
-            {joinedTrips.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <Ionicons name="people-outline" size={36} color="#D1D5DB" />
-                <Text style={styles.emptyText}>No shared trips yet</Text>
-                <Text style={styles.emptyHint}>
-                  Ask someone to share a trip link with you
-                </Text>
-              </View>
-            ) : (
-              joinedTrips.map((t) => (
-                <TripCard
-                  key={t.trip_id}
-                  trip={t}
-                  isOwner={false}
-                  onPress={() => openTrip(t)}
-                />
-              ))
-            )}
-          </View>
+          {activeTab === 'created' ? (
+            <View style={styles.section}>
+              {myTrips.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <Ionicons name="map-outline" size={36} color="#D1D5DB" />
+                  <Text style={styles.emptyText}>No trips created yet</Text>
+                  <Text style={styles.emptyHint}>
+                    Share an itinerary to invite your team
+                  </Text>
+                </View>
+              ) : (
+                myTrips.map((t) => (
+                  <TripCard
+                    key={t.trip_id}
+                    trip={t}
+                    isOwner
+                    onPress={() => openTrip(t)}
+                    onDelete={() => setPendingDeleteTrip(t)}
+                  />
+                ))
+              )}
+            </View>
+          ) : (
+            <View style={styles.section}>
+              {joinedTrips.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <Ionicons name="people-outline" size={36} color="#D1D5DB" />
+                  <Text style={styles.emptyText}>No shared trips yet</Text>
+                  <Text style={styles.emptyHint}>
+                    Ask someone to share a trip link with you
+                  </Text>
+                </View>
+              ) : (
+                joinedTrips.map((t) => (
+                  <TripCard
+                    key={t.trip_id}
+                    trip={t}
+                    isOwner={false}
+                    onPress={() => openTrip(t)}
+                  />
+                ))
+              )}
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -297,13 +316,25 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingBottom: 40 },
 
-  section: { marginTop: 24, paddingHorizontal: 16 },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: F.bold,
-    color: '#111827',
-    marginBottom: 12,
+  tabBar: {
+    flexDirection: 'row',
+    gap: 24,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
   },
+  tab: {
+    paddingBottom: 12,
+    paddingTop: 14,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: { borderBottomColor: '#22C55E' },
+  tabText: { fontSize: 15, color: '#6B7280', fontFamily: F.semibold },
+  tabTextActive: { color: '#111827' },
+
+  section: { marginTop: 20, paddingHorizontal: 16 },
 
   emptyBox: {
     backgroundColor: '#fff',
