@@ -6,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   Image,
   ActivityIndicator,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,70 +40,73 @@ function TripCard({
   const preview = trip.places.slice(0, 3);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {/* Preview thumbnails */}
-      <View style={styles.thumbRow}>
-        {preview.map((p, i) => (
-          <Image
-            key={i}
-            source={{
-              uri:
-                p.photoUrl ||
-                'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
-            }}
-            style={[styles.thumb, i > 0 && { marginLeft: -12 }]}
-          />
-        ))}
-        {trip.places.length > 3 && (
-          <View style={[styles.thumb, styles.thumbMore, { marginLeft: -12 }]}>
-            <Text style={styles.thumbMoreText}>+{trip.places.length - 3}</Text>
-          </View>
-        )}
-      </View>
+    // Outer View — NOT a TouchableOpacity, so nested buttons don't conflict
+    <View style={styles.card}>
+      {/* Tappable content area — opens the trip */}
+      <TouchableOpacity
+        style={styles.cardPressable}
+        onPress={onPress}
+        activeOpacity={0.88}
+      >
+        {/* Preview thumbnails */}
+        <View style={styles.thumbRow}>
+          {preview.map((p, i) => (
+            <Image
+              key={i}
+              source={{
+                uri:
+                  p.photoUrl ||
+                  'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=200',
+              }}
+              style={[styles.thumb, i > 0 && { marginLeft: -12 }]}
+            />
+          ))}
+          {trip.places.length > 3 && (
+            <View style={[styles.thumb, styles.thumbMore, { marginLeft: -12 }]}>
+              <Text style={styles.thumbMoreText}>+{trip.places.length - 3}</Text>
+            </View>
+          )}
+        </View>
 
-      {/* Info */}
-      <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={1}>
-          {trip.trip_name}
-        </Text>
-        <Text style={styles.cardSub} numberOfLines={1}>
-          {isOwner ? 'Created by You' : `Created by ${trip.owner_name}`}
-        </Text>
+        {/* Info */}
+        <View style={styles.cardBody}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
+            {trip.trip_name}
+          </Text>
+          <Text style={styles.cardSub} numberOfLines={1}>
+            {isOwner ? 'Created by You' : `Created by ${trip.owner_name}`}
+          </Text>
 
-        <View style={styles.cardMeta}>
-          <View style={styles.metaItem}>
-            <Ionicons name="location-outline" size={13} color="#6B7280" />
-            <Text style={styles.metaText}>{trip.places.length} place{trip.places.length !== 1 ? 's' : ''}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="people-outline" size={13} color="#6B7280" />
-            <Text style={styles.metaText}>{trip.member_count} explorer{trip.member_count !== 1 ? 's' : ''}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="calendar-outline" size={13} color="#6B7280" />
-            <Text style={styles.metaText}>{trip.trip_date}</Text>
+          <View style={styles.cardMeta}>
+            <View style={styles.metaItem}>
+              <Ionicons name="location-outline" size={13} color="#6B7280" />
+              <Text style={styles.metaText}>{trip.places.length} place{trip.places.length !== 1 ? 's' : ''}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="people-outline" size={13} color="#6B7280" />
+              <Text style={styles.metaText}>{trip.member_count} explorer{trip.member_count !== 1 ? 's' : ''}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Ionicons name="calendar-outline" size={13} color="#6B7280" />
+              <Text style={styles.metaText}>{trip.trip_date}</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Actions */}
-      <View style={styles.cardRight}>
-        <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-        {isOwner && onDelete && (
-          <TouchableOpacity
-            onPress={(e) => {
-              // Stop the parent card TouchableOpacity from also firing (web)
-              (e as any)?.stopPropagation?.();
-              onDelete();
-            }}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={styles.deleteBtn}
-          >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-          </TouchableOpacity>
-        )}
-      </View>
-    </TouchableOpacity>
+        <Ionicons name="chevron-forward" size={20} color="#D1D5DB" style={{ marginLeft: 4 }} />
+      </TouchableOpacity>
+
+      {/* Delete button — sibling of the card press area, no nesting issues */}
+      {isOwner && onDelete && (
+        <TouchableOpacity
+          onPress={onDelete}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.deleteBtn}
+        >
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -118,12 +122,14 @@ export default function SharedTripsScreen({ navigation }: Props) {
   } = useSharedTripStore();
 
   const { user: authUser } = useAuthStore();
-  // Prefer the Firebase Auth UID so trips are tied to the account and accessible
-  // across devices. Fall back to the local session ID for guest users.
   const effectiveUserId = authUser?.id || sessionUserId;
 
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  // In-app delete confirmation (web-safe — no Alert.alert)
+  const [pendingDeleteTrip, setPendingDeleteTrip] = useState<SharedTrip | null>(null);
 
   const loadTrips = useCallback(async () => {
     try {
@@ -133,7 +139,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
       ]);
       setMyTrips(created);
       setJoinedTrips(joined);
-    } catch (e) {
+    } catch {
       // silently use cached state
     } finally {
       setLoading(false);
@@ -154,29 +160,22 @@ export default function SharedTripsScreen({ navigation }: Props) {
     navigation.navigate('SharedTripDetail', { trip_id: trip.trip_id });
   };
 
-  const confirmDelete = (trip: SharedTrip) => {
-    Alert.alert(
-      'Delete Trip',
-      `Delete "${trip.trip_name}"? This will remove it for all members.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            // Optimistic: remove immediately so the UI responds without waiting
-            removeMyTrip(trip.trip_id);
-            try {
-              await deleteSharedTrip(trip.trip_id);
-            } catch {
-              // Rollback: restore the trip if Firestore delete failed
-              addMyTrip(trip);
-              Alert.alert('Error', 'Could not delete trip. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteTrip) return;
+    const trip = pendingDeleteTrip;
+    setPendingDeleteTrip(null);
+    setDeleting(true);
+    // Optimistic: remove immediately
+    removeMyTrip(trip.trip_id);
+    try {
+      await deleteSharedTrip(trip.trip_id);
+    } catch {
+      // Rollback on failure
+      addMyTrip(trip);
+      setPendingDeleteTrip(trip); // re-open modal with error handled elsewhere
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -217,7 +216,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
                   trip={t}
                   isOwner
                   onPress={() => openTrip(t)}
-                  onDelete={() => confirmDelete(t)}
+                  onDelete={() => setPendingDeleteTrip(t)}
                 />
               ))
             )}
@@ -247,6 +246,48 @@ export default function SharedTripsScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       )}
+
+      {/* ── Delete Confirmation Modal ─────────────────────── */}
+      <Modal
+        visible={!!pendingDeleteTrip}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPendingDeleteTrip(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setPendingDeleteTrip(null)}>
+          <View style={styles.overlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.sheet}>
+                <View style={styles.sheetHandle} />
+                <View style={styles.sheetIconWrap}>
+                  <Ionicons name="trash-outline" size={32} color="#EF4444" />
+                </View>
+                <Text style={styles.sheetTitle}>Delete Trip?</Text>
+                <Text style={styles.sheetBody}>
+                  "{pendingDeleteTrip?.trip_name}" will be removed for all members and cannot be undone.
+                </Text>
+                <TouchableOpacity
+                  style={styles.deleteConfirmBtn}
+                  onPress={handleConfirmDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.deleteConfirmBtnText}>Delete Trip</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setPendingDeleteTrip(null)}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -281,18 +322,25 @@ const styles = StyleSheet.create({
   },
   emptyHint: { fontSize: 13, color: '#9CA3AF', marginTop: 4, textAlign: 'center', paddingHorizontal: 24 },
 
+  // Card: outer View + inner tappable area + separate delete button
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 18,
-    padding: 14,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
+    overflow: 'hidden',
+  },
+  cardPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
   },
 
   thumbRow: { flexDirection: 'row', alignItems: 'center', marginRight: 14 },
@@ -320,14 +368,52 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 12, color: '#6B7280' },
 
-  cardRight: { alignItems: 'center', justifyContent: 'center', paddingLeft: 8 },
   deleteBtn: {
-    marginTop: 10,
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#FFF5F5',
+    borderLeftWidth: 1,
+    borderLeftColor: '#FEE2E2',
   },
+
+  // ── Delete confirmation modal ────────────────────────────────
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44,
+    alignItems: 'center',
+  },
+  sheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E5EA', marginBottom: 24,
+  },
+  sheetIconWrap: {
+    width: 68, height: 68, borderRadius: 34,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 22, fontFamily: F.bold, color: '#111827',
+    marginBottom: 10, textAlign: 'center',
+  },
+  sheetBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
+  deleteConfirmBtn: {
+    width: '100%', backgroundColor: '#EF4444', borderRadius: 16,
+    height: 54, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#EF4444', shadowOpacity: 0.3, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 }, elevation: 3,
+  },
+  deleteConfirmBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
+  cancelBtn: { paddingVertical: 14, paddingHorizontal: 20 },
+  cancelBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
 });

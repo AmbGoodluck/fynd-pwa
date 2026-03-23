@@ -6,12 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
   Modal,
   Linking,
   Platform,
   Share,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,6 +90,13 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [removedFromTrip, setRemovedFromTrip] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // In-app confirmation modals (web-safe — no Alert.alert)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [pendingRemoveMember, setPendingRemoveMember] = useState<TripMember | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
@@ -134,80 +141,63 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   // ── Owner: remove a member ────────────────────────────────────────────────
   const handleRemoveMember = (member: TripMember) => {
-    Alert.alert(
-      'Remove Member',
-      `Remove ${member.user_name} from this trip?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeMember(member.member_id, trip_id, member.user_id);
-              setMembers((prev) => prev.filter((m) => m.member_id !== member.member_id));
-              removeMemberLocally(member.member_id);
-              if (trip) setTrip({ ...trip, member_count: Math.max(1, trip.member_count - 1) });
-            } catch {
-              Alert.alert('Error', 'Could not remove member. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    setPendingRemoveMember(member);
+  };
+
+  const handleConfirmRemoveMember = async () => {
+    if (!pendingRemoveMember) return;
+    const member = pendingRemoveMember;
+    setPendingRemoveMember(null);
+    setActionLoading(true);
+    try {
+      await removeMember(member.member_id, trip_id, member.user_id);
+      setMembers((prev) => prev.filter((m) => m.member_id !== member.member_id));
+      removeMemberLocally(member.member_id);
+      if (trip) setTrip({ ...trip, member_count: Math.max(1, trip.member_count - 1) });
+    } catch {
+      // silently fail — member will still appear; user can retry
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // ── Owner: delete trip entirely ───────────────────────────────────────────
   const handleDeleteTrip = () => {
-    Alert.alert(
-      'Delete Trip',
-      `Delete "${trip?.trip_name}"? This will remove it for all members and cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            if (!trip) return;
-            const savedTrip = trip;
-            // Optimistic: remove from store and navigate back immediately
-            removeMyTrip(trip_id);
-            navigation.goBack();
-            try {
-              await deleteSharedTrip(trip_id);
-            } catch {
-              // Rollback: restore trip in store; alert appears on the list screen
-              addMyTrip(savedTrip);
-              Alert.alert('Error', 'Could not delete trip. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!trip) return;
+    setShowDeleteConfirm(false);
+    const savedTrip = trip;
+    // Optimistic: remove from store and navigate back immediately
+    removeMyTrip(trip_id);
+    navigation.goBack();
+    try {
+      await deleteSharedTrip(trip_id);
+    } catch {
+      // Rollback: restore trip in store
+      addMyTrip(savedTrip);
+    }
   };
 
   // ── Member: leave trip ────────────────────────────────────────────────────
   const handleLeave = () => {
-    Alert.alert(
-      'Leave Trip',
-      'Are you sure you want to leave this trip?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await leaveTrip(trip_id, effectiveUserId);
-              removeJoinedTrip(trip_id);
-              navigation.goBack();
-            } catch {
-              Alert.alert('Error', 'Could not leave trip. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    setShowLeaveConfirm(true);
+  };
+
+  const handleConfirmLeave = async () => {
+    setShowLeaveConfirm(false);
+    setActionLoading(true);
+    try {
+      await leaveTrip(trip_id, effectiveUserId);
+      removeJoinedTrip(trip_id);
+      navigation.goBack();
+    } catch {
+      // silently fail
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // ── Save to my trips ──────────────────────────────────────────────────────
@@ -229,7 +219,6 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
     });
     setSaved(true);
     setShowSaveModal(false);
-    Alert.alert('Saved!', 'All places from this trip have been added to your Saved list.');
   };
 
   // ── Navigate to in-app map ────────────────────────────────────────────────
@@ -262,7 +251,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         title: trip.trip_name,
       });
     } catch {
-      Alert.alert('Error', 'Could not open share sheet.');
+      // share sheet unavailable — silently ignore
     }
   };
 
@@ -477,6 +466,115 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </Modal>
 
+      {/* ── Delete Trip Confirmation ─────────────────────── */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowDeleteConfirm(false)}>
+          <View style={styles.confirmOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmSheet}>
+                <View style={styles.confirmHandle} />
+                <View style={[styles.confirmIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="trash-outline" size={32} color="#EF4444" />
+                </View>
+                <Text style={styles.confirmTitle}>Delete Trip?</Text>
+                <Text style={styles.confirmBody}>
+                  "{trip?.trip_name}" will be removed for all members and cannot be undone.
+                </Text>
+                <TouchableOpacity style={styles.confirmDestructiveBtn} onPress={handleConfirmDelete}>
+                  <Text style={styles.confirmDestructiveBtnText}>Delete Trip</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setShowDeleteConfirm(false)}>
+                  <Text style={styles.confirmCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── Leave Trip Confirmation ──────────────────────── */}
+      <Modal
+        visible={showLeaveConfirm}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLeaveConfirm(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowLeaveConfirm(false)}>
+          <View style={styles.confirmOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmSheet}>
+                <View style={styles.confirmHandle} />
+                <View style={[styles.confirmIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="exit-outline" size={32} color="#EF4444" />
+                </View>
+                <Text style={styles.confirmTitle}>Leave Trip?</Text>
+                <Text style={styles.confirmBody}>
+                  Are you sure you want to leave "{trip?.trip_name}"? You will need a new invite link to rejoin.
+                </Text>
+                <TouchableOpacity
+                  style={styles.confirmDestructiveBtn}
+                  onPress={handleConfirmLeave}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.confirmDestructiveBtnText}>Leave Trip</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setShowLeaveConfirm(false)}>
+                  <Text style={styles.confirmCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── Remove Member Confirmation ───────────────────── */}
+      <Modal
+        visible={!!pendingRemoveMember}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPendingRemoveMember(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setPendingRemoveMember(null)}>
+          <View style={styles.confirmOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmSheet}>
+                <View style={styles.confirmHandle} />
+                <View style={[styles.confirmIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="person-remove-outline" size={32} color="#EF4444" />
+                </View>
+                <Text style={styles.confirmTitle}>Remove Member?</Text>
+                <Text style={styles.confirmBody}>
+                  Remove {pendingRemoveMember?.user_name} from this trip?
+                </Text>
+                <TouchableOpacity
+                  style={styles.confirmDestructiveBtn}
+                  onPress={handleConfirmRemoveMember}
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.confirmDestructiveBtnText}>Remove</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setPendingRemoveMember(null)}>
+                  <Text style={styles.confirmCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       {/* In-app Booking WebView */}
       <BookingWebViewModal
         visible={!!bookingUrl}
@@ -678,4 +776,46 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
+
+  // ── Shared confirmation sheet styles ─────────────────────────────────────
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  confirmSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 44,
+    alignItems: 'center',
+  },
+  confirmHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E5EA', marginBottom: 24,
+  },
+  confirmIconWrap: {
+    width: 68, height: 68, borderRadius: 34,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  confirmTitle: {
+    fontSize: 22, fontFamily: F.bold, color: '#111827',
+    marginBottom: 10, textAlign: 'center',
+  },
+  confirmBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
+  confirmDestructiveBtn: {
+    width: '100%', backgroundColor: '#EF4444', borderRadius: 16,
+    height: 54, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12,
+    shadowColor: '#EF4444', shadowOpacity: 0.3, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 }, elevation: 3,
+  },
+  confirmDestructiveBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
+  confirmCancelBtn: { paddingVertical: 14, paddingHorizontal: 20 },
+  confirmCancelBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
 });
