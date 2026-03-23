@@ -10,7 +10,7 @@ import {
   Modal,
   Linking,
   Platform,
-  Share,
+  TextInput,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -90,6 +90,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [removedFromTrip, setRemovedFromTrip] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // In-app confirmation modals (web-safe — no Alert.alert)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -203,7 +205,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   // ── Save to my trips ──────────────────────────────────────────────────────
   const handleSave = () => {
     if (!trip) return;
-    // Save each place in the trip to guest store
+    // Require authentication — savePlace silently drops guest saves
+    if (!authUser) { setShowSaveModal(false); return; }
     trip.places.forEach((p) => {
       savePlace({
         placeId: p.placeId,
@@ -242,16 +245,28 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   };
 
   // ── Share link ────────────────────────────────────────────────────────────
-  const handleShare = async () => {
-    if (!trip) return;
-    const link = buildShareLink(trip.trip_id);
-    try {
-      await Share.share({
-        message: `Join my trip "${trip.trip_name}" on Fynd! ${link}`,
-        title: trip.trip_name,
-      });
-    } catch {
-      // share sheet unavailable — silently ignore
+  const handleShare = () => {
+    setLinkCopied(false);
+    setShowShareModal(true);
+  };
+
+  const shareLink = trip ? buildShareLink(trip.trip_id) : '';
+
+  const copyShareLink = async () => {
+    if (!shareLink) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(shareLink); setLinkCopied(true); return; } catch {}
+    }
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      try {
+        const el = document.createElement('textarea');
+        el.value = shareLink;
+        el.style.position = 'fixed'; el.style.opacity = '0';
+        document.body.appendChild(el); el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setLinkCopied(true);
+      } catch {}
     }
   };
 
@@ -464,6 +479,60 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* ── Share Trip Modal ─────────────────────────────── */}
+      <Modal
+        visible={showShareModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowShareModal(false)}>
+          <View style={styles.confirmOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmSheet}>
+                <View style={styles.confirmHandle} />
+                <View style={[styles.confirmIconWrap, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="share-social-outline" size={30} color="#22C55E" />
+                </View>
+                <Text style={styles.confirmTitle}>Share Trip</Text>
+                <Text style={styles.shareSubtitle}>
+                  Anyone with this link can join "{trip?.trip_name}"
+                </Text>
+
+                {/* Link box */}
+                <View style={styles.shareLinkBox}>
+                  <TextInput
+                    style={styles.shareLinkText}
+                    value={shareLink}
+                    editable={false}
+                    selectTextOnFocus
+                    numberOfLines={1}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.confirmDestructiveBtn, { backgroundColor: '#22C55E', shadowColor: '#22C55E' }]}
+                  onPress={copyShareLink}
+                >
+                  <Ionicons
+                    name={linkCopied ? 'checkmark-circle-outline' : 'copy-outline'}
+                    size={18}
+                    color="#fff"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.confirmDestructiveBtnText}>
+                    {linkCopied ? 'Link Copied!' : 'Copy Link'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setShowShareModal(false)}>
+                  <Text style={styles.confirmCancelBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* ── Delete Trip Confirmation ─────────────────────── */}
@@ -818,4 +887,17 @@ const styles = StyleSheet.create({
   confirmDestructiveBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
   confirmCancelBtn: { paddingVertical: 14, paddingHorizontal: 20 },
   confirmCancelBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
+
+  shareSubtitle: {
+    fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  shareLinkBox: {
+    width: '100%', backgroundColor: '#F3F4F6', borderRadius: 12,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16,
+  },
+  shareLinkText: {
+    fontSize: 13, color: '#374151', fontFamily: F.medium,
+  },
 });

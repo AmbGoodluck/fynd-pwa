@@ -264,11 +264,12 @@ export default function AppNavigator() {
             // Firestore unavailable — auth still valid, LogoScreen handles primary flow.
           }
 
-          // Hydrate recent + shared trips in parallel — non-blocking
+          // Hydrate all user data in parallel — non-blocking
           Promise.all([
             getUserTrips(user.uid),
             getMyCreatedTrips(user.uid),
             getJoinedTrips(user.uid),
+            useGuestStore.getState().hydrateSavedPlaces(),
           ]).then(([recentTrips, myTrips, joinedTrips]) => {
             useRecentTripStore.getState().setRecentTrips(recentTrips);
             useSharedTripStore.getState().setMyTrips(myTrips);

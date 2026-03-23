@@ -73,6 +73,8 @@ export default function LogoScreen({ navigation }: Props) {
           } catch {
             // Firestore unavailable -- enter app with minimal profile
           }
+          // Hydrate saved places now that auth store has the user
+          useGuestStore.getState().hydrateSavedPlaces().catch(() => {});
           resolve('MainTabs');
         } else {
           // No active session -- route based on onboarding state
