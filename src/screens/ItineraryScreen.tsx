@@ -265,7 +265,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       ) {
         setShareError('Permission denied. Firestore rules need to allow shared_trips writes — see the setup guide.');
       } else {
-        setShareError('Could not generate share link. Please check your connection and try again.');
+        const code = e?.code ? ` (${e.code})` : '';
+        setShareError(`Could not generate share link${code}. Please check your connection and try again.`);
+        console.error('[Share] Unhandled error:', e?.code, e?.message, e);
       }
     } finally {
       setSharing(false);

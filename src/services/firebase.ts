@@ -3,7 +3,7 @@ import { initializeAuth, getAuth, getReactNativePersistence } from 'firebase/aut
 import {
   getFirestore,
   initializeFirestore,
-  persistentLocalCache,
+  memoryLocalCache,
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics, isSupported, logEvent as firebaseLogEvent, Analytics } from 'firebase/analytics';
@@ -54,13 +54,13 @@ export function logEvent(event: string, params?: Record<string, any>) {
 
 export { auth };
 
-// Enable offline persistence on web via IndexedDB.
-// initializeFirestore must be called before any getFirestore() call on the
-// same app instance — the try/catch handles the "already initialized" case.
+// Use memoryLocalCache on web — avoids IndexedDB write failures that cause
+// false "Could not generate share link" errors in some browsers/environments.
+// memoryLocalCache is simpler and always available; data is per-session only.
 let db: ReturnType<typeof getFirestore>;
 try {
   db = Platform.OS === 'web'
-    ? initializeFirestore(app, { localCache: persistentLocalCache() })
+    ? initializeFirestore(app, { localCache: memoryLocalCache() })
     : getFirestore(app);
 } catch {
   db = getFirestore(app);
