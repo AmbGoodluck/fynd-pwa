@@ -411,6 +411,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           </Text>
           {trip?.places.map((p, i) => (
             <PlaceCard
+              horizontal
               key={p.placeId || i}
               name={p.name}
               category={p.category}
@@ -420,8 +421,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               photoUrl={p.photoUrl}
               indexBadge={i + 1}
               onNavigate={() => navigateToPlace(p)}
-              onBook={isValidBookingUrl(p.bookingUrl) ? () => { 
-                setBookingTitle(p.name); 
+              onBook={isValidBookingUrl(p.bookingUrl) ? () => {
+                setBookingTitle(p.name);
                 setBookingUrl(p.bookingUrl!);
                 setBookingPlaceId(p.placeId || null);
               } : undefined}

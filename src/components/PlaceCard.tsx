@@ -16,7 +16,7 @@ type Props = {
   // Layout
   horizontal?: boolean;
 
-  // Badge
+  // Badge (order number shown on image — used in trip detail lists)
   indexBadge?: number;
 
   // Actions
@@ -49,21 +49,28 @@ const PlaceCard = React.memo(function PlaceCard({
 }: Props) {
   const fallbackImage = FALLBACK_IMAGE;
 
+  // ── Horizontal layout (primary / unified design) ─────────────
   if (horizontal) {
     return (
       <View style={styles.cardH}>
-        {/* Left: image with left-only rounded corners */}
+        {/* Left: image */}
         <View style={styles.imageContainerH}>
           <Image
             source={{ uri: photoUrl || fallbackImage }}
             style={styles.imageH}
           />
-          {/* Heart icon — top-right of image */}
+          {/* Order badge — top-left of image */}
+          {indexBadge !== undefined && (
+            <View style={styles.badgeH}>
+              <Text style={styles.badgeHText}>{indexBadge}</Text>
+            </View>
+          )}
+          {/* Save heart — top-right of image */}
           {onSave && (
-            <TouchableOpacity style={styles.heartBtnTR} onPress={onSave}>
+            <TouchableOpacity style={styles.heartBtnH} onPress={onSave}>
               <Ionicons
                 name={isSaved ? 'heart' : 'heart-outline'}
-                size={16}
+                size={15}
                 color={isSaved ? '#EF4444' : '#fff'}
               />
             </TouchableOpacity>
@@ -80,35 +87,40 @@ const PlaceCard = React.memo(function PlaceCard({
             </Text>
           ) : null}
 
-          {/* Meta row: distance · time · rating */}
+          {/* Meta row: ⭐ rating · 🚶 distance · ⏱ duration */}
           <View style={styles.metaRowH}>
+            {rating != null ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="star" size={12} color="#F59E0B" />
+                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
+              </View>
+            ) : null}
             {distance ? (
               <View style={styles.metaItem}>
-                <Ionicons name="walk-outline" size={14} color="#57636C" />
+                <Ionicons name="walk-outline" size={12} color="#57636C" />
                 <Text style={styles.metaText}>{distance}</Text>
               </View>
             ) : null}
             {duration ? (
               <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={14} color="#57636C" />
+                <Ionicons name="time-outline" size={12} color="#57636C" />
                 <Text style={styles.metaText}>{duration}</Text>
-              </View>
-            ) : null}
-            {rating != null ? (
-              <View style={styles.metaItem}>
-                <Ionicons name="star-half-outline" size={16} color="#F59E0B" />
-                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
               </View>
             ) : null}
           </View>
 
-          {/* Buttons row */}
-          {(onAdd || onBook) ? (
+          {/* Action buttons */}
+          {(onAdd || onBook || onNavigate) ? (
             <View style={styles.actionRowH}>
+              {onNavigate ? (
+                <TouchableOpacity style={styles.navBtnH} onPress={onNavigate}>
+                  <Ionicons name="navigate-outline" size={13} color="#22C55E" />
+                  <Text style={styles.navBtnHText}>Navigate</Text>
+                </TouchableOpacity>
+              ) : null}
               {onBook ? (
                 <TouchableOpacity style={styles.bookBtnH} onPress={onBook}>
                   <Text style={styles.bookBtnHText}>Book Now</Text>
-                  <Ionicons name="chevron-forward" size={13} color="#111827" />
                 </TouchableOpacity>
               ) : null}
               {onAdd ? (
@@ -116,8 +128,8 @@ const PlaceCard = React.memo(function PlaceCard({
                   style={[styles.addBtnH, isAdded && styles.addBtnHSelected]}
                   onPress={onAdd}
                 >
-                  <Text style={styles.addBtnHText}>
-                    {isAdded ? 'Added' : 'Add to Itinerary'}
+                  <Text style={[styles.addBtnHText, isAdded && styles.addBtnHTextSelected]}>
+                    {isAdded ? '✓ Added' : 'Add'}
                   </Text>
                 </TouchableOpacity>
               ) : null}
@@ -128,7 +140,7 @@ const PlaceCard = React.memo(function PlaceCard({
     );
   }
 
-  // ── Default vertical layout ──────────────────────────────────
+  // ── Vertical layout (legacy fallback) ────────────────────────
   return (
     <View style={styles.card}>
       <View style={styles.imageContainer}>
@@ -214,7 +226,138 @@ const PlaceCard = React.memo(function PlaceCard({
 });
 
 const styles = StyleSheet.create({
-  // ── Vertical (default) ─────────────────────────────────────────
+  // ── Horizontal (unified primary card) ──────────────────────────
+  cardH: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    borderWidth: 0.5,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+    minHeight: 130,
+  },
+  imageContainerH: {
+    width: 116,
+    position: 'relative',
+  },
+  imageH: {
+    width: 116,
+    height: '100%',
+    minHeight: 130,
+    resizeMode: 'cover',
+  },
+  // Order badge — green circle top-left of image
+  badgeH: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(34, 197, 94, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  badgeHText: { fontSize: 12, fontFamily: F.bold, color: '#fff' },
+  // Save heart — top-right of image
+  heartBtnH: {
+    position: 'absolute',
+    top: 8,
+    right: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  bodyH: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
+  },
+  nameH: {
+    fontSize: 15,
+    fontFamily: F.semibold,
+    color: '#111827',
+    marginBottom: 3,
+  },
+  descriptionH: {
+    fontSize: 12,
+    fontFamily: F.regular,
+    color: '#6B7280',
+    lineHeight: 17,
+    marginBottom: 6,
+    flex: 1,
+  },
+  metaRowH: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontSize: 12, fontFamily: F.medium, color: '#6B7280' },
+
+  actionRowH: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  // Navigate — green outline
+  navBtnH: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  navBtnHText: { fontSize: 12, fontFamily: F.semibold, color: '#22C55E' },
+  // Book Now — gray outline
+  bookBtnH: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  bookBtnHText: { fontSize: 12, fontFamily: F.medium, color: '#374151' },
+  // Add to Itinerary — green fill
+  addBtnH: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#22C55E',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  addBtnHSelected: { backgroundColor: '#16A34A' },
+  addBtnHText: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
+  addBtnHTextSelected: { color: '#fff' },
+
+  // ── Vertical (legacy fallback) ────────────────────────────────
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -252,8 +395,6 @@ const styles = StyleSheet.create({
   name: { fontSize: 20, fontFamily: F.bold, color: '#111827', marginBottom: 6, letterSpacing: -0.4 },
   description: { fontSize: 14, fontFamily: F.regular, color: '#4B5563', marginBottom: 12, lineHeight: 22 },
   metaRow: { flexDirection: 'row', gap: 12, marginBottom: 14, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12, fontFamily: F.medium, color: '#57636C' },
   actionRow: {
     flexDirection: 'row', gap: 8,
     borderTopWidth: 1, borderTopColor: '#F2F2F7',
@@ -278,73 +419,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 10,
   },
   navBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
-
-  // ── Horizontal variant (Flutter-matched) ──────────────────────
-  cardH: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 14,
-    borderWidth: 0.5,
-    borderColor: '#E5E5E7',
-    overflow: 'hidden',
-    minHeight: 144,
-  },
-  imageContainerH: {
-    width: 116,
-    position: 'relative',
-  },
-  imageH: {
-    width: 116,
-    height: 144,
-    resizeMode: 'cover',
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-  },
-  // Heart at top-RIGHT of image
-  heartBtnTR: {
-    position: 'absolute',
-    top: 8,
-    right: 6,
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bodyH: {
-    flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    justifyContent: 'space-between',
-  },
-  nameH: { fontSize: 15, fontFamily: F.semibold, color: '#111827', marginBottom: 3 },
-  descriptionH: {
-    fontSize: 12, fontFamily: F.regular, color: '#57636C',
-    lineHeight: 17, opacity: 0.85, flex: 1, marginBottom: 5,
-  },
-  metaRowH: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' },
-  actionRowH: { flexDirection: 'row', gap: 6 },
-  // "Book Now" — outline style matching Flutter
-  bookBtnH: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3,
-    backgroundColor: '#fff',
-    borderWidth: 1, borderColor: '#E5E5E7',
-    borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 6,
-    opacity: 0.9,
-  },
-  bookBtnHText: { fontSize: 12, fontFamily: F.medium, color: '#111827' },
-  // "Add to Itinerary" — solid green
-  addBtnH: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 6,
-    opacity: 0.9,
-  },
-  addBtnHSelected: { backgroundColor: '#16A34A', opacity: 1 },
-  addBtnHText: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
 });
 
 export default PlaceCard;
