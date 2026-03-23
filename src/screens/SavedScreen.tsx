@@ -95,19 +95,17 @@ export default function SavedScreen({ navigation }: Props) {
     const inTemp = tempPlaces.some((p: any) => p.placeId === item.placeId);
 
     return (
-      <View style={{ marginBottom: 16 }}>
-        <PlaceCard
-          name={item.name}
-          category={item.category || item.city}
-          description={item.description}
-          rating={item.rating > 0 ? item.rating : undefined}
-          photoUrl={item.photoUrl || FALLBACK_IMAGE}
-          isSaved={true}
-          onSave={() => unsavePlace(item.placeId)}
-          isAdded={inTemp}
-          onAdd={() => handleAddToItinerary(item)}
-        />
-      </View>
+      <PlaceCard
+        horizontal
+        name={item.name}
+        description={item.description || item.category || item.city}
+        rating={item.rating > 0 ? item.rating : undefined}
+        photoUrl={item.photoUrl || FALLBACK_IMAGE}
+        isSaved={true}
+        onSave={() => unsavePlace(item.placeId)}
+        isAdded={inTemp}
+        onAdd={() => handleAddToItinerary(item)}
+      />
     );
   };
 
