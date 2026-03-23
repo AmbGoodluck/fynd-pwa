@@ -1,15 +1,6 @@
 import { create } from 'zustand';
-import type { Place } from './useTripStore';
-
-export interface RecentTrip {
-  trip_id: string;
-  user_id: string;
-  city: string;
-  places: Place[];
-  created_at: string;    // ISO string — consistent with SharedTrip pattern
-  last_accessed: string; // ISO string
-  is_shared: boolean;
-}
+import type { RecentTrip } from '../types/recentTrip';
+export type { RecentTrip } from '../types/recentTrip';
 
 interface RecentTripStore {
   recentTrips: RecentTrip[];

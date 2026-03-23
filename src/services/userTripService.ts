@@ -10,7 +10,7 @@ import {
   limit,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { RecentTrip } from '../store/useRecentTripStore';
+import type { RecentTrip } from '../types/recentTrip';
 import type { Place } from '../store/useTripStore';
 
 const USER_TRIPS_COL = 'user_trips';

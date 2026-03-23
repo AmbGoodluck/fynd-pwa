@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Pressable, Linking,
-  Alert, Modal, Image, Platform, TextInput, Animated,
+  View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, Linking,
+  Modal, Image, Platform, TextInput, Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F } from '../theme/fonts';
@@ -84,6 +84,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareLink, setShareLink] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
+  const [showGuestModal, setShowGuestModal] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
@@ -165,7 +167,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
       } else {
-        Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open Google Maps.'));
+        Linking.openURL(url).catch(() => {});
       }
     };
     if (stops.length === 1) {
@@ -205,15 +207,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     // across devices.  Guests have no auth.currentUser, so Firestore writes would
     // be rejected by security rules — show a prompt instead of a permission error.
     if (isGuest || !authUser) {
-      Alert.alert(
-        'Sign In Required',
-        'Create a free account to share trips with others and access them on any device.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => navigation.navigate('Login') },
-          { text: 'Register', onPress: () => navigation.navigate('Register') },
-        ]
-      );
+      setShowGuestModal(true);
       return;
     }
 
@@ -253,13 +247,12 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       setShowShareModal(true);
       logEvent('trip_share_modal_opened', { destination, stop_count: stops.length });
     } catch (e: any) {
-
       if (e?.message?.includes('TRIP_LIMIT')) {
-        Alert.alert('Trip Limit Reached', 'Trips support up to 7 places. Remove a stop and try again.');
+        setShareError('Trips support up to 7 places. Remove a stop and try again.');
       } else if (e?.message?.includes('PERMISSION_DENIED')) {
-        Alert.alert('Permission Denied', e.message.split(': ')[1] || e.message);
+        setShareError(e.message.split(': ')[1] || 'Permission denied. Please sign in and try again.');
       } else {
-        Alert.alert('Error', 'Could not generate share link. Please check your connection and try again.');
+        setShareError('Could not generate share link. Please check your connection and try again.');
       }
     } finally {
       setSharing(false);
@@ -313,7 +306,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       showCopiedToast();
       setTimeout(() => setLinkCopied(false), 2500);
     } else {
-      Alert.alert('Copy failed', 'Please long-press the link above and copy it manually.');
+      // copy failed silently — link is visible in the input, user can select manually
     }
   };
 
@@ -523,61 +516,135 @@ export default function ItineraryScreen({ navigation, route }: Props) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Share Trip Overlay — inline absolute overlay, no Modal portal.
-          Flex column: Pressable backdrop (flex:1) sits ABOVE the sheet in
-          normal flow — they do not overlap so no z-index or event-bubbling
-          hacks are needed. Works identically on web and native. */}
-      {showShareModal && (
-        <View style={styles.shareOverlay}>
-          <Pressable style={styles.shareBackdrop} onPress={() => setShowShareModal(false)} />
-          <View style={styles.shareModalSheet}>
-            <View style={styles.modalHandle} />
-            <View style={styles.shareModalIconWrap}>
-              <Ionicons name="share-social-outline" size={28} color="#22C55E" />
-            </View>
-            <Text style={styles.shareModalTitle}>Share Trip</Text>
-            <Text style={styles.shareModalBody}>Add up to 7 members to trip</Text>
+      {/* ── Share Trip Modal ──────────────────────────────── */}
+      <Modal
+        visible={showShareModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowShareModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.shareModalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={styles.shareModalIconWrap}>
+                  <Ionicons name="share-social-outline" size={28} color="#22C55E" />
+                </View>
+                <Text style={styles.shareModalTitle}>Share Trip</Text>
+                <Text style={styles.shareModalBody}>Add up to 7 members to your trip</Text>
 
-            <View style={styles.shareLinkBox}>
-              <TextInput
-                style={styles.shareLinkText}
-                value={shareLink}
-                editable={false}
-                selectTextOnFocus
-                multiline={false}
-                numberOfLines={1}
-              />
-            </View>
+                <View style={styles.shareLinkBox}>
+                  <TextInput
+                    style={styles.shareLinkText}
+                    value={shareLink}
+                    editable={false}
+                    selectTextOnFocus
+                    multiline={false}
+                    numberOfLines={1}
+                  />
+                </View>
 
-            <TouchableOpacity
-              style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
-              onPress={handleCopyFromModal}
-            >
-              <Ionicons
-                name={linkCopied ? 'checkmark-circle-outline' : 'copy-outline'}
-                size={18}
-                color="#fff"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.copyBtnText}>
-                {linkCopied ? 'Copied!' : 'Copy Link'}
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.copyBtn, linkCopied && styles.copyBtnDone]}
+                  onPress={handleCopyFromModal}
+                >
+                  <Ionicons
+                    name={linkCopied ? 'checkmark-circle-outline' : 'copy-outline'}
+                    size={18}
+                    color="#fff"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.copyBtnText}>
+                    {linkCopied ? 'Copied!' : 'Copy Link'}
+                  </Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.viewTripsBtn}
-              onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
-            >
-              <Ionicons name="people-outline" size={15} color="#22C55E" style={{ marginRight: 6 }} />
-              <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.viewTripsBtn}
+                  onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
+                >
+                  <Ionicons name="people-outline" size={15} color="#22C55E" style={{ marginRight: 6 }} />
+                  <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
+                </TouchableOpacity>
 
-            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setShowShareModal(false)}>
+                  <Text style={styles.modalCancelText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
-      )}
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── Sign In Required Modal (guest tries to share) ─── */}
+      <Modal
+        visible={showGuestModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGuestModal(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowGuestModal(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.shareModalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={[styles.shareModalIconWrap, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="person-outline" size={28} color="#F59E0B" />
+                </View>
+                <Text style={styles.shareModalTitle}>Account Required</Text>
+                <Text style={styles.shareModalBody}>
+                  Create a free account to share trips with others and access them on any device.
+                </Text>
+                <TouchableOpacity
+                  style={styles.copyBtn}
+                  onPress={() => { setShowGuestModal(false); navigation.navigate('Login'); }}
+                >
+                  <Text style={styles.copyBtnText}>Sign In</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.viewTripsBtn}
+                  onPress={() => { setShowGuestModal(false); navigation.navigate('Register'); }}
+                >
+                  <Text style={styles.viewTripsBtnText}>Create Account</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setShowGuestModal(false)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* ── Share Error Modal ─────────────────────────────── */}
+      <Modal
+        visible={!!shareError}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShareError(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShareError(null)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.shareModalSheet}>
+                <View style={styles.modalHandle} />
+                <View style={[styles.shareModalIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="alert-circle-outline" size={28} color="#EF4444" />
+                </View>
+                <Text style={styles.shareModalTitle}>Could Not Share</Text>
+                <Text style={styles.shareModalBody}>{shareError}</Text>
+                <TouchableOpacity
+                  style={[styles.copyBtn, { backgroundColor: '#EF4444' }]}
+                  onPress={() => setShareError(null)}
+                >
+                  <Text style={styles.copyBtnText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
       {/* Long-press Place Preview */}
       <PlacePreviewModal
@@ -732,16 +799,6 @@ const styles = StyleSheet.create({
   },
   modalCancelText: { fontSize: 15, color: '#57636C', fontWeight: '500' },
 
-  // Share Trip Overlay (no Modal — inline absolute overlay)
-  shareOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    zIndex: 999,
-  },
-  shareBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
   shareModalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 40, alignItems: 'center',
