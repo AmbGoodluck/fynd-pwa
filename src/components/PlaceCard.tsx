@@ -51,12 +51,16 @@ const PlaceCard = React.memo(function PlaceCard({
 
   if (horizontal) {
     return (
-      <View style={[styles.card, styles.cardH]}>
-        {/* Left: image */}
+      <View style={styles.cardH}>
+        {/* Left: image with left-only rounded corners */}
         <View style={styles.imageContainerH}>
-          <Image source={{ uri: photoUrl || fallbackImage }} style={styles.imageH} />
+          <Image
+            source={{ uri: photoUrl || fallbackImage }}
+            style={styles.imageH}
+          />
+          {/* Heart icon — top-right of image */}
           {onSave && (
-            <TouchableOpacity style={styles.heartBtnTL} onPress={onSave}>
+            <TouchableOpacity style={styles.heartBtnTR} onPress={onSave}>
               <Ionicons
                 name={isSaved ? 'heart' : 'heart-outline'}
                 size={16}
@@ -71,36 +75,40 @@ const PlaceCard = React.memo(function PlaceCard({
           <Text style={styles.nameH} numberOfLines={1}>{name}</Text>
 
           {(description || category) ? (
-            <Text style={styles.descriptionH} numberOfLines={2}>{description || category}</Text>
+            <Text style={styles.descriptionH} numberOfLines={2}>
+              {description || category}
+            </Text>
           ) : null}
 
+          {/* Meta row: distance · time · rating */}
           <View style={styles.metaRowH}>
             {distance ? (
               <View style={styles.metaItem}>
-                <Ionicons name="walk-outline" size={12} color="#57636C" />
+                <Ionicons name="walk-outline" size={14} color="#57636C" />
                 <Text style={styles.metaText}>{distance}</Text>
               </View>
             ) : null}
             {duration ? (
               <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={12} color="#57636C" />
+                <Ionicons name="time-outline" size={14} color="#57636C" />
                 <Text style={styles.metaText}>{duration}</Text>
               </View>
             ) : null}
             {rating != null ? (
               <View style={styles.metaItem}>
-                <Ionicons name="star" size={12} color="#F59E0B" />
+                <Ionicons name="star-half-outline" size={16} color="#F59E0B" />
                 <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
               </View>
             ) : null}
           </View>
 
+          {/* Buttons row */}
           {(onAdd || onBook) ? (
             <View style={styles.actionRowH}>
               {onBook ? (
                 <TouchableOpacity style={styles.bookBtnH} onPress={onBook}>
                   <Text style={styles.bookBtnHText}>Book Now</Text>
-                  <Ionicons name="chevron-forward" size={12} color="#1D4ED8" />
+                  <Ionicons name="chevron-forward" size={13} color="#111827" />
                 </TouchableOpacity>
               ) : null}
               {onAdd ? (
@@ -108,11 +116,6 @@ const PlaceCard = React.memo(function PlaceCard({
                   style={[styles.addBtnH, isAdded && styles.addBtnHSelected]}
                   onPress={onAdd}
                 >
-                  <Ionicons
-                    name={isAdded ? 'checkmark-circle' : 'add-circle-outline'}
-                    size={14}
-                    color="#fff"
-                  />
                   <Text style={styles.addBtnHText}>
                     {isAdded ? 'Added' : 'Add to Itinerary'}
                   </Text>
@@ -191,14 +194,12 @@ const PlaceCard = React.memo(function PlaceCard({
                 </Text>
               </TouchableOpacity>
             )}
-
             {onBook && (
               <TouchableOpacity style={styles.bookBtn} onPress={onBook}>
                 <Ionicons name="calendar-outline" size={14} color="#fff" />
                 <Text style={styles.bookBtnText}>Book Now</Text>
               </TouchableOpacity>
             )}
-
             {onNavigate && (
               <TouchableOpacity style={styles.navBtn} onPress={onNavigate}>
                 <Ionicons name="navigate-outline" size={14} color="#22C55E" />
@@ -231,34 +232,20 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: 200, resizeMode: 'cover' },
   badge: {
     position: 'absolute',
-    top: 14,
-    left: 14,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 14, left: 14,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(34, 197, 94, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
   badgeText: { fontSize: 13, fontFamily: F.bold, color: '#fff' },
   heartBtn: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    position: 'absolute', top: 14, right: 14,
+    width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
   body: { padding: 20 },
@@ -266,117 +253,98 @@ const styles = StyleSheet.create({
   description: { fontSize: 14, fontFamily: F.regular, color: '#4B5563', marginBottom: 12, lineHeight: 22 },
   metaRow: { flexDirection: 'row', gap: 12, marginBottom: 14, flexWrap: 'wrap' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 13, fontFamily: F.medium, color: '#57636C' },
+  metaText: { fontSize: 12, fontFamily: F.medium, color: '#57636C' },
   actionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F2F7',
-    paddingTop: 14,
-    flexWrap: 'wrap',
+    flexDirection: 'row', gap: 8,
+    borderTopWidth: 1, borderTopColor: '#F2F2F7',
+    paddingTop: 14, flexWrap: 'wrap',
   },
   addBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#22C55E',
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 10, borderRadius: 12,
+    backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#22C55E',
   },
   addBtnSelected: { backgroundColor: '#22C55E' },
   addBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
   addBtnTextSelected: { color: '#fff' },
   bookBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#1D4ED8',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#1D4ED8', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10,
   },
   bookBtnText: { fontSize: 13, fontFamily: F.bold, color: '#fff' },
   navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: '#22C55E',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: '#22C55E', borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 10,
   },
   navBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
 
-  // ── Horizontal variant ─────────────────────────────────────────
+  // ── Horizontal variant (Flutter-matched) ──────────────────────
   cardH: {
     flexDirection: 'row',
-    borderRadius: 18,
-    marginBottom: 12,
-    minHeight: 130,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 14,
+    borderWidth: 0.5,
+    borderColor: '#E5E5E7',
+    overflow: 'hidden',
+    minHeight: 144,
   },
   imageContainerH: {
-    width: 110,
+    width: 116,
+    position: 'relative',
   },
   imageH: {
-    width: 110,
-    height: 130,
+    width: 116,
+    height: 144,
     resizeMode: 'cover',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
-  heartBtnTL: {
+  // Heart at top-RIGHT of image
+  heartBtnTR: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.38)',
+    top: 8,
+    right: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bodyH: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     justifyContent: 'space-between',
   },
-  nameH: { fontSize: 15, fontFamily: F.bold, color: '#111827', marginBottom: 3 },
-  descriptionH: { fontSize: 12, fontFamily: F.regular, color: '#6B7280', lineHeight: 17, marginBottom: 6, flex: 1 },
-  metaRowH: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 },
-  actionRowH: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
+  nameH: { fontSize: 15, fontFamily: F.semibold, color: '#111827', marginBottom: 3 },
+  descriptionH: {
+    fontSize: 12, fontFamily: F.regular, color: '#57636C',
+    lineHeight: 17, opacity: 0.85, flex: 1, marginBottom: 5,
   },
+  metaRowH: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' },
+  actionRowH: { flexDirection: 'row', gap: 6 },
+  // "Book Now" — outline style matching Flutter
   bookBtnH: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 10,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    backgroundColor: '#EFF6FF',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3,
+    backgroundColor: '#fff',
+    borderWidth: 1, borderColor: '#E5E5E7',
+    borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 6,
+    opacity: 0.9,
   },
-  bookBtnHText: { fontSize: 11, fontFamily: F.semibold, color: '#1D4ED8' },
+  bookBtnHText: { fontSize: 12, fontFamily: F.medium, color: '#111827' },
+  // "Add to Itinerary" — solid green
   addBtnH: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    borderRadius: 10,
+    flex: 1, alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#22C55E',
+    borderRadius: 8,
+    paddingHorizontal: 6, paddingVertical: 6,
+    opacity: 0.9,
   },
-  addBtnHSelected: { backgroundColor: '#16A34A' },
-  addBtnHText: { fontSize: 11, fontFamily: F.semibold, color: '#fff' },
+  addBtnHSelected: { backgroundColor: '#16A34A', opacity: 1 },
+  addBtnHText: { fontSize: 12, fontFamily: F.medium, color: '#fff' },
 });
 
 export default PlaceCard;

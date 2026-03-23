@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
   Platform, Modal, TouchableWithoutFeedback, FlatList,
+  Image, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
-import AppHeader from '../components/AppHeader';
 
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import GuestGateModal from '../components/GuestGateModal';
@@ -35,14 +35,14 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const userLongitude: number | null = params.longitude ?? null;
 
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const { isGuest, savePlace, unsavePlace, isPlaceSaved, savedPlaces } = useGuestStore();
+  const { isGuest, savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
   const { isPremium } = usePremiumStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { incrementItineraryCount } = usePremiumStore();
 
-  // Guests are limited to GUEST_MAX; all logged-in users are unlimited
   const maxPlaces = isGuest ? GUEST_MAX_PLACES_PER_ITINERARY : Infinity;
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedForItinerary, setSelectedForItinerary] = useState<any[]>([]);
   const [previewPlace, setPreviewPlace] = useState<PreviewPlace | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -52,7 +52,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
 
-  // Section 8 + 10: booking links cache — prevents repeated detection for same place
   const bookingLinks = useBookingLinksStore(s => s.links);
   const setBookingLink = useBookingLinksStore(s => s.setLink);
   const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
@@ -67,15 +66,21 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
   }, []);
 
+  // Filter places by search query (name or description)
+  const filteredPlaces = searchQuery.trim()
+    ? places.filter(p =>
+        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : places;
+
   const handleAddToItinerary = (place: any) => {
     const isSelected = selectedForItinerary.find(p => p.placeId === place.placeId);
     if (isSelected) {
       setSelectedForItinerary(prev => prev.filter(p => p.placeId !== place.placeId));
     } else {
-      const isItineraryFull = selectedForItinerary.length >= maxPlaces; // Use maxPlaces
-      if (isItineraryFull) {
-        // Only guests have a finite maxPlaces; authenticated users have Infinity so
-        // this branch is only reachable for guests — show upgrade modal.
+      if (selectedForItinerary.length >= maxPlaces) {
         setShowUpgradeModal(true);
         return;
       }
@@ -93,7 +98,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   };
 
   const handleLongPress = (place: any) => {
-    // Run booking detection so the preview modal only shows a verified booking URL
     const { showBookNow, bookingLink } = detectBooking({
       placeId: place.placeId,
       businessName: place.name,
@@ -129,9 +133,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   const handleGenerateItinerary = () => {
     if (selectedForItinerary.length === 0) return;
-    if (!isGuest) {
-      incrementItineraryCount();
-    }
+    if (!isGuest) incrementItineraryCount();
     navigation.navigate('Itinerary', {
       places: selectedForItinerary,
       tripId, destination, vibes: tripVibes,
@@ -140,7 +142,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
   };
 
-  const renderPlace = useCallback(({ item, index }: { item: any, index: number }) => {
+  const renderPlace = useCallback(({ item }: { item: any }) => {
     const isSelected = !!selectedForItinerary.find(p => p.placeId === item.placeId);
     const saved = isPlaceSaved(item.placeId);
 
@@ -177,55 +179,92 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     );
   }, [selectedForItinerary, bookingLinks, isPlaceSaved, places]);
 
+  // Avatar: photo or initial letter
+  const displayName = user?.fullName?.split(' ')[0] || 'U';
+  const avatarLetter = displayName[0]?.toUpperCase() ?? '?';
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <AppHeader title="Suggested Places" onBack={() => navigation.goBack()} />
 
-      {destination ? (
-        <View style={styles.destRow}>
-          <Ionicons name="location" size={13} color="#22C55E" />
-          <Text style={styles.destinationTag}>{destination}</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{places.length} places</Text>
-          </View>
-        </View>
-      ) : null}
+      {/* ── Top bar: back | Fynd | avatar ────────────────────── */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back-outline" size={36} color="#111827" />
+        </TouchableOpacity>
 
-      {(tripVibes && tripVibes.length > 0) || timeOfDay ? (
-        <View style={styles.interestsRow}>
-          <Text style={styles.interestsLabel}>Filters: </Text>
-          {timeOfDay ? (
-            <View style={styles.todChip}>
-              <Ionicons
-                name={timeOfDay === 'morning' ? 'sunny-outline' : timeOfDay === 'afternoon' ? 'partly-sunny-outline' : timeOfDay === 'evening' ? 'moon-outline' : 'star-outline'}
-                size={10}
-                color="#fff"
-              />
-              <Text style={styles.todChipText}>{timeOfDay.charAt(0).toUpperCase() + timeOfDay.slice(1)}</Text>
+        <Text style={styles.topBarTitle}>Fynd</Text>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Profile')}
+          style={styles.avatarWrap}
+        >
+          {user?.photoURL ? (
+            <Image source={{ uri: user.photoURL }} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarLetter}>{avatarLetter}</Text>
             </View>
-          ) : null}
-          {tripVibes && tripVibes.length > 0 ? (
-            <Text style={styles.interestsText} numberOfLines={1}>
-              {(timeOfDay ? ' • ' : '') + tripVibes.map((v: string) =>
-                v.split(' ')[0].charAt(0).toUpperCase() + v.split(' ')[0].slice(1)
-              ).join(' • ')}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
+          )}
+        </TouchableOpacity>
+      </View>
 
-      {places.length === 0 ? (
+      {/* ── Sub-header: title + subtitle + search ─────────────── */}
+      <View style={styles.subHeader}>
+        <Text style={styles.sectionTitle}>Suggested Places</Text>
+        <Text style={styles.sectionSubtitle}>
+          Search for places you would like to add to your trip
+        </Text>
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputWrap}>
+            <Ionicons name="search-outline" size={18} color="#8E8E93" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search saved places"
+              placeholderTextColor="rgba(0,0,0,0.38)"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+              onSubmitEditing={() => Keyboard.dismiss()}
+            />
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color="#8E8E93" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <TouchableOpacity
+            style={styles.searchBtn}
+            onPress={() => Keyboard.dismiss()}
+          >
+            <Text style={styles.searchBtnText}>Search</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Place list ────────────────────────────────────────── */}
+      {filteredPlaces.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="search" size={60} color="#E5E5EA" />
-          <Text style={styles.emptyTitle}>No places found</Text>
-          <Text style={styles.emptySubtitle}>Try different vibes or adjust your trip preferences</Text>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtnText}>Go Back</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyTitle}>
+            {places.length === 0 ? 'No places found' : 'No results'}
+          </Text>
+          <Text style={styles.emptySubtitle}>
+            {places.length === 0
+              ? 'Try different vibes or adjust your trip preferences'
+              : 'Try a different search term'}
+          </Text>
+          {places.length === 0 ? (
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+              <Text style={styles.backBtnText}>Go Back</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       ) : (
         <FlatList
-          data={places}
+          data={filteredPlaces}
           keyExtractor={item => item.placeId || String(item.name)}
           renderItem={renderPlace}
           showsVerticalScrollIndicator={false}
@@ -233,21 +272,19 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           maxToRenderPerBatch={8}
           windowSize={7}
           removeClippedSubviews
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.list,
-            // Extra bottom padding so the last card doesn't hide under the
-            // stacked CTA bar + absolute tab bar on web.
             Platform.OS === 'web' && { paddingBottom: 16 },
           ]}
           style={styles.scrollView}
         />
       )}
 
+      {/* ── CTA bar ──────────────────────────────────────────── */}
       <View style={[
         styles.ctaBar,
         { paddingBottom: Math.max(12, bottomInset) },
-        // On web the tab bar is position:absolute, so it floats above our content.
-        // Add explicit margin so the CTA button sits fully above the tab bar.
         Platform.OS === 'web' && { marginBottom: bottomInset },
       ]}>
         <TouchableOpacity
@@ -260,12 +297,12 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           <Text style={styles.ctaBtnText}>
             {selectedForItinerary.length === 0
               ? 'Select places to continue'
-              : `Build Itinerary (${selectedForItinerary.length})`}
+              : `Generate Itinerary (${selectedForItinerary.length})`}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Long-press Place Preview Modal */}
+      {/* ── Modals ───────────────────────────────────────────── */}
       <PlacePreviewModal
         visible={showPreview}
         place={previewPlace}
@@ -283,7 +320,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         onRemoveFromItinerary={() => {
           if (previewPlace) {
             const full = places.find(p => p.placeId === previewPlace.placeId);
-            if (full) handleAddToItinerary(full); // toggles off
+            if (full) handleAddToItinerary(full);
           }
           setShowPreview(false);
         }}
@@ -297,7 +334,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         }}
       />
 
-      {/* In-app Booking WebView */}
       <BookingWebViewModal
         visible={!!bookingUrl}
         url={bookingUrl ?? ''}
@@ -307,7 +343,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         onFeedback={applyBookingFeedback}
       />
 
-      {/* Guest Gate Modal */}
       <GuestGateModal
         visible={showGate}
         onDismiss={() => setShowGate(false)}
@@ -316,7 +351,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         onContinueAsGuest={() => setShowGate(false)}
       />
 
-      {/* Guest Itinerary Limit Modal */}
       <Modal
         visible={showUpgradeModal}
         transparent
@@ -363,93 +397,102 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, minHeight: 0, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#fff' },
   scrollView: { flex: 1, minHeight: 0 },
-  destRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 16, paddingVertical: 10,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
-  },
-  destinationTag: { fontSize: 13, color: '#374151', fontWeight: '500', flex: 1 },
-  countBadge: {
-    backgroundColor: '#F0FDF4', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 3,
-    borderWidth: 1, borderColor: '#BBF7D0',
-  },
-  countBadgeText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
-  list: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  imageContainer: { position: 'relative' },
-  cardImage: { width: '100%', height: 200, resizeMode: 'cover' },
-  heartBtn: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardBody: { padding: 16 },
-  cardName: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginBottom: 6 },
-  cardDesc: { fontSize: 14, fontFamily: F.regular, color: '#6B7280', marginBottom: 10, lineHeight: 20 },
-  cardMeta: { flexDirection: 'row', gap: 12, marginBottom: 14, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 13, fontFamily: F.medium, color: '#57636C', maxWidth: 120 },
-  actionRow: {
+
+  // ── Top bar ─────────────────────────────────────────────────
+  topBar: {
     flexDirection: 'row',
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F2F7',
-    paddingTop: 14,
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingRight: 14,
+    paddingVertical: 6,
+    backgroundColor: '#fff',
   },
-  addBtn: {
+  topBarTitle: {
+    fontSize: 22,
+    fontFamily: F.semibold,
+    color: '#111827',
+    letterSpacing: 0.2,
+  },
+  avatarWrap: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+  },
+  avatarImg: { width: 40, height: 40, borderRadius: 20, resizeMode: 'cover' },
+  avatarCircle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
+  },
+  avatarLetter: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
+
+  // ── Sub-header ───────────────────────────────────────────────
+  subHeader: {
+    backgroundColor: '#fff',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontFamily: F.semibold,
+    color: '#111827',
+    marginLeft: 20,
+    marginTop: 14,
+    marginBottom: 5,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontFamily: F.regular,
+    color: '#57636C',
+    marginLeft: 20,
+    marginBottom: 8,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 8,
+  },
+  searchInputWrap: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1.5,
-    borderColor: '#22C55E',
+    backgroundColor: '#F2F2F7',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    paddingHorizontal: 12,
+    height: 42,
   },
-  addBtnSelected: { backgroundColor: '#22C55E' },
-  addBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
-  addBtnTextSelected: { color: '#fff' },
-  bookBtn: {
-    flexDirection: 'row',
+  searchIcon: { marginRight: 6 },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: F.regular,
+    color: '#111827',
+  },
+  searchBtn: {
+    backgroundColor: '#22C55E',
+    borderRadius: 8,
+    width: 80,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#1D4ED8',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
-  bookBtnText: { fontSize: 13, fontFamily: F.bold, color: '#fff' },
+  searchBtnText: { color: '#fff', fontSize: 15, fontFamily: F.medium },
+
+  // ── List ─────────────────────────────────────────────────────
+  list: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 24 },
+
+  // ── Empty state ──────────────────────────────────────────────
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: {
-    fontSize: 18, fontFamily: F.semibold,
-    color: '#111827', marginTop: 16, marginBottom: 8,
-  },
+  emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#111827', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   backBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   backBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
+
+  // ── CTA bar ──────────────────────────────────────────────────
   ctaBar: {
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
@@ -462,30 +505,21 @@ const styles = StyleSheet.create({
   },
   ctaBtnDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
-  modalOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
-  },
+
+  // ── Modals ───────────────────────────────────────────────────
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
   },
-  modalHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: '#E5E5EA', marginBottom: 20,
-  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E5EA', marginBottom: 20 },
   modalIconWrap: {
     width: 64, height: 64, borderRadius: 32, backgroundColor: '#FEF9C3',
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   modalEmoji: { fontSize: 28 },
-  modalTitle: {
-    fontSize: 22, fontFamily: F.bold, color: '#111827',
-    marginBottom: 10, textAlign: 'center',
-  },
-  modalBody: {
-    fontSize: 14, color: '#57636C', textAlign: 'center',
-    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
-  },
+  modalTitle: { fontSize: 22, fontFamily: F.bold, color: '#111827', marginBottom: 10, textAlign: 'center' },
+  modalBody: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 4 },
   modalPrimaryBtn: {
     width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
@@ -498,25 +532,4 @@ const styles = StyleSheet.create({
   modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.semibold },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.semibold },
-  interestsRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
-    flexWrap: 'wrap', gap: 8,
-  },
-  interestsLabel: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
-  interestsText: { fontSize: 13, color: '#22C55E', fontFamily: F.bold, flex: 1 },
-  todChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F0FDF4', borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#DCFCE7',
-  },
-  todChipText: { fontSize: 12, color: '#16A34A', fontFamily: F.bold },
-
-  matchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    marginBottom: 8,
-  },
-  matchText: { fontSize: 12, color: '#22C55E', fontFamily: F.semibold, flex: 1 },
 });
