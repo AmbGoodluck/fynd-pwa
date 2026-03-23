@@ -67,11 +67,14 @@ const PlaceCard = React.memo(function PlaceCard({
           )}
           {/* Save heart — top-right of image */}
           {onSave && (
-            <TouchableOpacity style={styles.heartBtnH} onPress={onSave}>
+            <TouchableOpacity
+              style={[styles.heartBtnH, isSaved && styles.heartBtnHSaved]}
+              onPress={onSave}
+            >
               <Ionicons
                 name={isSaved ? 'heart' : 'heart-outline'}
                 size={15}
-                color={isSaved ? '#EF4444' : '#fff'}
+                color="#fff"
               />
             </TouchableOpacity>
           )}
@@ -129,7 +132,7 @@ const PlaceCard = React.memo(function PlaceCard({
                   onPress={onAdd}
                 >
                   <Text style={[styles.addBtnHText, isAdded && styles.addBtnHTextSelected]}>
-                    {isAdded ? '✓ Added' : 'Add'}
+                    {isAdded ? '✓ Added' : 'Add to itinerary'}
                   </Text>
                 </TouchableOpacity>
               ) : null}
@@ -276,10 +279,13 @@ const styles = StyleSheet.create({
     right: 6,
     width: 28,
     height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.32)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  heartBtnHSaved: {
+    backgroundColor: '#EF4444',
   },
 
   bodyH: {

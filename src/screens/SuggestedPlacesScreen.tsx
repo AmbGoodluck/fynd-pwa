@@ -35,7 +35,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const userLongitude: number | null = params.longitude ?? null;
 
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const { isGuest, savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
+  const { isGuest, savePlace, unsavePlace, isPlaceSaved, savedPlaces } = useGuestStore();
   const { isPremium } = usePremiumStore();
   const { isAuthenticated, user } = useAuthStore();
   const { incrementItineraryCount } = usePremiumStore();
@@ -177,7 +177,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         />
       </TouchableOpacity>
     );
-  }, [selectedForItinerary, bookingLinks, isPlaceSaved, places, isAuthenticated, isGuest]);
+  }, [selectedForItinerary, bookingLinks, isPlaceSaved, places, isAuthenticated, isGuest, savedPlaces]);
 
   // Avatar: photo or initial letter
   const displayName = user?.fullName?.split(' ')[0] || 'U';
@@ -267,6 +267,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           data={filteredPlaces}
           keyExtractor={item => item.placeId || String(item.name)}
           renderItem={renderPlace}
+          extraData={savedPlaces}
           showsVerticalScrollIndicator={false}
           initialNumToRender={6}
           maxToRenderPerBatch={8}
