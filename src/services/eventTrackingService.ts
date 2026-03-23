@@ -31,15 +31,18 @@ export function trackEvent(params: {
   tripId?: string;
   metadata?: Record<string, unknown>;
 }): void {
-  const event: UserEvent = {
+  // Build the event without undefined fields — Firestore rejects undefined values
+  // and throws synchronously (before the Promise is created), so .catch() alone
+  // is not enough to swallow invalid-data errors.
+  const event: Record<string, unknown> = {
     event_id: generateEventId(),
     user_id: params.userId,
     event_type: params.eventType,
-    place_id: params.placeId,
-    trip_id: params.tripId,
     timestamp: new Date().toISOString(),
-    metadata: params.metadata,
   };
+  if (params.placeId !== undefined) event.place_id = params.placeId;
+  if (params.tripId !== undefined) event.trip_id = params.tripId;
+  if (params.metadata !== undefined) event.metadata = params.metadata;
 
   if (DEV_LOGS) {
     console.log('[EventTracking]', event.event_type, {
@@ -50,9 +53,13 @@ export function trackEvent(params: {
   }
 
   // Fire-and-forget: do NOT await, do NOT block UI
-  addDoc(collection(db, EVENTS_COLLECTION), event).catch((err) => {
+  try {
+    addDoc(collection(db, EVENTS_COLLECTION), event).catch((err) => {
+      if (DEV_LOGS) console.warn('[EventTracking] Failed to record event:', err?.message || err);
+    });
+  } catch (err: any) {
     if (DEV_LOGS) console.warn('[EventTracking] Failed to record event:', err?.message || err);
-  });
+  }
 }
 
 // ─── Convenience helpers ──────────────────────────────────────────────────────
