@@ -8,10 +8,44 @@ import {
   where,
   orderBy,
   limit,
+  Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import type { RecentTrip } from '../types/recentTrip';
 import type { Place } from '../store/useTripStore';
+import type { ItineraryDoc } from './database';
+
+/**
+ * Convert a Firestore ItineraryDoc (from the `itineraries` collection) into
+ * a RecentTrip shape used by useRecentTripStore and HomeScreen/SavedScreen.
+ * city = destination from CreateTripScreen step 1.
+ */
+export function mapItineraryToRecentTrip(doc: ItineraryDoc): RecentTrip {
+  const createdAt =
+    doc.createdAt instanceof Timestamp
+      ? doc.createdAt.toDate().toISOString()
+      : new Date().toISOString();
+  return {
+    trip_id: (doc as any).id ?? `itinerary-${Date.now()}`,
+    user_id: doc.userId,
+    city: doc.destination,
+    places: (doc.stops ?? []).map((s) => ({
+      id: s.placeId,
+      name: s.placeName,
+      description: s.shortDescription || '',
+      address: '',
+      rating: s.rating ?? 0,
+      image: s.imageUrl || '',
+      coordinate: {
+        latitude: s.latitude ?? 0,
+        longitude: s.longitude ?? 0,
+      },
+    })) as Place[],
+    created_at: createdAt,
+    last_accessed: createdAt,
+    is_shared: false,
+  };
+}
 
 const USER_TRIPS_COL = 'user_trips';
 

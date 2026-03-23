@@ -26,8 +26,13 @@ interface SharedTripState {
   loading: boolean;
   error: string | null;
 
+  // Pending join: trip_id stored when an unauthenticated user taps a share link,
+  // cleared and navigated to after they complete login/register.
+  pendingJoinTripId: string | null;
+
   // Actions
   setSessionName: (name: string) => void;
+  setPendingJoinTripId: (id: string | null) => void;
   setMyTrips: (trips: SharedTrip[]) => void;
   setJoinedTrips: (trips: SharedTrip[]) => void;
   setActiveTrip: (trip: SharedTrip | null) => void;
@@ -53,8 +58,10 @@ export const useSharedTripStore = create<SharedTripState>()(
       activeMembers: [],
       loading: false,
       error: null,
+      pendingJoinTripId: null,
 
       setSessionName: (name) => set({ sessionUserName: name }),
+      setPendingJoinTripId: (id) => set({ pendingJoinTripId: id }),
 
       setMyTrips: (trips) => set({ myTrips: trips }),
       setJoinedTrips: (trips) => set({ joinedTrips: trips }),
@@ -91,6 +98,7 @@ export const useSharedTripStore = create<SharedTripState>()(
         sessionUserName: s.sessionUserName,
         myTrips: s.myTrips,
         joinedTrips: s.joinedTrips,
+        pendingJoinTripId: s.pendingJoinTripId,
       }),
     }
   )

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
-  Alert,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +25,7 @@ type Props = { navigation: any; route?: any };
 export default function JoinTripScreen({ navigation, route }: Props) {
   const trip_id: string = route?.params?.trip_id ?? '';
 
-  const { sessionUserId, sessionUserName, addJoinedTrip } = useSharedTripStore();
+  const { sessionUserId, sessionUserName, addJoinedTrip, setPendingJoinTripId } = useSharedTripStore();
   const { user: authUser } = useAuthStore();
   // Use Firebase Auth identity when available so membership is tied to the account
   const effectiveUserId = authUser?.id || sessionUserId;
@@ -37,6 +36,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
   const [joining, setJoining] = useState(false);
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!trip_id) {
@@ -78,22 +78,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
 
   const handleJoin = async () => {
     if (!trip) return;
-
-    // Shared trips require a real account — guests cannot join because the
-    // membership would be tied to a random session ID that won't persist.
-    if (!authUser) {
-      Alert.alert(
-        'Sign In Required',
-        'You need a Fynd account to join shared trips. Sign in or create a free account to continue.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign In', onPress: () => navigation.navigate('Login') },
-          { text: 'Register', onPress: () => navigation.navigate('Register') },
-        ]
-      );
-      return;
-    }
-
+    setJoinError(null);
     setJoining(true);
     try {
       await joinSharedTrip({
@@ -110,14 +95,26 @@ export default function JoinTripScreen({ navigation, route }: Props) {
         ],
       });
     } catch (e: any) {
-      if (e?.message === 'TRIP_NOT_FOUND') {
-        Alert.alert('Trip Not Found', 'This trip is no longer available.');
-      } else {
-        Alert.alert('Error', 'Could not join the trip. Please try again.');
-      }
+      setJoinError(
+        e?.message === 'TRIP_NOT_FOUND'
+          ? 'This trip is no longer available.'
+          : 'Could not join the trip. Please try again.'
+      );
     } finally {
       setJoining(false);
     }
+  };
+
+  // Store the trip_id and navigate to auth. After login the AppNavigator
+  // will redirect back to JoinTrip with the pending ID.
+  const handleSignIn = () => {
+    setPendingJoinTripId(trip_id);
+    navigation.navigate('Login');
+  };
+
+  const handleRegister = () => {
+    setPendingJoinTripId(trip_id);
+    navigation.navigate('Register');
   };
 
   const handleAlreadyMember = () => {
@@ -129,6 +126,33 @@ export default function JoinTripScreen({ navigation, route }: Props) {
       ],
     });
   };
+
+  // Show auth wall immediately — don't waste time loading trip data
+  // for a user who isn't signed in yet.
+  if (!authUser) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.center}>
+          <View style={styles.iconWrap}>
+            <Ionicons name="people-outline" size={40} color="#22C55E" />
+          </View>
+          <Text style={styles.alreadyTitle}>You've been invited!</Text>
+          <Text style={styles.notFoundSub}>
+            Sign in or create a free Fynd account to view and join the shared trip.
+          </Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={handleSignIn}>
+            <Text style={styles.primaryBtnText}>Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#22C55E', marginTop: 0 }]} onPress={handleRegister}>
+            <Text style={[styles.primaryBtnText, { color: '#22C55E' }]}>Create Account</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ghostBtn} onPress={goBack}>
+            <Text style={styles.ghostBtnText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (
@@ -261,6 +285,9 @@ export default function JoinTripScreen({ navigation, route }: Props) {
 
         {/* CTA buttons */}
         <View style={styles.actions}>
+          {joinError && (
+            <Text style={styles.joinError}>{joinError}</Text>
+          )}
           <TouchableOpacity
             style={[styles.primaryBtn, joining && { opacity: 0.7 }]}
             onPress={handleJoin}
@@ -268,15 +295,10 @@ export default function JoinTripScreen({ navigation, route }: Props) {
           >
             {joining ? (
               <ActivityIndicator color="#fff" />
-            ) : authUser ? (
+            ) : (
               <>
                 <Ionicons name="people-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.primaryBtnText}>Join Trip</Text>
-              </>
-            ) : (
-              <>
-                <Ionicons name="log-in-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.primaryBtnText}>Sign In to Join</Text>
               </>
             )}
           </TouchableOpacity>
@@ -367,6 +389,7 @@ const styles = StyleSheet.create({
   ratingText: { fontSize: 12, color: '#F59E0B', fontFamily: F.medium },
 
   actions: { gap: 12 },
+  joinError: { fontSize: 13, color: '#EF4444', textAlign: 'center', fontFamily: F.medium },
   primaryBtn: {
     backgroundColor: '#22C55E',
     borderRadius: 16,

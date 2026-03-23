@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FALLBACK_IMAGE } from '../constants';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
-import { logEvent } from '../services/firebase';
+import { logEvent, auth } from '../services/firebase';
 import { createSharedTrip, buildShareLink, recordTripShared } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -211,6 +211,13 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       return;
     }
 
+    // Verify the Firebase session is still active (Zustand can persist a user
+    // whose Firebase token has since expired).
+    if (!auth.currentUser) {
+      setShareError('Your session has expired. Please sign out and sign back in.');
+      return;
+    }
+
     setSharing(true);
     try {
       const today = new Date().toLocaleDateString('en-US', {
@@ -247,10 +254,16 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       setShowShareModal(true);
       logEvent('trip_share_modal_opened', { destination, stop_count: stops.length });
     } catch (e: any) {
+      if (__DEV__) console.error('[Share] Error:', e?.code, e?.message, e);
       if (e?.message?.includes('TRIP_LIMIT')) {
         setShareError('Trips support up to 7 places. Remove a stop and try again.');
-      } else if (e?.message?.includes('PERMISSION_DENIED')) {
-        setShareError(e.message.split(': ')[1] || 'Permission denied. Please sign in and try again.');
+      } else if (
+        e?.message?.includes('PERMISSION_DENIED') ||
+        e?.code === 'permission-denied' ||
+        (e?.code ?? '').includes('permission') ||
+        (e?.message ?? '').toLowerCase().includes('permission')
+      ) {
+        setShareError('Permission denied. Firestore rules need to allow shared_trips writes — see the setup guide.');
       } else {
         setShareError('Could not generate share link. Please check your connection and try again.');
       }

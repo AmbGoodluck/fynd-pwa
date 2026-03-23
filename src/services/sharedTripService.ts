@@ -71,8 +71,10 @@ export async function createSharedTrip(params: {
   try {
     await setDoc(doc(db, TRIPS_COL, trip_id), trip);
   } catch (err: any) {
-    if (err?.code === 'permission-denied') {
-      throw new Error('PERMISSION_DENIED: Please check your Firestore Rules. They might be blocking shared_trips writes.');
+    const code: string = err?.code ?? '';
+    const msg: string = (err?.message ?? '').toLowerCase();
+    if (code === 'permission-denied' || code.includes('permission') || msg.includes('permission') || msg.includes('insufficient')) {
+      throw new Error('PERMISSION_DENIED: Firestore rules are blocking shared_trips writes. Add rules for shared_trips and trip_members in the Firebase console.');
     }
     throw err;
   }

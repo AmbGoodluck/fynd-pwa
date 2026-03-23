@@ -17,8 +17,9 @@ import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
 import PWATopBar from '../components/PWATopBar';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { getUserTrips } from '../services/userTripService';
+import { mapItineraryToRecentTrip } from '../services/userTripService';
 import { getMyCreatedTrips, getJoinedTrips } from '../services/sharedTripService';
+import { getRecentItineraries } from '../services/database';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 
@@ -233,6 +234,7 @@ const linking = {
 
 export default function AppNavigator() {
   const { setUser, login, isAuthenticated } = useAuthStore();
+  const navRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     // Global listener: syncs Firebase session → Zustand stores.
@@ -266,17 +268,27 @@ export default function AppNavigator() {
 
           // Hydrate all user data in parallel — non-blocking
           Promise.all([
-            getUserTrips(user.uid),
+            getRecentItineraries(user.uid, 20),
             getMyCreatedTrips(user.uid),
             getJoinedTrips(user.uid),
             useGuestStore.getState().hydrateSavedPlaces(),
-          ]).then(([recentTrips, myTrips, joinedTrips]) => {
-            useRecentTripStore.getState().setRecentTrips(recentTrips);
+          ]).then(([itineraries, myTrips, joinedTrips]) => {
+            useRecentTripStore.getState().setRecentTrips(itineraries.map(mapItineraryToRecentTrip));
             useSharedTripStore.getState().setMyTrips(myTrips);
             useSharedTripStore.getState().setJoinedTrips(joinedTrips);
           }).catch(() => {
             // Network unavailable — cached state from Zustand persist is used
           });
+
+          // After login, redirect to any pending shared trip join
+          const pendingId = useSharedTripStore.getState().pendingJoinTripId;
+          if (pendingId) {
+            useSharedTripStore.getState().setPendingJoinTripId(null);
+            // Delay to let LoginScreen complete its navigation.replace('MainTabs') first
+            setTimeout(() => {
+              navRef.current?.navigate('JoinTrip', { trip_id: pendingId });
+            }, 600);
+          }
         }
       }
     });
@@ -285,7 +297,7 @@ export default function AppNavigator() {
   }, []);
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer linking={linking} ref={navRef}>
       <View style={styles.appFrame}>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* ── Intro ─────────────────────────────────── */}
