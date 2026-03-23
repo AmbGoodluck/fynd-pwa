@@ -169,15 +169,15 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           rating={item.rating}
           distance={item.distanceKm ? `${item.distanceKm} km` : undefined}
           duration={item.walkMinutes ? `${item.walkMinutes} min` : undefined}
-          isSaved={saved}
-          onSave={() => handleSave(item)}
+          isSaved={isAuthenticated && !isGuest ? saved : undefined}
+          onSave={isAuthenticated && !isGuest ? () => handleSave(item) : undefined}
           isAdded={isSelected}
           onAdd={() => handleAddToItinerary(item)}
           onBook={showBookNow && bookingLink ? () => openBookingUrl(bookingLink.booking_url, item.placeId, item.name) : undefined}
         />
       </TouchableOpacity>
     );
-  }, [selectedForItinerary, bookingLinks, isPlaceSaved, places]);
+  }, [selectedForItinerary, bookingLinks, isPlaceSaved, places, isAuthenticated, isGuest]);
 
   // Avatar: photo or initial letter
   const displayName = user?.fullName?.split(' ')[0] || 'U';
