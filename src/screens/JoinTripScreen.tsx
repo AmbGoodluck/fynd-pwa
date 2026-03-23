@@ -45,6 +45,11 @@ export default function JoinTripScreen({ navigation, route }: Props) {
       return;
     }
 
+    if (!authUser) {
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
         const [fetchedTrip, membership] = await Promise.all([
