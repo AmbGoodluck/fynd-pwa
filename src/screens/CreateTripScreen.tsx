@@ -153,6 +153,10 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   const handleSelectSuggestion = (suggestion: AutocompleteSuggestion) => {
     setDestination(suggestion.mainText || suggestion.description);
+    // Clear any stale coordinates from a previous location so the new city
+    // doesn't inherit the wrong origin for distance filtering/sorting.
+    setLatitude(null);
+    setLongitude(null);
     setSuggestions([]);
     setShowLocationModal(false);
     setLocationInput('');

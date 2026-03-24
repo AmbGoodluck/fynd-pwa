@@ -60,7 +60,7 @@ type Stop = ReturnType<typeof mapPlaceToStop>;
 type Props = { navigation: any; route?: any };
 
 export default function ItineraryScreen({ navigation, route }: Props) {
-  const rawPlaces = route?.params?.places ?? route?.params?.stops ?? [];
+  const rawPlaces = route?.params?.places ?? [];
   const destination = route?.params?.destination || 'Your Destination';
   const tripData = route?.params || {};
   const userLat: number | null = route?.params?.userLatitude ?? null;
