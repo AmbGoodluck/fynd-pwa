@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, FlatList, useWindowDimensions, Image, Modal,
-  TouchableWithoutFeedback, Platform,
+  TouchableWithoutFeedback, Platform, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,7 +15,7 @@ import { F } from '../theme/fonts';
 import PWATopBar from '../components/PWATopBar';
 import { LOGO_SIZE } from '../theme/sizes';
 import { FALLBACK_IMAGE } from '../constants';
-
+import { formatRelativeDate } from '../utils/date';
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -40,7 +40,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
-  const { recentTrips } = useRecentTripStore();
+  const { recentTrips, isHydrating } = useRecentTripStore();
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
@@ -194,7 +194,22 @@ export default function HomeScreen({ navigation }: Props) {
           )}
         </View>
 
-        {recentTrips.length > 0 ? (
+        {isHydrating && recentTrips.length === 0 ? (
+          /* Skeleton loader while fetching trips after login */
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.itineraryRow}
+            contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
+            scrollEnabled={false}
+          >
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[styles.itineraryCard, styles.skeletonCard]}>
+                <ActivityIndicator size="small" color="#E5E7EB" style={{ opacity: 0 }} />
+              </View>
+            ))}
+          </ScrollView>
+        ) : recentTrips.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -203,7 +218,8 @@ export default function HomeScreen({ navigation }: Props) {
           >
             {recentTrips.slice(0, 6).map((trip) => {
               const coverImage = trip.places[0]?.image || FALLBACK_IMAGE;
-              const dateLabel = new Date(trip.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+              const cityLabel = trip.city || 'My Trip';
+              const dateLabel = formatRelativeDate(trip.last_accessed || trip.created_at);
               return (
                 <TouchableOpacity
                   key={trip.trip_id}
@@ -219,7 +235,7 @@ export default function HomeScreen({ navigation }: Props) {
                       photoUrl: p.image,
                       coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
                     })),
-                    destination: trip.city || 'Your Trip',
+                    destination: cityLabel,
                     tripId: trip.trip_id,
                   })}
                 >
@@ -229,7 +245,7 @@ export default function HomeScreen({ navigation }: Props) {
                     imageStyle={styles.itineraryCardImg}
                   >
                     <View style={styles.itineraryCardOverlay}>
-                      <Text style={styles.itineraryCardCity} numberOfLines={1}>{trip.city || 'Your Trip'}</Text>
+                      <Text style={styles.itineraryCardCity} numberOfLines={1}>{cityLabel}</Text>
                       <Text style={styles.itineraryCardDate}>{dateLabel}</Text>
                     </View>
                   </ImageBackground>
@@ -389,6 +405,7 @@ const styles = StyleSheet.create({
   recentTripDest: { fontSize: 17, fontFamily: F.bold, color: '#111827', marginBottom: 4 },
   recentTripMeta: { fontSize: 14, fontFamily: F.medium, color: '#6B7280' },
   itineraryRow: { marginBottom: 24 },
+  skeletonCard: { backgroundColor: '#E5E7EB' },
   itineraryCard: {
     width: 140,
     height: 140,

@@ -12,6 +12,6 @@ export async function trackEvent(name: AnalyticsEventName, params?: Record<strin
     await analytics().logEvent(name, params as never);
   } catch (error) {
     // Analytics should never crash UX flows.
-    console.log('Analytics logEvent failed', error);
+    if (__DEV__) console.log('Analytics logEvent failed', error);
   }
 }

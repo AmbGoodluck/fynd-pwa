@@ -22,6 +22,7 @@ import { getMyCreatedTrips, getJoinedTrips } from '../services/sharedTripService
 import { getRecentItineraries } from '../services/database';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useSharedTripStore } from '../store/useSharedTripStore';
+import OfflineBanner from '../components/OfflineBanner';
 
 // ── Core flow ──────────────────────────────────────────────────────────────────
 import LogoScreen from '../screens/LogoScreen';
@@ -267,6 +268,7 @@ export default function AppNavigator() {
           }
 
           // Hydrate all user data in parallel — non-blocking
+          useRecentTripStore.getState().setHydrating(true);
           Promise.all([
             getRecentItineraries(user.uid, 20),
             getUserTrips(user.uid),
@@ -288,10 +290,12 @@ export default function AppNavigator() {
               )
               .slice(0, 20);
             useRecentTripStore.getState().setRecentTrips(merged);
+            useRecentTripStore.getState().setHydrating(false);
             useSharedTripStore.getState().setMyTrips(myTrips);
             useSharedTripStore.getState().setJoinedTrips(joinedTrips);
           }).catch(() => {
             // Network unavailable — cached state from Zustand persist is used
+            useRecentTripStore.getState().setHydrating(false);
           });
 
           // After login, redirect to any pending shared trip join
@@ -313,6 +317,7 @@ export default function AppNavigator() {
   return (
     <NavigationContainer linking={linking} ref={navRef}>
       <View style={styles.appFrame}>
+        <OfflineBanner />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* ── Intro ─────────────────────────────────── */}
           <Stack.Screen name="Logo"        component={LogoScreen} />

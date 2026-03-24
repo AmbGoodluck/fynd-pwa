@@ -649,7 +649,7 @@ export default function MapScreen({ navigation, route }: Props) {
           useTripStore.getState().destination ||
           stops[0]?.name ||
           ''
-        ).trim() || 'Unknown';
+        ).trim() || 'My Trip';
         const places = stops.map((s) => ({
           id: s.id,
           name: s.name,

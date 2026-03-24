@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Image, FlatList, Modal, TouchableWithoutFeedback, Alert,
 } from 'react-native';
+import { formatRelativeDate } from '../utils/date';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -248,7 +249,7 @@ export default function SavedScreen({ navigation }: Props) {
                           photoUrl: p.image,
                           coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
                         })),
-                        destination: trip.city || 'Your Trip',
+                        destination: trip.city || 'My Trip',
                         tripId: trip.trip_id,
                       })}
                     >
@@ -257,9 +258,9 @@ export default function SavedScreen({ navigation }: Props) {
                           <Ionicons name="location-outline" size={22} color="#22C55E" />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.recentTripCity}>{trip.city || 'Your Trip'}</Text>
+                          <Text style={styles.recentTripCity}>{trip.city || 'My Trip'}</Text>
                           <Text style={styles.recentTripMeta}>
-                            {trip.places.length} place{trip.places.length !== 1 ? 's' : ''} · {new Date(trip.created_at).toLocaleDateString()}
+                            {trip.places.length} place{trip.places.length !== 1 ? 's' : ''} · {formatRelativeDate(trip.last_accessed || trip.created_at)}
                           </Text>
                         </View>
                         <View style={styles.addToRouteBtn}>
@@ -316,7 +317,7 @@ export default function SavedScreen({ navigation }: Props) {
                       <View style={styles.itineraryDetails}>
                         <Text style={styles.itineraryTitle}>{item.destination}</Text>
                         <Text style={styles.itinerarySub}>
-                          {item.totalStops} places • {item.createdAt ? new Date(item.createdAt.toMillis()).toLocaleDateString() : 'Recent'}
+                          {item.totalStops} places · {item.createdAt ? formatRelativeDate(new Date(item.createdAt.toMillis()).toISOString()) : 'Recent'}
                         </Text>
                       </View>
                     </TouchableOpacity>

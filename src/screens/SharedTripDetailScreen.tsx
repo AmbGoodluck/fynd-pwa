@@ -32,6 +32,7 @@ import {
 import type { SharedTrip, TripMember, SharedTripPlace } from '../types/sharedTrip';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
+import MomentsTab from '../components/MomentsTab';
 
 type Props = { navigation: any; route?: any };
 
@@ -102,6 +103,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'moments' | 'shared'>('moments');
 
   const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
 
@@ -109,6 +111,12 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   const myMembership = members.find((m) => m.user_id === effectiveUserId);
   const isOwner = myMembership?.role === 'owner';
+
+  const effectiveUserName: string =
+    (authUser as any)?.displayName ??
+    (authUser as any)?.name ??
+    sessionUserName ??
+    'Explorer';
 
   const loadData = useCallback(async () => {
     if (!trip_id) { setNotFound(true); setLoading(false); return; }
@@ -355,10 +363,39 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title={trip?.trip_name ?? 'Trip'} onBack={() => navigation.goBack()} />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: 100 + bottomInset }]}
-      >
+      {/* ── Tab Bar ────────────────────────────────────────── */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'moments' && styles.tabActive]}
+          onPress={() => setActiveTab('moments')}
+        >
+          <Text style={[styles.tabText, activeTab === 'moments' && styles.tabTextActive]}>
+            Moments
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'shared' && styles.tabActive]}
+          onPress={() => setActiveTab('shared')}
+        >
+          <Text style={[styles.tabText, activeTab === 'shared' && styles.tabTextActive]}>
+            Shared
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {activeTab === 'moments' ? (
+        <MomentsTab
+          trip_id={trip_id}
+          effectiveUserId={effectiveUserId}
+          effectiveUserName={effectiveUserName}
+          isMember={!!myMembership}
+        />
+      ) : (
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.scroll, { paddingBottom: 100 + bottomInset }]}
+          >
         {/* ── Trip Header ─────────────────────────────────── */}
         <View style={styles.tripHeader}>
           <Text style={styles.tripName}>{trip?.trip_name}</Text>
@@ -449,27 +486,29 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               } : undefined}
             />
           ))}
-        </View>
-      </ScrollView>
+          </View>
+          </ScrollView>
 
-      {/* ── Bottom bar ──────────────────────────────────── */}
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(12, bottomInset) }]}>
-        <TouchableOpacity style={styles.mapBtn} onPress={handleViewMap}>
-          <Ionicons name="navigate-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.mapBtnText}>View Trip Map</Text>
-        </TouchableOpacity>
+          {/* ── Bottom bar ──────────────────────────────────── */}
+          <View style={[styles.bottomBar, { paddingBottom: Math.max(12, bottomInset) }]}>
+            <TouchableOpacity style={styles.mapBtn} onPress={handleViewMap}>
+              <Ionicons name="navigate-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.mapBtnText}>View Trip Map</Text>
+            </TouchableOpacity>
 
-        {isOwner ? (
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteTrip}>
-            <Ionicons name="trash-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
-            <Text style={styles.deleteBtnText}>Delete Trip</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
-            <Text style={styles.leaveBtnText}>Leave Trip</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+            {isOwner ? (
+              <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteTrip}>
+                <Ionicons name="trash-outline" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                <Text style={styles.deleteBtnText}>Delete Trip</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
+                <Text style={styles.leaveBtnText}>Leave Trip</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View> {/* end activeTab === 'shared' wrapper */}
+      )} {/* end tab conditional */}
 
       {/* ── Save Trip Modal ──────────────────────────────── */}
       <Modal
@@ -723,6 +762,24 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   scroll: { padding: 16 },
+
+  tabBar: {
+    flexDirection: 'row',
+    gap: 24,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
+  },
+  tab: {
+    paddingBottom: 12,
+    paddingTop: 14,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: { borderBottomColor: '#22C55E' },
+  tabText: { fontSize: 15, color: '#6B7280', fontFamily: F.semibold },
+  tabTextActive: { color: '#111827' },
 
   stateTitle: {
     fontSize: 18,

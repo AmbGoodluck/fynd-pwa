@@ -8,7 +8,7 @@ export function initCrashReporting() {
 
   const dsn = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
   if (!dsn) {
-    console.log('Sentry DSN missing. Crash reporting disabled.');
+    if (__DEV__) console.log('Sentry DSN missing. Crash reporting disabled.');
     return;
   }
 
@@ -34,6 +34,6 @@ export function captureException(error: unknown, context?: string) {
     }
     Sentry.captureException(error);
   } catch (captureError) {
-    console.log('Sentry capture failed', captureError);
+    if (__DEV__) console.log('Sentry capture failed', captureError);
   }
 }

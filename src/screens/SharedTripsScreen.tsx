@@ -127,6 +127,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<'created' | 'joined'>('created');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -134,6 +135,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
   const [pendingDeleteTrip, setPendingDeleteTrip] = useState<SharedTrip | null>(null);
 
   const loadTrips = useCallback(async () => {
+    setFetchError(false);
     try {
       const [created, joined] = await Promise.all([
         getMyCreatedTrips(effectiveUserId),
@@ -142,7 +144,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
       setMyTrips(created);
       setJoinedTrips(joined);
     } catch {
-      // silently use cached state
+      setFetchError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -205,6 +207,17 @@ export default function SharedTripsScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Fetch error banner ───────────────────────────────── */}
+      {fetchError && !loading && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="warning-outline" size={14} color="#fff" />
+          <Text style={styles.errorBannerText}>Couldn't refresh trips</Text>
+          <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.errorBannerRetry}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.center}>
@@ -321,6 +334,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { paddingBottom: 40 },
+
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  errorBannerText: { flex: 1, fontSize: 13, color: '#fff', fontFamily: F.medium },
+  errorBannerRetry: { fontSize: 13, color: '#fff', fontFamily: F.bold, textDecorationLine: 'underline' },
 
   tabBar: {
     flexDirection: 'row',
