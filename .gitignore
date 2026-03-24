@@ -5,7 +5,7 @@ node_modules/
 
 # Expo
 .expo/
-# dist/ — committed for direct Cloudflare Pages static deployment
+dist/
 web-build/
 expo-env.d.ts
 
