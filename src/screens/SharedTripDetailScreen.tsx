@@ -507,8 +507,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             )}
           </View>
-        </View> {/* end activeTab === 'shared' wrapper */}
-      )} {/* end tab conditional */}
+        </View>
+      )}
 
       {/* ── Save Trip Modal ──────────────────────────────── */}
       <Modal
