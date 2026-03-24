@@ -31,11 +31,13 @@ function TripCard({
   isOwner,
   onPress,
   onDelete,
+  onMoments,
 }: {
   trip: SharedTrip;
   isOwner: boolean;
   onPress: () => void;
   onDelete?: () => void;
+  onMoments?: () => void;
 }) {
   const preview = trip.places.slice(0, 3);
 
@@ -95,6 +97,17 @@ function TripCard({
 
         <Ionicons name="chevron-forward" size={20} color="#D1D5DB" style={{ marginLeft: 4 }} />
       </TouchableOpacity>
+
+      {/* Moments button — opens the moments gallery for this trip */}
+      {onMoments && (
+        <TouchableOpacity
+          onPress={onMoments}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.momentsBtn}
+        >
+          <Ionicons name="camera-outline" size={18} color="#22C55E" />
+        </TouchableOpacity>
+      )}
 
       {/* Delete button — sibling of the card press area, no nesting issues */}
       {isOwner && onDelete && (
@@ -253,6 +266,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
                     isOwner
                     onPress={() => openTrip(t)}
                     onDelete={() => setPendingDeleteTrip(t)}
+                    onMoments={() => navigation.navigate('Moments', { trip_id: t.trip_id, tripName: t.trip_name, isMember: true })}
                   />
                 ))
               )}
@@ -274,6 +288,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
                     trip={t}
                     isOwner={false}
                     onPress={() => openTrip(t)}
+                    onMoments={() => navigation.navigate('Moments', { trip_id: t.trip_id, tripName: t.trip_name, isMember: true })}
                   />
                 ))
               )}
@@ -429,6 +444,15 @@ const styles = StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaText: { fontSize: 12, color: '#6B7280' },
 
+  momentsBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderLeftWidth: 1,
+    borderLeftColor: '#F2F2F7',
+  },
   deleteBtn: {
     paddingHorizontal: 14,
     paddingVertical: 14,

@@ -68,6 +68,7 @@ import SubscriptionScreen from '../screens/SubscriptionScreen';
 import SharedTripsScreen from '../screens/SharedTripsScreen';
 import JoinTripScreen from '../screens/JoinTripScreen';
 import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
+import MomentsScreen from '../screens/MomentsScreen';
 
 const MapTabScreen = (props: any) => <MapScreen {...props} />;
 const ServiceHubTabScreen = (props: any) => <ServiceHubScreen {...props} />;
@@ -366,6 +367,7 @@ export default function AppNavigator() {
           <Stack.Screen name="SharedTrips"      component={SharedTripsScreen} />
           <Stack.Screen name="JoinTrip"         component={JoinTripScreen} />
           <Stack.Screen name="SharedTripDetail" component={SharedTripDetailScreen} />
+          <Stack.Screen name="Moments"          component={MomentsScreen} />
         </Stack.Navigator>
       </View>
     </NavigationContainer>

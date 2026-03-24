@@ -471,14 +471,25 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       )}
 
       <View style={[styles.bottomBar, { paddingBottom: Math.max(12, bottomInset) }, Platform.OS === 'web' && { marginBottom: tabBarHeight }]}>
-        <TouchableOpacity
-          style={[styles.mapBtn, stops.length === 0 && { opacity: 0.4 }]}
-          onPress={() => stops.length > 0 && setShowMapModal(true)}
-          disabled={stops.length === 0}
-        >
-          <Ionicons name="navigate-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.mapBtnText}>Open in Maps</Text>
-        </TouchableOpacity>
+        <View style={styles.bottomBtnRow}>
+          {tripData.tripId ? (
+            <TouchableOpacity
+              style={styles.momentsBtn}
+              onPress={() => navigation.navigate('Moments', { trip_id: tripData.tripId, tripName: destination, isMember: true })}
+            >
+              <Ionicons name="camera-outline" size={18} color="#22C55E" style={{ marginRight: 6 }} />
+              <Text style={styles.momentsBtnText}>Moments</Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.mapBtn, stops.length === 0 && { opacity: 0.4 }, tripData.tripId ? { flex: 1 } : null]}
+            onPress={() => stops.length > 0 && setShowMapModal(true)}
+            disabled={stops.length === 0}
+          >
+            <Ionicons name="navigate-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.mapBtnText}>Open in Maps</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Map choice modal */}
@@ -777,7 +788,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 16,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
   },
+  bottomBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  momentsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 54,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  momentsBtnText: { color: '#22C55E', fontSize: 15, fontFamily: F.semibold },
   mapBtn: {
+    flex: 1,
     backgroundColor: '#22C55E', borderRadius: 16, height: 54,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12,
