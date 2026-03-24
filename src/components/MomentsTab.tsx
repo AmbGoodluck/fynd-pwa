@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { formatRelativeDate } from '../utils/date';
 import {
   getMoments,
   addMoment,
@@ -85,6 +86,9 @@ const RecentItem = React.memo(function RecentItem({
       </View>
       <Text style={ri.name} numberOfLines={1}>
         {moment.user_name.split(' ')[0]}
+      </Text>
+      <Text style={ri.time} numberOfLines={1}>
+        {formatRelativeDate(moment.uploaded_at)}
       </Text>
     </TouchableOpacity>
   );
@@ -215,11 +219,7 @@ function MomentViewer({
           <View>
             <Text style={vs.uploaderName}>{current.user_name}</Text>
             <Text style={vs.uploadedAt}>
-              {new Date(current.uploaded_at).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
+              {formatRelativeDate(current.uploaded_at)}
             </Text>
           </View>
           {Platform.OS === 'web' && (
@@ -282,6 +282,7 @@ export default function MomentsTab({
   const [moments, setMoments] = useState<LocalMoment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [fetchMomentsError, setFetchMomentsError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -292,6 +293,7 @@ export default function MomentsTab({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setFetchMomentsError(null);
     getMoments(trip_id)
       .then(({ moments: fetched, lastDoc }) => {
         if (cancelled) return;
@@ -299,7 +301,9 @@ export default function MomentsTab({
         setCursor(lastDoc);
         setHasMore(!!lastDoc);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setFetchMomentsError("Couldn't load moments. Please try again.");
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -406,11 +410,69 @@ export default function MomentsTab({
     setViewerIndex(index);
   };
 
-  // ── Loading state ─────────────────────────────────────────────────────────
+  // ── Non-member access denied ──────────────────────────────────────────────
+  if (!isMember) {
+    return (
+      <View style={s.fill}>
+        <View style={s.emptyWrap}>
+          <View style={s.emptyIconWrap}>
+            <Ionicons name="lock-closed-outline" size={44} color="#9CA3AF" />
+          </View>
+          <Text style={s.emptyTitle}>Members only</Text>
+          <Text style={s.emptyHint}>
+            You don't have access to this trip's moments
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Skeleton loading ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <View style={s.fill}>
-        <ActivityIndicator size="large" color="#22C55E" style={{ marginTop: 40 }} />
+        <View style={s.grid}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View
+              key={i}
+              style={[gi.cell, gi.skeleton, { width: CELL_SIZE, height: CELL_SIZE }]}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  // ── Fetch error ───────────────────────────────────────────────────────────
+  if (fetchMomentsError) {
+    return (
+      <View style={s.fill}>
+        <View style={s.emptyWrap}>
+          <View style={s.emptyIconWrap}>
+            <Ionicons name="cloud-offline-outline" size={44} color="#9CA3AF" />
+          </View>
+          <Text style={s.emptyTitle}>Couldn't load moments</Text>
+          <Text style={s.emptyHint}>Check your connection and try again.</Text>
+          <TouchableOpacity
+            style={s.emptyAddBtn}
+            onPress={() => {
+              setFetchMomentsError(null);
+              setLoading(true);
+              getMoments(trip_id)
+                .then(({ moments: fetched, lastDoc }) => {
+                  setMoments(fetched);
+                  setCursor(lastDoc);
+                  setHasMore(!!lastDoc);
+                  setFetchMomentsError(null);
+                })
+                .catch(() => setFetchMomentsError("Couldn't load moments. Please try again."))
+                .finally(() => setLoading(false));
+            }}
+          >
+            <Ionicons name="refresh-outline" size={16} color="#22C55E" style={{ marginRight: 4 }} />
+            <Text style={s.emptyAddText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -658,6 +720,7 @@ const gi = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  skeleton: { backgroundColor: '#E5E7EB' },
 });
 
 // Recent item styles
@@ -685,6 +748,7 @@ const ri = StyleSheet.create({
     justifyContent: 'center',
   },
   name: { fontSize: 11, color: '#6B7280', fontFamily: F.medium },
+  time: { fontSize: 10, color: '#9CA3AF', fontFamily: F.regular },
 });
 
 // Viewer styles

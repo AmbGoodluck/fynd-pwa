@@ -291,12 +291,14 @@ export default function AppNavigator() {
               )
               .slice(0, 20);
             useRecentTripStore.getState().setRecentTrips(merged);
+            useRecentTripStore.getState().setFetchError(null);
             useRecentTripStore.getState().setHydrating(false);
             useSharedTripStore.getState().setMyTrips(myTrips);
             useSharedTripStore.getState().setJoinedTrips(joinedTrips);
           }).catch(() => {
             // Network unavailable — cached state from Zustand persist is used
             useRecentTripStore.getState().setHydrating(false);
+            useRecentTripStore.getState().setFetchError("Couldn't load your trips. Check your connection.");
           });
 
           // After login, redirect to any pending shared trip join

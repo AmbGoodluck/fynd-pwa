@@ -42,7 +42,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
-  const { recentTrips, isHydrating } = useRecentTripStore();
+  const { recentTrips, isHydrating, fetchError } = useRecentTripStore();
   const { myTrips, joinedTrips } = useSharedTripStore();
 
   // Merge owned + joined trips, dedup by trip_id for display
@@ -223,6 +223,21 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
             ))}
           </ScrollView>
+        ) : fetchError ? (
+          <View style={styles.fetchErrorCard}>
+            <Ionicons name="cloud-offline-outline" size={32} color="#9CA3AF" />
+            <Text style={styles.fetchErrorText}>Couldn't load your trips</Text>
+            <TouchableOpacity
+              style={styles.fetchRetryBtn}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  (window as any).location.reload();
+                }
+              }}
+            >
+              <Text style={styles.fetchRetryBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : recentTrips.length > 0 ? (
           <ScrollView
             horizontal
@@ -319,7 +334,12 @@ export default function HomeScreen({ navigation }: Props) {
           )}
         </View>
 
-        {sharedTrips.length > 0 ? (
+        {fetchError && sharedTrips.length === 0 ? (
+          <View style={styles.sharedEmptyRow}>
+            <Ionicons name="cloud-offline-outline" size={22} color="#D1D5DB" />
+            <Text style={styles.sharedEmptyText}>Couldn't load shared trips</Text>
+          </View>
+        ) : sharedTrips.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -567,4 +587,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 16, marginBottom: 24,
   },
   sharedEmptyText: { fontSize: 14, color: '#9CA3AF', fontFamily: F.medium },
+  fetchErrorCard: {
+    alignItems: 'center', paddingVertical: 28,
+    marginHorizontal: 20, borderRadius: 20,
+    backgroundColor: '#fff', borderWidth: 1, borderColor: '#F2F2F7',
+    marginBottom: 24, gap: 8,
+  },
+  fetchErrorText: { fontSize: 14, fontFamily: F.medium, color: '#6B7280' },
+  fetchRetryBtn: {
+    marginTop: 4, backgroundColor: '#F0FDF4', borderRadius: 14,
+    paddingHorizontal: 20, paddingVertical: 8,
+    borderWidth: 1, borderColor: '#22C55E',
+  },
+  fetchRetryBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
 });
