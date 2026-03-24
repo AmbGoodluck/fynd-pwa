@@ -20,6 +20,64 @@ import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 
+// Each item subscribes directly to the store so it re-renders independently
+// when savedPlaces changes — FlatList extraData is not reliable on web.
+function PlaceListItem({
+  item,
+  isAdded,
+  onAdd,
+  onBook,
+  onLongPress,
+  isAuthenticated,
+  isGuest,
+  onShowGate,
+}: {
+  item: any;
+  isAdded: boolean;
+  onAdd: () => void;
+  onBook?: () => void;
+  onLongPress: () => void;
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  onShowGate: () => void;
+}) {
+  const isSaved = useGuestStore(s => s.savedPlaces.some((p: any) => p.placeId === item.placeId));
+  const savePlace = useGuestStore(s => s.savePlace);
+  const unsavePlace = useGuestStore(s => s.unsavePlace);
+
+  const handleSave = () => {
+    if (!isAuthenticated || isGuest) { onShowGate(); return; }
+    if (isSaved) {
+      unsavePlace(item.placeId);
+    } else {
+      savePlace(item);
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onLongPress={onLongPress}
+      delayLongPress={350}
+    >
+      <PlaceCard
+        horizontal
+        name={item.name}
+        description={item.description || item.category}
+        photoUrl={item.photoUrl}
+        rating={item.rating}
+        distance={item.distanceKm ? `${item.distanceKm} km` : undefined}
+        duration={item.walkMinutes ? `${item.walkMinutes} min` : undefined}
+        isSaved={isSaved}
+        onSave={handleSave}
+        isAdded={isAdded}
+        onAdd={onAdd}
+        onBook={onBook}
+      />
+    </TouchableOpacity>
+  );
+}
+
 type Props = { navigation: any; route: any };
 
 export default function SuggestedPlacesScreen({ navigation, route }: Props) {
@@ -35,7 +93,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const userLongitude: number | null = params.longitude ?? null;
 
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const { isGuest, savePlace, unsavePlace, isPlaceSaved, savedPlaces } = useGuestStore();
+  const { isGuest, savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
   const { isPremium } = usePremiumStore();
   const { isAuthenticated, user } = useAuthStore();
   const { incrementItineraryCount } = usePremiumStore();
@@ -144,7 +202,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   const renderPlace = useCallback(({ item }: { item: any }) => {
     const isSelected = !!selectedForItinerary.find(p => p.placeId === item.placeId);
-    const saved = isPlaceSaved(item.placeId);
 
     const { showBookNow, bookingLink } = detectBooking({
       placeId: item.placeId,
@@ -156,28 +213,18 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
+      <PlaceListItem
+        item={item}
+        isAdded={isSelected}
+        onAdd={() => handleAddToItinerary(item)}
+        onBook={showBookNow && bookingLink ? () => openBookingUrl(bookingLink.booking_url, item.placeId, item.name) : undefined}
         onLongPress={() => handleLongPress(item)}
-        delayLongPress={350}
-      >
-        <PlaceCard
-          horizontal
-          name={item.name}
-          description={item.description || item.category}
-          photoUrl={item.photoUrl}
-          rating={item.rating}
-          distance={item.distanceKm ? `${item.distanceKm} km` : undefined}
-          duration={item.walkMinutes ? `${item.walkMinutes} min` : undefined}
-          isSaved={isAuthenticated && !isGuest ? saved : undefined}
-          onSave={isAuthenticated && !isGuest ? () => handleSave(item) : undefined}
-          isAdded={isSelected}
-          onAdd={() => handleAddToItinerary(item)}
-          onBook={showBookNow && bookingLink ? () => openBookingUrl(bookingLink.booking_url, item.placeId, item.name) : undefined}
-        />
-      </TouchableOpacity>
+        isAuthenticated={isAuthenticated}
+        isGuest={isGuest}
+        onShowGate={() => setShowGate(true)}
+      />
     );
-  }, [selectedForItinerary, bookingLinks, isPlaceSaved, places, isAuthenticated, isGuest, savedPlaces]);
+  }, [selectedForItinerary, bookingLinks, isAuthenticated, isGuest]);
 
   // Avatar: photo or initial letter
   const displayName = user?.fullName?.split(' ')[0] || 'U';
@@ -267,7 +314,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
           data={filteredPlaces}
           keyExtractor={item => item.placeId || String(item.name)}
           renderItem={renderPlace}
-          extraData={savedPlaces}
           showsVerticalScrollIndicator={false}
           initialNumToRender={6}
           maxToRenderPerBatch={8}
