@@ -128,6 +128,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // In-app delete confirmation (web-safe — no Alert.alert)
   const [pendingDeleteTrip, setPendingDeleteTrip] = useState<SharedTrip | null>(null);
@@ -165,15 +166,17 @@ export default function SharedTripsScreen({ navigation }: Props) {
     if (!pendingDeleteTrip) return;
     const trip = pendingDeleteTrip;
     setPendingDeleteTrip(null);
+    setDeleteError(null);
     setDeleting(true);
     // Optimistic: remove immediately
     removeMyTrip(trip.trip_id);
     try {
-      await deleteSharedTrip(trip.trip_id);
+      await deleteSharedTrip(trip.trip_id, effectiveUserId);
     } catch {
-      // Rollback on failure
+      // Rollback on failure and re-open modal with error message
       addMyTrip(trip);
-      setPendingDeleteTrip(trip); // re-open modal with error handled elsewhere
+      setDeleteError('Failed to delete trip. Please try again.');
+      setPendingDeleteTrip(trip);
     } finally {
       setDeleting(false);
     }
@@ -285,6 +288,9 @@ export default function SharedTripsScreen({ navigation }: Props) {
                 <Text style={styles.sheetBody}>
                   "{pendingDeleteTrip?.trip_name}" will be removed for all members and cannot be undone.
                 </Text>
+                {deleteError ? (
+                  <Text style={styles.sheetError}>{deleteError}</Text>
+                ) : null}
                 <TouchableOpacity
                   style={styles.deleteConfirmBtn}
                   onPress={handleConfirmDelete}
@@ -436,6 +442,10 @@ const styles = StyleSheet.create({
   sheetBody: {
     fontSize: 14, color: '#57636C', textAlign: 'center',
     lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
+  sheetError: {
+    fontSize: 13, color: '#EF4444', textAlign: 'center',
+    marginBottom: 12, paddingHorizontal: 4,
   },
   deleteConfirmBtn: {
     width: '100%', backgroundColor: '#EF4444', borderRadius: 16,

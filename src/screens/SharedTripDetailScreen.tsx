@@ -176,7 +176,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
     removeMyTrip(trip_id);
     navigation.goBack();
     try {
-      await deleteSharedTrip(trip_id);
+      await deleteSharedTrip(trip_id, effectiveUserId);
     } catch {
       // Rollback: restore trip in store
       addMyTrip(savedTrip);

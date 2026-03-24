@@ -185,10 +185,25 @@ export async function leaveTrip(trip_id: string, user_id: string): Promise<void>
 }
 
 // ── Delete a trip and all its members (owner only) ────────────────────────────
-export async function deleteSharedTrip(trip_id: string): Promise<void> {
+// Pass requesterId to enforce client-side ownership check before writing.
+// Firestore rules also enforce this; the client check gives a clearer error message.
+export async function deleteSharedTrip(trip_id: string, requesterId?: string): Promise<void> {
+  if (requesterId) {
+    const trip = await getSharedTrip(trip_id);
+    if (trip && trip.owner_id !== requesterId) {
+      throw new Error('PERMISSION_DENIED: Only the trip owner can delete this trip.');
+    }
+  }
   const members = await getTripMembers(trip_id);
   await Promise.all(members.map((m) => deleteDoc(doc(db, MEMBERS_COL, m.member_id))));
   await deleteDoc(doc(db, TRIPS_COL, trip_id));
+}
+
+// ── Add a member UID to the trip's members array (idempotent via arrayUnion) ──
+export async function addMemberToSharedTrip(tripId: string, memberId: string): Promise<void> {
+  await updateDoc(doc(db, TRIPS_COL, tripId), {
+    members: arrayUnion(memberId),
+  });
 }
 
 // ── Get trips created by a user ───────────────────────────────────────────────
