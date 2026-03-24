@@ -197,7 +197,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       coordinate: s.coordinate,
       address: '',
     })));
-    navigation.navigate('TripMap', { stops });
+    navigation.navigate('TripMap', { stops, destination });
   };
 
   const handleShareTrip = async () => {

@@ -644,7 +644,12 @@ export default function MapScreen({ navigation, route }: Props) {
       navigateSavedRef.current = true;
       const uid = useAuthStore.getState().user?.id;
       if (uid) {
-        const city = useTripStore.getState().destination || 'Your Trip';
+        const city = (
+          (route?.params?.destination as string | undefined) ||
+          useTripStore.getState().destination ||
+          stops[0]?.name ||
+          ''
+        ).trim() || 'Unknown';
         const places = stops.map((s) => ({
           id: s.id,
           name: s.name,

@@ -591,7 +591,7 @@ export default function CreateTripScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
 
-  progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  progressWrapper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
   progressActive: { backgroundColor: '#22C55E' },

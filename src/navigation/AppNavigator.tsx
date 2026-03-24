@@ -17,7 +17,7 @@ import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
 import PWATopBar from '../components/PWATopBar';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { mapItineraryToRecentTrip } from '../services/userTripService';
+import { mapItineraryToRecentTrip, getUserTrips } from '../services/userTripService';
 import { getMyCreatedTrips, getJoinedTrips } from '../services/sharedTripService';
 import { getRecentItineraries } from '../services/database';
 import { useRecentTripStore } from '../store/useRecentTripStore';
@@ -269,11 +269,25 @@ export default function AppNavigator() {
           // Hydrate all user data in parallel — non-blocking
           Promise.all([
             getRecentItineraries(user.uid, 20),
+            getUserTrips(user.uid),
             getMyCreatedTrips(user.uid),
             getJoinedTrips(user.uid),
             useGuestStore.getState().hydrateSavedPlaces(),
-          ]).then(([itineraries, myTrips, joinedTrips]) => {
-            useRecentTripStore.getState().setRecentTrips(itineraries.map(mapItineraryToRecentTrip));
+          ]).then(([itineraries, userTrips, myTrips, joinedTrips]) => {
+            // Merge itineraries + user_trips, deduplicate by trip_id, sort newest first
+            const fromItineraries = itineraries.map(mapItineraryToRecentTrip);
+            const seen = new Set<string>();
+            const merged = [...userTrips, ...fromItineraries]
+              .filter(t => {
+                if (seen.has(t.trip_id)) return false;
+                seen.add(t.trip_id);
+                return true;
+              })
+              .sort((a, b) =>
+                new Date(b.last_accessed).getTime() - new Date(a.last_accessed).getTime()
+              )
+              .slice(0, 20);
+            useRecentTripStore.getState().setRecentTrips(merged);
             useSharedTripStore.getState().setMyTrips(myTrips);
             useSharedTripStore.getState().setJoinedTrips(joinedTrips);
           }).catch(() => {
