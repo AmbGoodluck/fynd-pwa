@@ -7,8 +7,6 @@ import { useGuestStore } from '../store/useGuestStore';
 import { usePremiumStore } from '../store/usePremiumStore';
 import { useTripStore } from '../store/useTripStore';
 import { useTempItineraryStore } from '../store/useTempItineraryStore';
-import { useTabBarHeight } from '../hooks/useTabBarHeight';
-
 import { F } from '../theme/fonts';
 
 type Props = { navigation: any };
@@ -25,8 +23,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const { user, logout: firebaseLogout } = useAuthStore();
   const { isGuest, logout: guestLogout } = useGuestStore();
   const { isPremium } = usePremiumStore();
-  const tabBarHeight = useTabBarHeight();
-
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
   const displayEmail = user?.email || (isGuest ? 'Guest Session' : '');
   const avatarLetter = displayName[0]?.toUpperCase() ?? '?';
