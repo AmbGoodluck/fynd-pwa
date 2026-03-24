@@ -120,17 +120,28 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   const loadData = useCallback(async () => {
     if (!trip_id) { setNotFound(true); setLoading(false); return; }
+    // Reset state on every run so stale "removed" state doesn't persist across auth changes
+    setLoading(true);
+    setNotFound(false);
+    setRemovedFromTrip(false);
+    let cancelled = false;
     try {
       const [fetchedTrip, fetchedMembers] = await Promise.all([
         getSharedTrip(trip_id),
         getTripMembers(trip_id),
       ]);
+      if (cancelled) return;
 
       if (!fetchedTrip) {
         setNotFound(true);
       } else {
-        // Check if current user was removed
-        const membershipExists = fetchedMembers.some((m) => m.user_id === effectiveUserId);
+        // Check trip_members collection AND the members[] array on the trip doc.
+        // members[] is authoritative (contains Firebase UIDs) and handles the case
+        // where auth hasn't hydrated yet when the component first mounts.
+        const membershipExists =
+          fetchedMembers.some((m) => m.user_id === effectiveUserId) ||
+          (Array.isArray(fetchedTrip.members) && fetchedTrip.members.includes(effectiveUserId));
+
         if (!membershipExists) {
           setRemovedFromTrip(true);
         } else {
@@ -141,11 +152,12 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
         }
       }
     } catch {
-      setNotFound(true);
+      if (!cancelled) setNotFound(true);
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
-  }, [trip_id, sessionUserId]);
+    return () => { cancelled = true; };
+  }, [trip_id, effectiveUserId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

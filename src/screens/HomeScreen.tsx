@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, FlatList, useWindowDimensions, Image, Modal,
@@ -11,8 +11,6 @@ import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
-import { useSharedTripStore } from '../store/useSharedTripStore';
-import type { SharedTrip } from '../types/sharedTrip';
 import { F } from '../theme/fonts';
 import PWATopBar from '../components/PWATopBar';
 import { LOGO_SIZE } from '../theme/sizes';
@@ -43,18 +41,6 @@ export default function HomeScreen({ navigation }: Props) {
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
   const { recentTrips, isHydrating, fetchError } = useRecentTripStore();
-  const { myTrips, joinedTrips } = useSharedTripStore();
-
-  // Merge owned + joined trips, dedup by trip_id for display
-  const sharedTrips = useMemo<SharedTrip[]>(() => {
-    const seen = new Set<string>();
-    return [...myTrips, ...joinedTrips].filter((t) => {
-      if (seen.has(t.trip_id)) return false;
-      seen.add(t.trip_id);
-      return true;
-    });
-  }, [myTrips, joinedTrips]);
-
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
@@ -317,68 +303,6 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         )}
 
-        {/* ── Shared Trips ─────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionLeft}>
-            <Ionicons name="people-outline" size={18} color="#111827" />
-            <Text style={styles.sectionTitle}>Shared Trips</Text>
-          </View>
-          {sharedTrips.length > 0 && (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('SharedTrips')}
-              style={styles.seeAllBtn}
-            >
-              <Text style={styles.seeAllText}>See All</Text>
-              <Ionicons name="chevron-forward" size={15} color="#22C55E" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {fetchError && sharedTrips.length === 0 ? (
-          <View style={styles.sharedEmptyRow}>
-            <Ionicons name="cloud-offline-outline" size={22} color="#D1D5DB" />
-            <Text style={styles.sharedEmptyText}>Couldn't load shared trips</Text>
-          </View>
-        ) : sharedTrips.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.itineraryRow}
-            contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
-          >
-            {sharedTrips.slice(0, 6).map((trip) => {
-              const coverImage = trip.places[0]?.photoUrl || FALLBACK_IMAGE;
-              return (
-                <TouchableOpacity
-                  key={trip.trip_id}
-                  style={styles.itineraryCard}
-                  onPress={() => navigation.navigate('SharedTripDetail', { trip_id: trip.trip_id })}
-                >
-                  <ImageBackground
-                    source={{ uri: coverImage }}
-                    style={styles.itineraryCardBg}
-                    imageStyle={styles.itineraryCardImg}
-                  >
-                    <View style={styles.itineraryCardOverlay}>
-                      <Text style={styles.itineraryCardCity} numberOfLines={1}>
-                        {trip.trip_name}
-                      </Text>
-                      <Text style={styles.itineraryCardDate}>
-                        {trip.member_count} member{trip.member_count !== 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                  </ImageBackground>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        ) : (
-          <View style={styles.sharedEmptyRow}>
-            <Ionicons name="people-outline" size={28} color="#D1D5DB" />
-            <Text style={styles.sharedEmptyText}>No shared trips yet</Text>
-          </View>
-        )}
-
         <View style={{ height: tabBarHeight + 20 }} />
       </ScrollView>
 
@@ -582,11 +506,6 @@ const styles = StyleSheet.create({
   modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.semibold },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
-  sharedEmptyRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 20, paddingVertical: 16, marginBottom: 24,
-  },
-  sharedEmptyText: { fontSize: 14, color: '#9CA3AF', fontFamily: F.medium },
   fetchErrorCard: {
     alignItems: 'center', paddingVertical: 28,
     marginHorizontal: 20, borderRadius: 20,
