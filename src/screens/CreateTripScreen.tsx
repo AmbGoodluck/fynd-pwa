@@ -595,14 +595,14 @@ export default function CreateTripScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
 
-  progressWrapper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  progressWrapper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
   progressActive: { backgroundColor: '#22C55E' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 4 },
-  sectionTitle: { fontSize: 27, fontFamily: F.bold, color: '#111827', marginBottom: 16, marginTop: 10 },
+  sectionTitle: { fontSize: 27, fontFamily: F.bold, color: '#111827', marginBottom: 24, marginTop: 8 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },
   cardLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
