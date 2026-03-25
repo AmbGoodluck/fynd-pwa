@@ -94,6 +94,7 @@ export default function SavedScreen({ navigation }: Props) {
 
   const renderItem = ({ item }: { item: SavedPlace }) => {
     const inTemp = tempPlaces.some((p: any) => p.placeId === item.placeId);
+    const hasCoords = !!(item.coordinates?.lat && item.coordinates?.lng);
 
     return (
       <PlaceCard
@@ -106,6 +107,19 @@ export default function SavedScreen({ navigation }: Props) {
         onSave={() => unsavePlace(item.placeId)}
         isAdded={inTemp}
         onAdd={() => handleAddToItinerary(item)}
+        onNavigate={hasCoords ? () => navigation.navigate('TripMap', {
+          stops: [{
+            id: item.placeId,
+            name: item.name,
+            description: item.description || item.category || '',
+            rating: item.rating > 0 ? String(item.rating.toFixed(1)) : undefined,
+            image: item.photoUrl || FALLBACK_IMAGE,
+            coordinate: {
+              latitude: item.coordinates.lat,
+              longitude: item.coordinates.lng,
+            },
+          }],
+        }) : undefined}
       />
     );
   };
