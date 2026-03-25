@@ -24,7 +24,8 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
-  const { recentTrips, removeTrip } = useRecentTripStore(s => ({ recentTrips: s.recentTrips, removeTrip: s.removeTrip }));
+  const recentTrips = useRecentTripStore(s => s.recentTrips);
+  const removeTrip = useRecentTripStore(s => s.removeTrip);
   const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
