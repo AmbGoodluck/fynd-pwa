@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import type { PlaceResult } from '../services/googlePlacesService';
 import { useAuthStore } from './useAuthStore';
+import { auth } from '../services/firebase';
 import {
   savePlace as savePlaceDb,
   deleteSavedPlace,
@@ -70,8 +71,10 @@ export const useGuestStore = create<GuestStore>()(
 
       savePlace: async (place) => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        // Guests cannot save places — require an account
-        if (!isAuthenticated || !user) return;
+        // Require an account; also verify Firebase Auth is live (guards against
+        // stale Zustand state on session restore when Firestore was briefly unavailable)
+        const firebaseUser = auth.currentUser;
+        if (!isAuthenticated || !user || !firebaseUser) return;
 
         const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
         if (existing) return;
@@ -81,7 +84,8 @@ export const useGuestStore = create<GuestStore>()(
         set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
 
         try {
-          await savePlaceDb(user.id, savedPlace);
+          // Use live Firebase UID for the write to guarantee token is attached
+          await savePlaceDb(firebaseUser.uid, savedPlace);
         } catch (e) {
           // Rollback optimistic update on failure
           set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== savedPlace.placeId) }));
@@ -92,7 +96,8 @@ export const useGuestStore = create<GuestStore>()(
 
       unsavePlace: async (placeId) => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        if (!isAuthenticated || !user) return;
+        const firebaseUser = auth.currentUser;
+        if (!isAuthenticated || !user || !firebaseUser) return;
 
         // Capture the place before removing so we can roll back on failure
         const removed = get().savedPlaces.find(p => p.placeId === placeId);
@@ -101,7 +106,7 @@ export const useGuestStore = create<GuestStore>()(
         set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== placeId) }));
 
         try {
-          const docId = await isPlaceSavedDb(user.id, placeId);
+          const docId = await isPlaceSavedDb(firebaseUser.uid, placeId);
           if (docId) {
             await deleteSavedPlace(docId);
           }
@@ -117,9 +122,11 @@ export const useGuestStore = create<GuestStore>()(
 
       hydrateSavedPlaces: async () => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        if (!isAuthenticated || !user) return;
+        const firebaseUser = auth.currentUser;
+        const uid = firebaseUser?.uid ?? user?.id;
+        if (!uid) return;
         try {
-          const places = await getSavedPlaces(user.id);
+          const places = await getSavedPlaces(uid);
           if (places.length > 0) set({ savedPlaces: places });
         } catch (e) {
           if (__DEV__) console.error('Failed to hydrate saved places', e);

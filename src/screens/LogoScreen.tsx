@@ -60,19 +60,28 @@ export default function LogoScreen({ navigation }: Props) {
         if (firebaseUser) {
           // Clear any stale persisted guest state for authenticated users
           useGuestStore.getState().logout();
-          // Restore session state from Firestore
+          // Restore session state — always login with at least Firebase Auth info
+          // so isAuthenticated is set even if Firestore is temporarily unavailable.
+          let fullName = firebaseUser.displayName || '';
+          let isPremium = false;
+          let travelPreferences: string[] = [];
           try {
             const userDoc = await getUserDoc(firebaseUser.uid);
-            login({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              fullName: userDoc?.fullName || firebaseUser.displayName || '',
-              isPremium: userDoc?.isPremium ?? false,
-              travelPreferences: userDoc?.travelPreferences ?? [],
-            });
+            if (userDoc) {
+              fullName = userDoc.fullName || fullName;
+              isPremium = userDoc.isPremium ?? false;
+              travelPreferences = userDoc.travelPreferences ?? [];
+            }
           } catch {
-            // Firestore unavailable -- enter app with minimal profile
+            // Firestore unavailable — continue with Firebase Auth info
           }
+          login({
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            fullName,
+            isPremium,
+            travelPreferences,
+          });
           // Hydrate saved places now that auth store has the user
           useGuestStore.getState().hydrateSavedPlaces().catch(() => {});
           resolve('MainTabs');

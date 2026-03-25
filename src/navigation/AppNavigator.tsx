@@ -259,19 +259,29 @@ export default function AppNavigator() {
 
         const currentId = useAuthStore.getState().user?.id;
         if (currentId !== user.uid) {
+          // Always login with at least Firebase Auth info so isAuthenticated
+          // is set even when Firestore is temporarily unavailable.
+          let fullName = user.displayName || '';
+          let isPremium = false;
+          let travelPreferences: string[] = [];
           try {
             const userDoc = await getUserDoc(user.uid);
-            useAuthStore.getState().login({
-              id: user.uid,
-              fullName: userDoc?.fullName || user.displayName || '',
-              email: user.email || '',
-              photoURL: user.photoURL,
-              isPremium: userDoc?.isPremium ?? false,
-              travelPreferences: userDoc?.travelPreferences ?? [],
-            });
+            if (userDoc) {
+              fullName = userDoc.fullName || fullName;
+              isPremium = userDoc.isPremium ?? false;
+              travelPreferences = userDoc.travelPreferences ?? [];
+            }
           } catch {
-            // Firestore unavailable — auth still valid, LogoScreen handles primary flow.
+            // Firestore unavailable — continue with Firebase Auth info
           }
+          useAuthStore.getState().login({
+            id: user.uid,
+            fullName,
+            email: user.email || '',
+            photoURL: user.photoURL,
+            isPremium,
+            travelPreferences,
+          });
 
           // Hydrate all user data in parallel — non-blocking
           useRecentTripStore.getState().setHydrating(true);
