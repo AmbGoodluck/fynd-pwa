@@ -71,19 +71,10 @@ export default function HomeScreen({ navigation }: Props) {
   const hasSessionTrip = !!destination;
 
   const handleDeleteTrip = (trip_id: string, cityLabel: string) => {
-    Alert.alert('Delete Trip', `Remove "${cityLabel}" from your recent trips?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          removeTrip(trip_id);
-          await Promise.allSettled([
-            deleteItinerary(trip_id),
-            deleteUserTrip(trip_id),
-          ]);
-        },
-      },
+    removeTrip(trip_id);
+    Promise.allSettled([
+      deleteItinerary(trip_id),
+      deleteUserTrip(trip_id),
     ]);
   };
 

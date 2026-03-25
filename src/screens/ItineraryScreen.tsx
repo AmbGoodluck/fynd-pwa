@@ -114,7 +114,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   useEffect(() => {
     logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
 
-    if (authUser && initialStops.length > 0 && !hasSavedDoc.current) {
+    const isReopenedTrip = tripData.tripId && tripData.tripId !== 'manual';
+    if (authUser && initialStops.length > 0 && !hasSavedDoc.current && !isReopenedTrip) {
       hasSavedDoc.current = true;
       const saveToCloud = async () => {
         try {

@@ -13,7 +13,8 @@ import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
 import { F } from '../theme/fonts';
-import { getRecentItineraries, type ItineraryDoc } from '../services/database';
+import { getRecentItineraries, deleteItinerary, type ItineraryDoc } from '../services/database';
+import { useRecentTripStore } from '../store/useRecentTripStore';
 
 import { FALLBACK_IMAGE } from '../constants';
 
@@ -23,6 +24,7 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
+  const removeTrip = useRecentTripStore(s => s.removeTrip);
   const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -249,33 +251,45 @@ export default function SavedScreen({ navigation }: Props) {
                 </View>
               ) : itineraries.length > 0 ? (
                 itineraries.map((item, index) => (
-                  <TouchableOpacity
-                    key={item.id || `itinerary-${item.tripId}-${index}`}
-                    style={styles.itineraryCardWrapper}
-                    onPress={() => navigation.navigate('Itinerary', {
-                      places: item.stops.map(s => ({
-                        placeId: s.placeId,
-                        name: s.placeName,
-                        photoUrl: s.imageUrl,
-                        category: '',
-                        description: s.shortDescription,
-                        rating: s.rating,
-                        distanceKm: s.distanceKm,
-                        walkMinutes: s.travelTimeMinutes,
-                        coordinates: { lat: s.latitude, lng: s.longitude }
-                      } as any)),
-                      destination: item.destination,
-                      tripId: item.tripId
-                    })}
-                  >
-                    <Image source={{ uri: item.coverPhotoUrl || FALLBACK_IMAGE }} style={styles.itineraryImage} />
-                    <View style={styles.itineraryDetails}>
-                      <Text style={styles.itineraryTitle}>{item.destination}</Text>
-                      <Text style={styles.itinerarySub}>
-                        {item.totalStops} places · {item.createdAt ? formatRelativeDate(new Date(item.createdAt.toMillis()).toISOString()) : 'Recent'}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                  <View key={item.id || `itinerary-${item.tripId}-${index}`} style={styles.itineraryCardWrapper}>
+                    <TouchableOpacity
+                      style={styles.itineraryCard}
+                      onPress={() => navigation.navigate('Itinerary', {
+                        places: item.stops.map(s => ({
+                          placeId: s.placeId,
+                          name: s.placeName,
+                          photoUrl: s.imageUrl,
+                          category: '',
+                          description: s.shortDescription,
+                          rating: s.rating,
+                          distanceKm: s.distanceKm,
+                          walkMinutes: s.travelTimeMinutes,
+                          coordinates: { lat: s.latitude, lng: s.longitude }
+                        } as any)),
+                        destination: item.destination,
+                        tripId: item.id,
+                      })}
+                    >
+                      <Image source={{ uri: item.coverPhotoUrl || FALLBACK_IMAGE }} style={styles.itineraryImage} />
+                      <View style={styles.itineraryDetails}>
+                        <Text style={styles.itineraryTitle}>{item.destination}</Text>
+                        <Text style={styles.itinerarySub}>
+                          {item.totalStops} places · {item.createdAt ? formatRelativeDate(new Date(item.createdAt.toMillis()).toISOString()) : 'Recent'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.deleteItineraryBtn}
+                      onPress={async () => {
+                        if (!item.id) return;
+                        setItineraries(prev => prev.filter(i => i.id !== item.id));
+                        removeTrip(item.id as string);
+                        deleteItinerary(item.id as string).catch(() => {});
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
                 ))
               ) : null}
             </>
