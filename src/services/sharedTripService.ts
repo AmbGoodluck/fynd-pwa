@@ -155,12 +155,17 @@ export async function joinSharedTrip(params: {
 
   await setDoc(doc(db, MEMBERS_COL, member.member_id), member);
 
-  // Atomically increment the count and add user to the members[] array.
-  // arrayUnion is idempotent — safe even if called twice with the same user_id.
-  await updateDoc(doc(db, TRIPS_COL, params.trip_id), {
-    member_count: increment(1),
-    members: arrayUnion(params.user_id),
-  });
+  // Best-effort: increment count and add to members[] array on the trip doc.
+  // This can fail if Firestore rules only allow the owner to update the trip doc.
+  // trip_members is the source of truth for membership, so this is non-fatal.
+  try {
+    await updateDoc(doc(db, TRIPS_COL, params.trip_id), {
+      member_count: increment(1),
+      members: arrayUnion(params.user_id),
+    });
+  } catch {
+    // Non-fatal — user is still a member via the trip_members record above
+  }
 
   trackTripJoined(params.user_id, params.trip_id);
 

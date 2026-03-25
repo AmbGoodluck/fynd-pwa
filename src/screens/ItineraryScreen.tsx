@@ -20,6 +20,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { useTripStore } from '../store/useTripStore';
 import { saveItinerary } from '../services/database';
 import { Timestamp } from 'firebase/firestore';
+import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
@@ -142,7 +143,24 @@ export default function ItineraryScreen({ navigation, route }: Props) {
             totalStops: initialStops.length,
           };
           
-          await saveItinerary(authUser.id, tripData.tripId || 'manual', itineraryData);
+          const docId = await saveItinerary(authUser.id, tripData.tripId || 'manual', itineraryData);
+          const now = new Date().toISOString();
+          useRecentTripStore.getState().prependTrip({
+            trip_id: docId,
+            user_id: authUser.id,
+            city: destination,
+            places: initialStops.map(s => ({
+              id: s.id,
+              name: s.name,
+              address: s.description || '',
+              image: s.image,
+              coordinate: s.coordinate,
+              rating: parseFloat(s.rating) || undefined,
+            })),
+            created_at: now,
+            last_accessed: now,
+            is_shared: false,
+          });
         } catch (e) {
           if (__DEV__) console.error('Failed to sync itinerary to cloud', e);
         }

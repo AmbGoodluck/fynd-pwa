@@ -9,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore, type SavedPlace } from '../store/useGuestStore';
 import { useTempItineraryStore, TEMP_MAX_PLACES } from '../store/useTempItineraryStore';
-import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
@@ -24,7 +23,6 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
-  const { recentTrips } = useRecentTripStore();
   const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -230,55 +228,12 @@ export default function SavedScreen({ navigation }: Props) {
           renderItem={() => null}
           ListHeaderComponent={
             <>
-              {/* Recent Trips from session store */}
-              {recentTrips.length > 0 && (
-                <View style={styles.recentTripsSection}>
-                  <Text style={styles.recentTripsSectionTitle}>Recent Trips</Text>
-                  {recentTrips.map((trip) => (
-                    <TouchableOpacity
-                      key={trip.trip_id}
-                      style={styles.recentTripCard}
-                      onPress={() => navigation.navigate('Itinerary', {
-                        places: trip.places.map(p => ({
-                          placeId: p.id,
-                          name: p.name,
-                          address: p.address,
-                          rating: p.rating ?? 0,
-                          description: p.description ?? '',
-                          photoRef: '',
-                          photoUrl: p.image,
-                          coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
-                        })),
-                        destination: trip.city || 'My Trip',
-                        tripId: trip.trip_id,
-                      })}
-                    >
-                      <View style={styles.recentTripRow}>
-                        <View style={styles.recentTripIconWrap}>
-                          <Ionicons name="location-outline" size={22} color="#22C55E" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.recentTripCity}>{trip.city || 'My Trip'}</Text>
-                          <Text style={styles.recentTripMeta}>
-                            {trip.places.length} place{trip.places.length !== 1 ? 's' : ''} · {formatRelativeDate(trip.last_accessed || trip.created_at)}
-                          </Text>
-                        </View>
-                        <View style={styles.addToRouteBtn}>
-                          <Text style={styles.addToRouteBtnText}>Add to Route</Text>
-                          <Ionicons name="chevron-forward" size={14} color="#22C55E" />
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
               {/* Firestore-backed itineraries */}
               {loadingItineraries ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyText}>Loading trips...</Text>
                 </View>
-              ) : itineraries.length === 0 && recentTrips.length === 0 ? (
+              ) : itineraries.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Ionicons name="map-outline" size={56} color="#E5E5EA" />
                   <Text style={styles.emptyTitle}>No recent trips</Text>
