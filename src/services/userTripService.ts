@@ -26,7 +26,7 @@ export function mapItineraryToRecentTrip(doc: ItineraryDoc): RecentTrip {
       ? doc.createdAt.toDate().toISOString()
       : new Date().toISOString();
   return {
-    trip_id: (doc as any).id ?? `itinerary-${Date.now()}`,
+    trip_id: doc.id ?? `itinerary-${Date.now()}`,
     user_id: doc.userId,
     city: doc.destination,
     places: (doc.stops ?? []).map((s) => ({
