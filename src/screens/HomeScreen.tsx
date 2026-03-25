@@ -17,7 +17,6 @@ import { LOGO_SIZE } from '../theme/sizes';
 import { FALLBACK_IMAGE } from '../constants';
 import { formatRelativeDate } from '../utils/date';
 import { deleteItinerary } from '../services/database';
-import { deleteUserTrip } from '../services/userTripService';
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -72,10 +71,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   const handleDeleteTrip = (trip_id: string, cityLabel: string) => {
     removeTrip(trip_id);
-    Promise.allSettled([
-      deleteItinerary(trip_id),
-      deleteUserTrip(trip_id),
-    ]);
+    deleteItinerary(trip_id).catch(() => {});
   };
 
   const handleServicePress = (id: string) => {

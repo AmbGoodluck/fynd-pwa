@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 import type { PlaceResult } from '../services/googlePlacesService';
 import { useAuthStore } from './useAuthStore';
 import {
@@ -85,12 +86,16 @@ export const useGuestStore = create<GuestStore>()(
           // Rollback optimistic update on failure
           set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== savedPlace.placeId) }));
           if (__DEV__) console.error('Failed to sync saved place to Firestore', e);
+          Alert.alert('Save failed', "Couldn't save this place. Check your connection and try again.");
         }
       },
 
       unsavePlace: async (placeId) => {
         const { user, isAuthenticated } = useAuthStore.getState();
         if (!isAuthenticated || !user) return;
+
+        // Capture the place before removing so we can roll back on failure
+        const removed = get().savedPlaces.find(p => p.placeId === placeId);
 
         // Optimistic remove
         set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== placeId) }));
@@ -101,7 +106,12 @@ export const useGuestStore = create<GuestStore>()(
             await deleteSavedPlace(docId);
           }
         } catch (e) {
+          // Rollback: restore the place that was removed
+          if (removed) {
+            set((state) => ({ savedPlaces: [removed, ...state.savedPlaces] }));
+          }
           if (__DEV__) console.error('Failed to delete saved place from Firestore', e);
+          Alert.alert('Remove failed', "Couldn't remove this place. Check your connection and try again.");
         }
       },
 

@@ -18,9 +18,6 @@ import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWeb
 import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { useTripStore } from '../store/useTripStore';
-import { saveItinerary } from '../services/database';
-import { Timestamp } from 'firebase/firestore';
-import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
@@ -109,65 +106,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const ownerName = authUser?.fullName || authUser?.email?.split('@')[0] || sessionUserName;
 
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const hasSavedDoc = useRef(false);
 
   useEffect(() => {
     logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
-
-    const isReopenedTrip = tripData.tripId && tripData.tripId !== 'manual';
-    if (authUser && initialStops.length > 0 && !hasSavedDoc.current && !isReopenedTrip) {
-      hasSavedDoc.current = true;
-      const saveToCloud = async () => {
-        try {
-          const itineraryData = {
-            destination,
-            month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-            coverPhotoUrl: initialStops[0]?.image || FALLBACK_IMAGE,
-            stops: initialStops.map((s: Stop, idx: number) => ({
-              tripId: tripData.tripId || 'manual',
-              userId: authUser.id,
-              placeId: s.id,
-              placeName: s.name,
-              shortDescription: s.description,
-              imageUrl: s.image,
-              latitude: s.coordinate.latitude,
-              longitude: s.coordinate.longitude,
-              rating: parseFloat(s.rating) || 0,
-              distanceKm: parseFloat(s.distance) || 0,
-              travelTimeMinutes: parseInt(s.time) || 0,
-              requiresBooking: !!s.bookingUrl,
-              orderIndex: idx,
-              status: 'pending' as const,
-              addedAt: Timestamp.now(),
-            })),
-            totalDurationMin: initialStops.reduce((acc, s) => acc + (parseInt(s.time) || 0), 0),
-            totalStops: initialStops.length,
-          };
-          
-          const docId = await saveItinerary(authUser.id, tripData.tripId || 'manual', itineraryData);
-          const now = new Date().toISOString();
-          useRecentTripStore.getState().prependTrip({
-            trip_id: docId,
-            user_id: authUser.id,
-            city: destination,
-            places: initialStops.map(s => ({
-              id: s.id,
-              name: s.name,
-              address: s.description || '',
-              image: s.image,
-              coordinate: s.coordinate,
-              rating: parseFloat(s.rating) || undefined,
-            })),
-            created_at: now,
-            last_accessed: now,
-            is_shared: false,
-          });
-        } catch (e) {
-          if (__DEV__) console.error('Failed to sync itinerary to cloud', e);
-        }
-      };
-      saveToCloud();
-    }
   }, []);
 
   const removePlace = (id: string) =>
@@ -216,7 +157,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       coordinate: s.coordinate,
       address: '',
     })));
-    navigation.navigate('TripMap', { stops, destination });
+    navigation.navigate('TripMap', { stops, destination, tripId: tripData.tripId || null });
   };
 
   const handleShareTrip = async () => {

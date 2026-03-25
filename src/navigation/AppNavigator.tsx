@@ -17,7 +17,7 @@ import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
 import PWATopBar from '../components/PWATopBar';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { mapItineraryToRecentTrip, getUserTrips } from '../services/userTripService';
+import { mapItineraryToRecentTrip } from '../services/userTripService';
 import { getMyCreatedTrips, getJoinedTrips } from '../services/sharedTripService';
 import { getRecentItineraries } from '../services/database';
 import { useRecentTripStore } from '../store/useRecentTripStore';
@@ -277,25 +277,12 @@ export default function AppNavigator() {
           useRecentTripStore.getState().setHydrating(true);
           Promise.all([
             getRecentItineraries(user.uid, 20),
-            getUserTrips(user.uid),
             getMyCreatedTrips(user.uid),
             getJoinedTrips(user.uid),
             useGuestStore.getState().hydrateSavedPlaces(),
-          ]).then(([itineraries, userTrips, myTrips, joinedTrips]) => {
-            // Merge itineraries + user_trips, deduplicate by trip_id, sort newest first
-            const fromItineraries = itineraries.map(mapItineraryToRecentTrip);
-            const seen = new Set<string>();
-            const merged = [...userTrips, ...fromItineraries]
-              .filter(t => {
-                if (seen.has(t.trip_id)) return false;
-                seen.add(t.trip_id);
-                return true;
-              })
-              .sort((a, b) =>
-                new Date(b.last_accessed).getTime() - new Date(a.last_accessed).getTime()
-              )
-              .slice(0, 20);
-            useRecentTripStore.getState().setRecentTrips(merged);
+          ]).then(([itineraries, myTrips, joinedTrips]) => {
+            const recentTrips = itineraries.map(mapItineraryToRecentTrip);
+            useRecentTripStore.getState().setRecentTrips(recentTrips);
             useRecentTripStore.getState().setFetchError(null);
             useRecentTripStore.getState().setHydrating(false);
             useSharedTripStore.getState().setMyTrips(myTrips);

@@ -24,7 +24,9 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useTripStore } from '../store/useTripStore';
 import { useRecentTripStore } from '../store/useRecentTripStore';
-import { saveUserTrip } from '../services/userTripService';
+import { saveItinerary } from '../services/database';
+import { Timestamp } from 'firebase/firestore';
+import { FALLBACK_IMAGE } from '../constants';
 import { openInExternalMaps, openRouteInMaps } from '../services/mapsIntent';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -639,8 +641,10 @@ export default function MapScreen({ navigation, route }: Props) {
   const openFullRoute = () => {
     if (stops.length === 0) return;
 
-    // Persist trip on first Navigate tap — idempotent within this session
-    if (!navigateSavedRef.current) {
+    // Persist trip on first Navigate tap — idempotent within this session.
+    // Skip if this is a reopened trip (tripId already exists in Firestore).
+    const existingTripId = route?.params?.tripId as string | null | undefined;
+    if (!navigateSavedRef.current && !existingTripId) {
       navigateSavedRef.current = true;
       const uid = useAuthStore.getState().user?.id;
       if (uid) {
@@ -650,18 +654,52 @@ export default function MapScreen({ navigation, route }: Props) {
           stops[0]?.name ||
           ''
         ).trim() || 'My Trip';
-        const places = stops.map((s) => ({
-          id: s.id,
-          name: s.name,
-          address: s.description ?? '',
-          image: s.image,
-          coordinate: s.coordinate,
-          rating: s.rating !== undefined ? parseFloat(s.rating) : undefined,
+        const itineraryStops = stops.map((s, idx) => ({
+          tripId: 'navigate',
+          userId: uid,
+          placeId: s.id,
+          placeName: s.name,
+          shortDescription: s.description || '',
+          imageUrl: s.image,
+          latitude: s.coordinate.latitude,
+          longitude: s.coordinate.longitude,
+          rating: s.rating !== undefined ? parseFloat(s.rating) : 0,
+          distanceKm: 0,
+          travelTimeMinutes: 0,
+          requiresBooking: false,
+          orderIndex: idx,
+          status: 'pending' as const,
+          addedAt: Timestamp.now(),
         }));
-        saveUserTrip({ user_id: uid, city, places, is_shared: false })
-          .then((saved) => useRecentTripStore.getState().prependTrip(saved))
+        saveItinerary(uid, 'navigate', {
+          destination: city,
+          month: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          coverPhotoUrl: stops[0]?.image || FALLBACK_IMAGE,
+          stops: itineraryStops,
+          totalDurationMin: 0,
+          totalStops: stops.length,
+        })
+          .then((docId) => {
+            const now = new Date().toISOString();
+            useRecentTripStore.getState().prependTrip({
+              trip_id: docId,
+              user_id: uid,
+              city,
+              places: stops.map((s) => ({
+                id: s.id,
+                name: s.name,
+                address: s.description ?? '',
+                image: s.image,
+                coordinate: s.coordinate,
+                rating: s.rating !== undefined ? parseFloat(s.rating) : undefined,
+              })),
+              created_at: now,
+              last_accessed: now,
+              is_shared: false,
+            });
+          })
           .catch(() => {
-            // Offline — Firestore queues the write; allow retry next tap
+            // Offline — allow retry on next Navigate tap
             navigateSavedRef.current = false;
           });
       }

@@ -13,8 +13,8 @@ import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
 import { F } from '../theme/fonts';
-import { getRecentItineraries, deleteItinerary, type ItineraryDoc } from '../services/database';
-import { useRecentTripStore } from '../store/useRecentTripStore';
+import { deleteItinerary } from '../services/database';
+import { useRecentTripStore, type RecentTrip } from '../store/useRecentTripStore';
 
 import { FALLBACK_IMAGE } from '../constants';
 
@@ -24,7 +24,7 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
-  const removeTrip = useRecentTripStore(s => s.removeTrip);
+  const { recentTrips, removeTrip } = useRecentTripStore(s => ({ recentTrips: s.recentTrips, removeTrip: s.removeTrip }));
   const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -35,18 +35,6 @@ export default function SavedScreen({ navigation }: Props) {
 
   // Tabs State
   const [activeTab, setActiveTab] = useState<'places' | 'itineraries'>('places');
-  const [itineraries, setItineraries] = useState<ItineraryDoc[]>([]);
-  const [loadingItineraries, setLoadingItineraries] = useState(false);
-
-  React.useEffect(() => {
-    if (activeTab === 'itineraries' && isAuthenticated && user) {
-      setLoadingItineraries(true);
-      getRecentItineraries(user.id, 20)
-        .then(res => setItineraries(res))
-        .catch(err => { if (__DEV__) console.error('Failed to load itineraries:', err); })
-        .finally(() => setLoadingItineraries(false));
-    }
-  }, [activeTab, isAuthenticated, user]);
 
   const displayName = user?.fullName?.split(' ')[0] || 'U';
 
@@ -152,7 +140,7 @@ export default function SavedScreen({ navigation }: Props) {
           <TouchableOpacity
             style={[styles.tab, activeTab === 'itineraries' && styles.tabActive]}
             onPress={() => {
-              if (isGuest) {
+              if (isGuest || !isAuthenticated) {
                 setShowGate(true);
               } else {
                 setActiveTab('itineraries');
@@ -237,76 +225,63 @@ export default function SavedScreen({ navigation }: Props) {
           />
         )
       ) : (
-        /* Itineraries Tab */
+        /* Recent Trips Tab — reads from useRecentTripStore (same data as HomeScreen) */
         <FlatList
-          data={[]}
-          keyExtractor={() => ''}
-          renderItem={() => null}
-          ListHeaderComponent={
-            <>
-              {/* Firestore-backed itineraries */}
-              {loadingItineraries ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>Loading trips...</Text>
-                </View>
-              ) : itineraries.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="map-outline" size={56} color="#E5E5EA" />
-                  <Text style={styles.emptyTitle}>No recent trips</Text>
-                  <Text style={styles.emptyText}>
-                    Trips you generate will be saved here automatically.
+          data={recentTrips}
+          keyExtractor={item => item.trip_id}
+          renderItem={({ item }: { item: RecentTrip }) => (
+            <View style={styles.itineraryCardWrapper}>
+              <TouchableOpacity
+                style={styles.itineraryCard}
+                onPress={() => navigation.navigate('Itinerary', {
+                  places: item.places.map(p => ({
+                    placeId: p.id,
+                    name: p.name,
+                    photoUrl: p.image,
+                    description: p.description || p.address || '',
+                    rating: p.rating ?? 0,
+                    coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
+                  })),
+                  destination: item.city,
+                  tripId: item.trip_id,
+                })}
+              >
+                <Image
+                  source={{ uri: item.places[0]?.image || FALLBACK_IMAGE }}
+                  style={styles.itineraryImage}
+                />
+                <View style={styles.itineraryDetails}>
+                  <Text style={styles.itineraryTitle}>{item.city}</Text>
+                  <Text style={styles.itinerarySub}>
+                    {item.places.length} places · {formatRelativeDate(item.created_at)}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.exploreBtn}
-                    onPress={() => navigation.navigate('Create Trip')}
-                  >
-                    <Text style={styles.exploreBtnText}>Generate Itinerary</Text>
-                  </TouchableOpacity>
                 </View>
-              ) : itineraries.length > 0 ? (
-                itineraries.map((item, index) => (
-                  <View key={item.id || `itinerary-${item.tripId}-${index}`} style={styles.itineraryCardWrapper}>
-                    <TouchableOpacity
-                      style={styles.itineraryCard}
-                      onPress={() => navigation.navigate('Itinerary', {
-                        places: item.stops.map(s => ({
-                          placeId: s.placeId,
-                          name: s.placeName,
-                          photoUrl: s.imageUrl,
-                          category: '',
-                          description: s.shortDescription,
-                          rating: s.rating,
-                          distanceKm: s.distanceKm,
-                          walkMinutes: s.travelTimeMinutes,
-                          coordinates: { lat: s.latitude, lng: s.longitude }
-                        } as any)),
-                        destination: item.destination,
-                        tripId: item.id,
-                      })}
-                    >
-                      <Image source={{ uri: item.coverPhotoUrl || FALLBACK_IMAGE }} style={styles.itineraryImage} />
-                      <View style={styles.itineraryDetails}>
-                        <Text style={styles.itineraryTitle}>{item.destination}</Text>
-                        <Text style={styles.itinerarySub}>
-                          {item.totalStops} places · {item.createdAt ? formatRelativeDate(new Date(item.createdAt.toMillis()).toISOString()) : 'Recent'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.deleteItineraryBtn}
-                      onPress={async () => {
-                        if (!item.id) return;
-                        setItineraries(prev => prev.filter(i => i.id !== item.id));
-                        removeTrip(item.id as string);
-                        deleteItinerary(item.id as string).catch(() => {});
-                      }}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              ) : null}
-            </>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteItineraryBtn}
+                onPress={() => {
+                  removeTrip(item.trip_id);
+                  deleteItinerary(item.trip_id).catch(() => {});
+                }}
+              >
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="map-outline" size={56} color="#E5E5EA" />
+              <Text style={styles.emptyTitle}>No recent trips</Text>
+              <Text style={styles.emptyText}>
+                Tap Navigate on an itinerary to save it here.
+              </Text>
+              <TouchableOpacity
+                style={styles.exploreBtn}
+                onPress={() => navigation.navigate('Create Trip')}
+              >
+                <Text style={styles.exploreBtnText}>Generate Itinerary</Text>
+              </TouchableOpacity>
+            </View>
           }
           contentContainerStyle={[styles.listContent, { paddingBottom: tabBarHeight + 20 }]}
           showsVerticalScrollIndicator={false}
