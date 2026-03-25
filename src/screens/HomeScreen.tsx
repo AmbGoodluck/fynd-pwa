@@ -71,24 +71,20 @@ export default function HomeScreen({ navigation }: Props) {
   const hasSessionTrip = !!destination;
 
   const handleDeleteTrip = (trip_id: string, cityLabel: string) => {
-    const doDelete = async () => {
-      removeTrip(trip_id);
-      // Try both collections — one will match, the other fails silently
-      await Promise.allSettled([
-        deleteItinerary(trip_id),
-        deleteUserTrip(trip_id),
-      ]);
-    };
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Delete "${cityLabel}" from your recent trips?`)) {
-        doDelete();
-      }
-    } else {
-      Alert.alert('Delete Trip', `Remove "${cityLabel}" from your recent trips?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: doDelete },
-      ]);
-    }
+    Alert.alert('Delete Trip', `Remove "${cityLabel}" from your recent trips?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          removeTrip(trip_id);
+          await Promise.allSettled([
+            deleteItinerary(trip_id),
+            deleteUserTrip(trip_id),
+          ]);
+        },
+      },
+    ]);
   };
 
   const handleServicePress = (id: string) => {
@@ -259,37 +255,44 @@ export default function HomeScreen({ navigation }: Props) {
               const cityLabel = trip.city || 'My Trip';
               const dateLabel = formatRelativeDate(trip.last_accessed || trip.created_at);
               return (
-                <TouchableOpacity
-                  key={trip.trip_id}
-                  style={styles.itineraryCard}
-                  onLongPress={() => handleDeleteTrip(trip.trip_id, cityLabel)}
-                  delayLongPress={400}
-                  onPress={() => navigation.navigate('Itinerary', {
-                    places: trip.places.map(p => ({
-                      placeId: p.id,
-                      name: p.name,
-                      address: p.address,
-                      rating: p.rating ?? 0,
-                      description: p.description ?? '',
-                      photoRef: '',
-                      photoUrl: p.image,
-                      coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
-                    })),
-                    destination: cityLabel,
-                    tripId: trip.trip_id,
-                  })}
-                >
-                  <ImageBackground
-                    source={{ uri: coverImage }}
-                    style={styles.itineraryCardBg}
-                    imageStyle={styles.itineraryCardImg}
+                <View key={trip.trip_id} style={styles.itineraryCard}>
+                  <TouchableOpacity
+                    style={{ flex: 1 }}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate('Itinerary', {
+                      places: trip.places.map(p => ({
+                        placeId: p.id,
+                        name: p.name,
+                        address: p.address,
+                        rating: p.rating ?? 0,
+                        description: p.description ?? '',
+                        photoRef: '',
+                        photoUrl: p.image,
+                        coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
+                      })),
+                      destination: cityLabel,
+                      tripId: trip.trip_id,
+                    })}
                   >
-                    <View style={styles.itineraryCardOverlay}>
-                      <Text style={styles.itineraryCardCity} numberOfLines={1}>{cityLabel}</Text>
-                      <Text style={styles.itineraryCardDate}>{dateLabel}</Text>
-                    </View>
-                  </ImageBackground>
-                </TouchableOpacity>
+                    <ImageBackground
+                      source={{ uri: coverImage }}
+                      style={styles.itineraryCardBg}
+                      imageStyle={styles.itineraryCardImg}
+                    >
+                      <View style={styles.itineraryCardOverlay}>
+                        <Text style={styles.itineraryCardCity} numberOfLines={1}>{cityLabel}</Text>
+                        <Text style={styles.itineraryCardDate}>{dateLabel}</Text>
+                      </View>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.itineraryDeleteBtn}
+                    onPress={() => handleDeleteTrip(trip.trip_id, cityLabel)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Ionicons name="close" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </View>
               );
             })}
           </ScrollView>
@@ -469,6 +472,17 @@ const styles = StyleSheet.create({
   },
   itineraryCardCity: { fontSize: 14, fontFamily: F.bold, color: '#fff', letterSpacing: -0.2 },
   itineraryCardDate: { fontSize: 11, fontFamily: F.medium, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  itineraryDeleteBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyCard: {
     alignItems: 'center', paddingVertical: 40,
     marginHorizontal: 20, borderRadius: 28,
