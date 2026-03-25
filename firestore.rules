@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Feedback ────────────────────────────────────────────────────────────
+    // Anonymous writes allowed; reads/updates/deletes blocked (admin console only)
+    match /feedback/{docId} {
+      allow create: if request.resource.data.keys().hasAll(['type', 'platform', 'createdAt'])
+                    && request.resource.data.type in ['quick', 'rating'];
+      allow read, update, delete: if false;
+    }
+
+    // ── Saved Places ────────────────────────────────────────────────────────
+    // Each user can read, create, and delete their own saved places
+    match /savedPlaces/{docId} {
+      allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // ── User Trips (recent itineraries cache) ───────────────────────────────
+    match /user_trips/{docId} {
+      allow read:   if request.auth != null && resource.data.user_id == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+      allow update: if request.auth != null && resource.data.user_id == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.user_id == request.auth.uid;
+    }
+
+    // ── Itineraries ─────────────────────────────────────────────────────────
+    match /itineraries/{docId} {
+      allow read:   if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Shared Trips ────────────────────────────────────────────────────────
+    // Any authenticated user can read (needed to join via link)
+    // Only owner can create / delete
+    // Members can update member_count and members[] when joining
+    match /shared_trips/{tripId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.owner_id == request.auth.uid;
+      allow update: if request.auth != null && (
+                      resource.data.owner_id == request.auth.uid ||
+                      request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['member_count', 'members'])
+                    );
+      allow delete: if request.auth != null && resource.data.owner_id == request.auth.uid;
+    }
+
+    // ── Trip Members ────────────────────────────────────────────────────────
+    // Any authenticated user can read membership records (needed for member lists)
+    // Users can create their own membership; owner or member can delete
+    match /trip_members/{memberId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+      allow delete: if request.auth != null;
+    }
+
+    // ── Users ───────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read:  if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Trip Media ──────────────────────────────────────────────────────────
+    match /trip_media/{docId} {
+      allow read:   if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Default: deny everything else ───────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -38,13 +38,18 @@ const Iframe = 'iframe' as unknown as React.ComponentType<IframeProps & {
 const BRIDGE_LISTENER = `
 <script>
 (function () {
+  // Polyfill ReactNativeWebView so the map HTML's postMessage calls reach the parent.
+  // The map HTML guards all postMessage calls with `if (window.ReactNativeWebView)`.
+  // Without this polyfill that condition is always false on web, so mapReady,
+  // markerTap and navInfo messages are never delivered to MapScreen.
+  window.ReactNativeWebView = {
+    postMessage: function(data) { window.parent.postMessage(data, '*'); }
+  };
+  // Parent → iframe bridge: eval injected JS in the iframe's global scope
   window.addEventListener('message', function (e) {
-    // Only accept commands from the parent window
     if (e.source !== window.parent) return;
     if (typeof e.data !== 'string' || e.data === '') return;
     try {
-      // Indirect eval runs in the iframe's global scope, where map functions
-      // (setActiveStop, setUserLocation, showOverview …) are defined.
       // eslint-disable-next-line no-new-func
       (new Function(e.data.replace(/; true;$/, '')))();
     } catch (err) {
@@ -90,10 +95,6 @@ const FyndMapView = forwardRef<FyndMapViewRef, Props>(
     //   1. Replace ReactNativeWebView.postMessage → window.parent.postMessage
     //   2. Inject the bridge listener so injectJavaScript works
     const webHtml = html
-      .replace(
-        /window\.ReactNativeWebView\.postMessage\(/g,
-        'window.parent.postMessage('
-      )
       .replace('</body>', `${BRIDGE_LISTENER}\n</body>`);
 
     return (

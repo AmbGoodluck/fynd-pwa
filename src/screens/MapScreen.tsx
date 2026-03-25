@@ -546,7 +546,7 @@ export default function MapScreen({ navigation, route }: Props) {
   // Safety valve: clear loading overlay after 5 s max so the UI is never stuck.
   // mapReady message from JS clears it sooner when the map actually initialises.
   useEffect(() => {
-    const t = setTimeout(() => setMapLoading(false), 5000);
+    const t = setTimeout(() => setMapLoading(false), 2000);
     return () => clearTimeout(t);
   }, []);
 
