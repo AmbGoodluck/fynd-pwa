@@ -39,7 +39,7 @@ const BRIDGE_LISTENER = `
 <script>
 (function () {
   // Polyfill ReactNativeWebView so the map HTML's postMessage calls reach the parent.
-  // The map HTML guards all postMessage calls with `if (window.ReactNativeWebView)`.
+  // The map HTML guards all postMessage calls with if(window.ReactNativeWebView).
   // Without this polyfill that condition is always false on web, so mapReady,
   // markerTap and navInfo messages are never delivered to MapScreen.
   window.ReactNativeWebView = {
