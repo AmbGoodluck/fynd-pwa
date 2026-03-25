@@ -10,6 +10,7 @@ interface RecentTripStore {
   fetchError: string | null;
   setRecentTrips: (trips: RecentTrip[]) => void;
   prependTrip: (trip: RecentTrip) => void;
+  removeTrip: (trip_id: string) => void;
   clearRecentTrips: () => void;
   setHydrating: (v: boolean) => void;
   setFetchError: (err: string | null) => void;
@@ -30,6 +31,9 @@ export const useRecentTripStore = create<RecentTripStore>((set) => ({
         ...s.recentTrips.filter((t) => t.trip_id !== trip.trip_id),
       ],
     })),
+
+  removeTrip: (trip_id) =>
+    set((s) => ({ recentTrips: s.recentTrips.filter((t) => t.trip_id !== trip_id) })),
 
   clearRecentTrips: () => set({ recentTrips: [] }),
   setHydrating: (v) => set({ isHydrating: v }),

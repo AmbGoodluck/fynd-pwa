@@ -4,6 +4,7 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -101,6 +102,13 @@ export async function saveUserTrip(
 
   await setDoc(doc(db, USER_TRIPS_COL, trip.trip_id), trip);
   return trip;
+}
+
+/**
+ * Delete a trip document from user_trips by its trip_id (document ID).
+ */
+export async function deleteUserTrip(tripId: string): Promise<void> {
+  await deleteDoc(doc(db, USER_TRIPS_COL, tripId));
 }
 
 /**

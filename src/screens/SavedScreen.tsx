@@ -14,6 +14,7 @@ import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
 import { F } from '../theme/fonts';
 import { getRecentItineraries, deleteItinerary, type ItineraryDoc } from '../services/database';
+import { useRecentTripStore } from '../store/useRecentTripStore';
 
 import { FALLBACK_IMAGE } from '../constants';
 
@@ -23,6 +24,7 @@ export default function SavedScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest, savedPlaces, unsavePlace } = useGuestStore();
   const { places: tempPlaces, addPlace, clear: clearTemp } = useTempItineraryStore();
+  const removeTrip = useRecentTripStore(s => s.removeTrip);
   const tabBarHeight = useTabBarHeight();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -292,6 +294,7 @@ export default function SavedScreen({ navigation }: Props) {
                                   try {
                                     await deleteItinerary(item.id);
                                     setItineraries(prev => prev.filter(i => i.id !== item.id));
+                                    removeTrip(item.id);
                                   } catch (e) {
                                     Alert.alert('Error', 'Failed to delete itinerary.');
                                   }

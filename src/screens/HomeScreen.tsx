@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, FlatList, useWindowDimensions, Image, Modal,
-  TouchableWithoutFeedback, Platform, ActivityIndicator,
+  TouchableWithoutFeedback, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,8 @@ import PWATopBar from '../components/PWATopBar';
 import { LOGO_SIZE } from '../theme/sizes';
 import { FALLBACK_IMAGE } from '../constants';
 import { formatRelativeDate } from '../utils/date';
+import { deleteItinerary } from '../services/database';
+import { deleteUserTrip } from '../services/userTripService';
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -40,7 +42,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
   const { destination, selectedVibes, explorationHours } = useTripStore();
-  const { recentTrips, isHydrating, fetchError } = useRecentTripStore();
+  const { recentTrips, isHydrating, fetchError, removeTrip } = useRecentTripStore();
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef<FlatList>(null);
   const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
@@ -67,6 +69,27 @@ export default function HomeScreen({ navigation }: Props) {
   }, [bannerIndex, width]);
 
   const hasSessionTrip = !!destination;
+
+  const handleDeleteTrip = (trip_id: string, cityLabel: string) => {
+    const doDelete = async () => {
+      removeTrip(trip_id);
+      // Try both collections — one will match, the other fails silently
+      await Promise.allSettled([
+        deleteItinerary(trip_id),
+        deleteUserTrip(trip_id),
+      ]);
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete "${cityLabel}" from your recent trips?`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('Delete Trip', `Remove "${cityLabel}" from your recent trips?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
 
   const handleServicePress = (id: string) => {
     if (isGuest || !isAuthenticated) {
@@ -239,6 +262,8 @@ export default function HomeScreen({ navigation }: Props) {
                 <TouchableOpacity
                   key={trip.trip_id}
                   style={styles.itineraryCard}
+                  onLongPress={() => handleDeleteTrip(trip.trip_id, cityLabel)}
+                  delayLongPress={400}
                   onPress={() => navigation.navigate('Itinerary', {
                     places: trip.places.map(p => ({
                       placeId: p.id,
