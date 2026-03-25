@@ -1,3 +1,7 @@
+# All pages — send full URL as referrer (needed for Google Maps API key domain restrictions)
+/*
+  Referrer-Policy: no-referrer-when-downgrade
+
 # index.html — always revalidate
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate

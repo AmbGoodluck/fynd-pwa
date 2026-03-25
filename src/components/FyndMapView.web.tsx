@@ -103,7 +103,7 @@ const FyndMapView = forwardRef<FyndMapViewRef, Props>(
           ref={iframeRef as any}
           srcDoc={webHtml}
           style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           title="Fynd Map"
         />
       </View>

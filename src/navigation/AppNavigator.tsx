@@ -252,6 +252,11 @@ export default function AppNavigator() {
         useSharedTripStore.getState().setMyTrips([]);
         useSharedTripStore.getState().setJoinedTrips([]);
       } else {
+        // Clear guest flag whenever Firebase confirms a real user is signed in.
+        // isGuest is persisted via AsyncStorage — without this it can stay true
+        // after login, causing save gates to fire even for authenticated users.
+        useGuestStore.getState().setGuest(false);
+
         const currentId = useAuthStore.getState().user?.id;
         if (currentId !== user.uid) {
           try {
