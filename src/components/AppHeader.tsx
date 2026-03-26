@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
     marginLeft: -10,
   },
   logoIcon: {
-    width: 28,
-    height: 28,
+    width: 32.2,
+    height: 32.2,
   },
   titleRow: {
     flex: 1,

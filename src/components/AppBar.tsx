@@ -100,8 +100,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   rootLogo: {
-    width: 32,
-    height: 32,
+    width: 36.8,
+    height: 36.8,
   },
   spacer: { flex: 1 },
   iconBtn: {
@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   subLogo: {
-    width: 28,
-    height: 28,
+    width: 32.2,
+    height: 32.2,
     marginLeft: 8,
   },
 });
