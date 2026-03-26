@@ -17,6 +17,7 @@ import { LOGO_SIZE } from '../theme/sizes';
 import { FALLBACK_IMAGE } from '../constants';
 import { formatRelativeDate } from '../utils/date';
 import { deleteItinerary } from '../services/database';
+import TrendingSection from '../components/TrendingSection';
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
@@ -156,6 +157,9 @@ export default function HomeScreen({ navigation }: Props) {
             ))}
           </View>
         </View>
+
+        {/* ── Trending near you ────────────────────────────── */}
+        <TrendingSection navigation={navigation} />
 
         {/* ── ServiceHub quick icons ───────────────────────── */}
         <View style={styles.sectionHeader}>
@@ -387,25 +391,25 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   profileBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#22C55E', shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
-  profileInitial: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  bannerWrap: { marginHorizontal: 20, marginTop: 8, marginBottom: 20 },
-  banner: { height: 260, borderRadius: 24, overflow: 'hidden' },
+  profileInitial: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  bannerWrap: { marginHorizontal: 20, marginTop: 8, marginBottom: 16 },
+  banner: { height: 182, borderRadius: 24, overflow: 'hidden' },
   bannerImage: { borderRadius: 24 },
   bannerOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 24, padding: 24, justifyContent: 'flex-end',
+    borderRadius: 24, padding: 16, justifyContent: 'flex-end',
   },
-  greeting: { fontSize: 16, fontFamily: F.medium, color: 'rgba(255,255,255,0.9)', marginBottom: 6, letterSpacing: 0.2 },
-  heroTitle: { fontSize: 30, fontFamily: F.bold, color: '#fff', marginBottom: 20, lineHeight: 36, letterSpacing: -0.5 },
+  greeting: { fontSize: 12, fontFamily: F.medium, color: 'rgba(255,255,255,0.9)', marginBottom: 4, letterSpacing: 0.2 },
+  heroTitle: { fontSize: 18, fontFamily: F.semibold, color: '#fff', marginBottom: 14, lineHeight: 24, letterSpacing: -0.3 },
   createTripBtn: {
     alignSelf: 'flex-start', backgroundColor: '#22C55E',
-    borderRadius: 22, paddingHorizontal: 24, paddingVertical: 12,
+    borderRadius: 22, paddingHorizontal: 20, paddingVertical: 9,
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    shadowColor: '#22C55E', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#22C55E', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 3 },
   },
   createTripBtnText: { color: '#fff', fontFamily: F.bold, fontSize: 15 },
   bannerDots: { flexDirection: 'row', justifyContent: 'center', marginTop: 12, gap: 6 },

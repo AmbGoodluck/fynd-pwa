@@ -69,6 +69,7 @@ import SharedTripsScreen from '../screens/SharedTripsScreen';
 import JoinTripScreen from '../screens/JoinTripScreen';
 import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
 import MomentsScreen from '../screens/MomentsScreen';
+import CategoryPlacesScreen from '../screens/CategoryPlacesScreen';
 
 const MapTabScreen = (props: any) => <MapScreen {...props} />;
 const ServiceHubTabScreen = (props: any) => <ServiceHubScreen {...props} />;
@@ -372,6 +373,9 @@ export default function AppNavigator() {
           <Stack.Screen name="JoinTrip"         component={JoinTripScreen} />
           <Stack.Screen name="SharedTripDetail" component={SharedTripDetailScreen} />
           <Stack.Screen name="Moments"          component={MomentsScreen} />
+
+          {/* ── Discovery ─────────────────────────────── */}
+          <Stack.Screen name="CategoryPlaces" component={CategoryPlacesScreen} />
         </Stack.Navigator>
       </View>
     </NavigationContainer>
