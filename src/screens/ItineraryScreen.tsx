@@ -19,6 +19,7 @@ import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { useTripStore } from '../store/useTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
+import AppBar from '../components/AppBar';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -326,7 +327,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
         <View style={styles.cardContent}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.placeName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.placeName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.placeDesc} numberOfLines={2}>{item.description}</Text>
             
             <View style={styles.statsRow}>
@@ -368,34 +369,34 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     );
   };
 
+  const shareBtn = (
+    <TouchableOpacity
+      style={styles.shareHeaderBtn}
+      onPress={handleShareTrip}
+      disabled={sharing}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      activeOpacity={0.7}
+    >
+      <Ionicons
+        name={sharing ? 'hourglass-outline' : 'share-social-outline'}
+        size={16}
+        color="#1A1A1A"
+      />
+      <Text style={styles.shareHeaderBtnText}>
+        {sharing ? 'Sharing…' : 'Share'}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Custom header with Share button */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.headerBack}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>Itinerary</Text>
-        <TouchableOpacity
-          style={styles.shareHeaderBtn}
-          onPress={handleShareTrip}
-          disabled={sharing}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons
-            name={sharing ? 'hourglass-outline' : 'share-social-outline'}
-            size={18}
-            color="#22C55E"
-          />
-          <Text style={styles.shareHeaderBtnText}>
-            {sharing ? 'Loading…' : 'Share Trip'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* App bar with Share button as right action */}
+      <AppBar
+        variant="sub"
+        title="Itinerary"
+        onBack={() => navigation.goBack()}
+        rightAction={shareBtn}
+      />
 
       <View style={styles.headerSection}>
         <Text style={styles.title}>Itinerary for {destination}</Text>
@@ -437,7 +438,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               style={styles.momentsBtn}
               onPress={() => navigation.navigate('Moments', { trip_id: tripData.tripId, tripName: destination, isMember: true })}
             >
-              <Ionicons name="camera-outline" size={18} color="#22C55E" style={{ marginRight: 6 }} />
+              <Ionicons name="camera-outline" size={18} color="#10B981" style={{ marginRight: 6 }} />
               <Text style={styles.momentsBtnText}>Moments</Text>
             </TouchableOpacity>
           ) : null}
@@ -471,7 +472,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
             <TouchableOpacity style={styles.modalOption} onPress={openInAppMap}>
               <View style={styles.modalOptionIcon}>
-                <Ionicons name="map-outline" size={24} color="#22C55E" />
+                <Ionicons name="map-outline" size={24} color="#10B981" />
               </View>
               <View style={styles.modalOptionText}>
                 <Text style={styles.modalOptionLabel}>In-App Map</Text>
@@ -514,7 +515,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               <View style={styles.shareModalSheet}>
                 <View style={styles.modalHandle} />
                 <View style={styles.shareModalIconWrap}>
-                  <Ionicons name="share-social-outline" size={28} color="#22C55E" />
+                  <Ionicons name="share-social-outline" size={28} color="#10B981" />
                 </View>
                 <Text style={styles.shareModalTitle}>Share Trip</Text>
                 <Text style={styles.shareModalBody}>Add up to 7 members to your trip</Text>
@@ -549,7 +550,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
                   style={styles.viewTripsBtn}
                   onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
                 >
-                  <Ionicons name="people-outline" size={15} color="#22C55E" style={{ marginRight: 6 }} />
+                  <Ionicons name="people-outline" size={15} color="#10B981" style={{ marginRight: 6 }} />
                   <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
                 </TouchableOpacity>
 
@@ -682,24 +683,23 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   headerBack: { width: 36, alignItems: 'flex-start', justifyContent: 'center', padding: 2 },
-  headerTitle: { flex: 1, fontSize: 18, fontFamily: F.bold, color: '#111827', letterSpacing: 0.1 },
+  headerTitle: { flex: 1, fontSize: 18, fontFamily: F.bold, color: '#1A1A1A', letterSpacing: 0.1 },
   shareHeaderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 10,
-    paddingHorizontal: 10,
+    gap: 5,
+    paddingHorizontal: 4,
     paddingVertical: 6,
+    marginRight: 8,
   },
-  shareHeaderBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
+  shareHeaderBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#1A1A1A' },
 
   headerSection: {
     paddingHorizontal: 20, paddingVertical: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1, borderBottomColor: '#F2F2F7',
   },
-  title: { fontSize: 20, fontFamily: F.semibold, color: '#111827', marginBottom: 2 },
+  title: { fontSize: 20, fontFamily: F.semibold, color: '#1A1A1A', marginBottom: 2 },
   metaText: { fontSize: 13, color: '#6B7280' },
   dragHint: { fontSize: 12, color: '#9CA3AF' },
   card: {
@@ -721,7 +721,7 @@ const styles = StyleSheet.create({
   },
   indexBadgeText: { color: '#fff', fontSize: 13, fontFamily: F.bold },
   cardContent: { flex: 1, padding: 14, flexDirection: 'row', alignItems: 'center' },
-  placeName: { fontSize: 17, fontFamily: F.bold, color: '#111827', letterSpacing: -0.3 },
+  placeName: { fontSize: 15, fontFamily: F.semibold, color: '#1A1A1A', lineHeight: 20 },
   placeDesc: { fontSize: 13, fontFamily: F.regular, color: '#4B5563', marginVertical: 4, lineHeight: 18 },
   statsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -740,9 +740,9 @@ const styles = StyleSheet.create({
   },
 
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#1A1A1A', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  goBackBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
+  goBackBtn: { backgroundColor: '#10B981', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   goBackBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
   bottomBar: {
     paddingHorizontal: 16, paddingVertical: 16,
@@ -761,15 +761,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#22C55E',
+    borderColor: '#10B981',
     backgroundColor: '#F0FDF4',
   },
-  momentsBtnText: { color: '#22C55E', fontSize: 15, fontFamily: F.semibold },
+  momentsBtnText: { color: '#10B981', fontSize: 15, fontFamily: F.semibold },
   mapBtn: {
     flex: 1,
-    backgroundColor: '#22C55E', borderRadius: 16, height: 54,
+    backgroundColor: '#10B981', borderRadius: 16, height: 54,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12,
+    shadowColor: '#10B981', shadowOpacity: 0.35, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   mapBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     width: 40, height: 4, borderRadius: 2,
     backgroundColor: '#E5E5EA', alignSelf: 'center', marginBottom: 20,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 },
   modalSubtitle: { fontSize: 14, color: '#57636C', marginBottom: 20 },
   modalOption: {
     flexDirection: 'row', alignItems: 'center',
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginRight: 14,
   },
   modalOptionText: { flex: 1 },
-  modalOptionLabel: { fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 2 },
+  modalOptionLabel: { fontSize: 16, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
   modalOptionDesc: { fontSize: 13, color: '#57636C' },
   modalCancel: {
     marginTop: 16, height: 48, borderRadius: 14,
@@ -810,9 +810,9 @@ const styles = StyleSheet.create({
     width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0FDF4',
     alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  shareModalTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 6, textAlign: 'center' },
+  shareModalTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, textAlign: 'center' },
   shareModalBody: {
-    fontSize: 16, color: '#111827', textAlign: 'center',
+    fontSize: 16, color: '#1A1A1A', textAlign: 'center',
     fontFamily: F.semibold,
     lineHeight: 24, marginBottom: 20, paddingHorizontal: 16,
   },
@@ -822,11 +822,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14,
   },
   shareLinkText: {
-    fontSize: 13, color: '#111827', fontFamily: 'monospace',
+    fontSize: 13, color: '#1A1A1A', fontFamily: 'monospace',
   },
   copyBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#22C55E', borderRadius: 14,
+    backgroundColor: '#10B981', borderRadius: 14,
     width: '100%', height: 50, marginBottom: 12,
   },
   copyBtnDone: { backgroundColor: '#16A34A' },
@@ -839,10 +839,10 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#22C55E',
+    borderColor: '#10B981',
     marginBottom: 8,
   },
-  viewTripsBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#22C55E' },
+  viewTripsBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#10B981' },
 
   copiedToast: {
     position: 'absolute',

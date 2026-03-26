@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Platform, Modal, TouchableWithoutFeedback, FlatList,
-  Image, Keyboard,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreview
 import GuestGateModal from '../components/GuestGateModal';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
 import PlaceCard from '../components/PlaceCard';
+import AppBar from '../components/AppBar';
 import { useTripStore } from '../store/useTripStore';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -236,43 +237,20 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     );
   }, [selectedForItinerary, bookingLinks, isAuthenticated, isGuest]);
 
-  // Avatar: photo or initial letter
-  const displayName = user?.fullName?.split(' ')[0] || 'U';
-  const avatarLetter = displayName[0]?.toUpperCase() ?? '?';
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
 
-      {/* ── Top bar: back | Fynd | avatar ────────────────────── */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back-outline" size={36} color="#111827" />
-        </TouchableOpacity>
+      {/* ── Top bar ──────────────────────────────────────────── */}
+      <AppBar
+        variant="sub"
+        title="Suggested Places"
+        onBack={() => navigation.goBack()}
+      />
 
-        <Text style={styles.topBarTitle}>Fynd</Text>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Profile')}
-          style={styles.avatarWrap}
-        >
-          {user?.photoURL ? (
-            <Image source={{ uri: user.photoURL }} style={styles.avatarImg} />
-          ) : (
-            <View style={styles.avatarCircle}>
-              <Text style={styles.avatarLetter}>{avatarLetter}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Sub-header: title + subtitle + search ─────────────── */}
+      {/* ── Sub-header: subtitle + search ─────────────────────── */}
       <View style={styles.subHeader}>
-        <Text style={styles.sectionTitle}>Suggested Places</Text>
         <Text style={styles.sectionSubtitle}>
-          Search for places you would like to add to your trip
+          Select places you'd like to include in your itinerary
         </Text>
         <View style={styles.searchRow}>
           <View style={styles.searchInputWrap}>
@@ -470,7 +448,7 @@ const styles = StyleSheet.create({
   topBarTitle: {
     fontSize: 22,
     fontFamily: F.semibold,
-    color: '#111827',
+    color: '#1A1A1A',
     letterSpacing: 0.2,
   },
   avatarWrap: {
@@ -479,7 +457,7 @@ const styles = StyleSheet.create({
   avatarImg: { width: 40, height: 40, borderRadius: 20, resizeMode: 'cover' },
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center',
   },
   avatarLetter: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
 
@@ -493,7 +471,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontFamily: F.semibold,
-    color: '#111827',
+    color: '#1A1A1A',
     marginLeft: 20,
     marginTop: 14,
     marginBottom: 5,
@@ -527,26 +505,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontFamily: F.regular,
-    color: '#111827',
+    color: '#1A1A1A',
   },
   searchBtn: {
-    backgroundColor: '#22C55E',
-    borderRadius: 8,
-    width: 80,
-    height: 32,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 9999,
+    paddingHorizontal: 16,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  searchBtnText: { color: '#fff', fontSize: 15, fontFamily: F.medium },
+  searchBtnText: { color: '#fff', fontSize: 13, fontFamily: F.semibold },
 
   // ── List ─────────────────────────────────────────────────────
   list: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 24 },
 
   // ── Empty state ──────────────────────────────────────────────
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#1A1A1A', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  backBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
+  backBtn: { backgroundColor: '#10B981', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   backBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
 
   // ── CTA bar ──────────────────────────────────────────────────
@@ -555,13 +533,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
   },
   ctaBtn: {
-    backgroundColor: '#22C55E', borderRadius: 16, height: 58,
+    backgroundColor: '#10B981', borderRadius: 12, height: 50,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    shadowColor: '#10B981', shadowOpacity: 0.3, shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 }, elevation: 4,
   },
-  ctaBtnDisabled: { backgroundColor: '#9CA3AF', shadowOpacity: 0 },
-  ctaBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
+  ctaBtnDisabled: { backgroundColor: '#10B981', opacity: 0.4, shadowOpacity: 0 },
+  ctaBtnText: { color: '#fff', fontSize: 15, fontFamily: F.semibold },
 
   // ── Modals ───────────────────────────────────────────────────
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
@@ -575,18 +553,18 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   modalEmoji: { fontSize: 28 },
-  modalTitle: { fontSize: 22, fontFamily: F.bold, color: '#111827', marginBottom: 10, textAlign: 'center' },
+  modalTitle: { fontSize: 22, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 10, textAlign: 'center' },
   modalBody: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 4 },
   modalPrimaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
   modalOutlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    width: '100%', borderWidth: 1.5, borderColor: '#10B981',
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.semibold },
+  modalOutlineBtnText: { color: '#10B981', fontSize: 16, fontFamily: F.semibold },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.semibold },
 });

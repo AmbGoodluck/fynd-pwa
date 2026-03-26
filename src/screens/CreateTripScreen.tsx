@@ -5,7 +5,7 @@ import {
   PanResponder, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTabBarHeight } from '../hooks/useTabBarHeight';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
@@ -31,6 +31,8 @@ const VIBES = [
   { id: 'sports', label: 'Sports', icon: 'football-outline', color: '#2196F3', keyword: 'sports stadium arena recreation' },
   { id: 'wellness', label: 'Wellness', icon: 'heart-outline', color: '#00BCD4', keyword: 'spa wellness yoga meditation' },
   { id: 'photography', label: 'Photography', icon: 'camera-outline', color: '#FF9800', keyword: 'scenic viewpoint photography landmark' },
+  { id: 'salon_beauty', label: 'Salon & Beauty', icon: 'cut-outline', color: '#EC4899', keyword: 'beauty_salon hair_care spa nail salon' },
+  { id: 'parks_nature', label: 'Parks & Nature', icon: 'leaf-outline', color: '#16A34A', keyword: 'park national_park nature trail campground hiking' },
 ];
 
 const TIME_OF_DAY = [
@@ -91,7 +93,7 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
       {...pan.panHandlers}
     >
       <View style={{ height: 6, backgroundColor: '#F2F2F7', borderRadius: 3 }}>
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: '#22C55E', borderRadius: 3 }} />
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: '#10B981', borderRadius: 3 }} />
       </View>
       <View
         style={{
@@ -100,7 +102,7 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
           left: HPAD + ratio * trackW - THUMB / 2,
           width: THUMB, height: THUMB, borderRadius: THUMB / 2,
           backgroundColor: '#fff',
-          borderWidth: 2, borderColor: '#22C55E',
+          borderWidth: 2, borderColor: '#10B981',
           shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
           shadowOffset: { width: 0, height: 3 },
         }}
@@ -116,7 +118,7 @@ type Props = { navigation: any };
 export default function CreateTripScreen({ navigation }: Props) {
   const [step, setStep] = useState(1);
 
-  const tabBarHeight = useTabBarHeight();
+  const tabBarHeight = useBottomTabBarHeight();
 
   // Step 1 state
   const [destination, setDestination] = useState('');
@@ -153,10 +155,6 @@ export default function CreateTripScreen({ navigation }: Props) {
 
   const handleSelectSuggestion = (suggestion: AutocompleteSuggestion) => {
     setDestination(suggestion.mainText || suggestion.description);
-    // Clear any stale coordinates from a previous location so the new city
-    // doesn't inherit the wrong origin for distance filtering/sorting.
-    setLatitude(null);
-    setLongitude(null);
     setSuggestions([]);
     setShowLocationModal(false);
     setLocationInput('');
@@ -383,7 +381,7 @@ export default function CreateTripScreen({ navigation }: Props) {
               </View>
               {destination ? (
                 <View style={styles.destinationBadge}>
-                  <Ionicons name="location" size={13} color="#22C55E" />
+                  <Ionicons name="location" size={13} color="#10B981" />
                   <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
                 </View>
               ) : null}
@@ -541,7 +539,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                 returnKeyType="search"
               />
               {suggestionsLoading && (
-                <ActivityIndicator size="small" color="#22C55E" style={{ marginLeft: 6 }} />
+                <ActivityIndicator size="small" color="#10B981" style={{ marginLeft: 6 }} />
               )}
             </View>
 
@@ -562,7 +560,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                     onPress={() => handleSelectSuggestion(item)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location-outline" size={14} color="#22C55E" style={{ marginRight: 8 }} />
+                    <Ionicons name="location-outline" size={14} color="#10B981" style={{ marginRight: 8 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.suggestionMain} numberOfLines={1}>{item.mainText}</Text>
                       {item.secondaryText ? (
@@ -595,25 +593,25 @@ export default function CreateTripScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
 
-  progressWrapper: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 },
+  progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
-  progressActive: { backgroundColor: '#22C55E' },
+  progressActive: { backgroundColor: '#10B981' },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
-  scrollContent: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 4 },
-  sectionTitle: { fontSize: 27, fontFamily: F.bold, color: '#111827', marginBottom: 24, marginTop: 8 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
+  sectionTitle: { fontSize: 27, fontFamily: F.bold, color: '#111827', marginBottom: 16, marginTop: 10 },
 
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },
   cardLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { fontSize: 15, fontFamily: F.medium, color: '#111827', flex: 1 },
-  cardValue: { fontSize: 16, fontFamily: F.bold, color: '#22C55E', marginLeft: 8 },
+  cardValue: { fontSize: 16, fontFamily: F.bold, color: '#10B981', marginLeft: 8 },
 
   locationBtnRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   locationBtn: { flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 12 },
   locationBtnOutline: { borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#fff' },
   locationBtnOutlineText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
-  locationBtnFilled: { backgroundColor: '#22C55E' },
+  locationBtnFilled: { backgroundColor: '#10B981' },
   locationBtnFilledText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
   destinationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: '#F0FDF4', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8 },
   destinationBadgeText: { fontSize: 13, fontFamily: F.medium, color: '#16A34A', flex: 1 },
@@ -623,16 +621,16 @@ const styles = StyleSheet.create({
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   timeChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  timeChipActive: { backgroundColor: '#22C55E', borderColor: '#22C55E' },
+  timeChipActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
   timeChipText: { fontSize: 13, fontFamily: F.medium, color: '#374151' },
   timeChipTextActive: { fontFamily: F.semibold, color: '#fff' },
 
   ctaBtn: { marginTop: 8, height: 52, borderRadius: 14, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  ctaBtnEnabled: { backgroundColor: '#22C55E' },
+  ctaBtnEnabled: { backgroundColor: '#10B981' },
   ctaBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
   ctaBtnTextEnabled: { color: '#fff' },
 
-  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   vibeTitleRow: { width: '100%', marginBottom: 6 },
   vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', lineHeight: 32 },
   vibeSubtitleRow: { width: '100%', marginBottom: 16 },
@@ -660,7 +658,7 @@ const styles = StyleSheet.create({
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
   findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  findBtnEnabled: { backgroundColor: '#22C55E' },
+  findBtnEnabled: { backgroundColor: '#10B981' },
   findBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
   findBtnTextEnabled: { color: '#fff' },
 
@@ -702,6 +700,7 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 6 },
   modalCancel: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
   modalCancelText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
-  modalConfirm: { flex: 1, height: 44, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  modalConfirm: { flex: 1, height: 44, borderRadius: 12, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
   modalConfirmText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
 });
+ 

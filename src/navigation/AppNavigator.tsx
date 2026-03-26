@@ -77,13 +77,22 @@ const ServiceHubTabScreen = (props: any) => <ServiceHubScreen {...props} />;
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-// PWA bottom nav: Home | Create Trip | Map | ServiceHub | Saved
+// PWA bottom nav: Home | Create | Map | Services | Saved
 const TAB_ICONS: Record<string, { default: string; active: string }> = {
   Home:           { default: 'home-outline',         active: 'home' },
   'Create Trip':  { default: 'add-circle-outline',   active: 'add-circle' },
   Map:            { default: 'map-outline',           active: 'map' },
   ServiceHub:     { default: 'compass-outline',       active: 'compass' },
   Saved:          { default: 'bookmark-outline',      active: 'bookmark' },
+};
+
+// Shorter display labels for the tab bar
+const TAB_LABELS: Record<string, string> = {
+  Home:           'Home',
+  'Create Trip':  'Create',
+  Map:            'Map',
+  ServiceHub:     'Services',
+  Saved:          'Saved',
 };
 
 function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
@@ -120,9 +129,14 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
               />
             );
           },
-          tabBarActiveTintColor:   '#22C55E',
+          tabBarActiveTintColor:   '#10B981',
           tabBarInactiveTintColor: '#9CA3AF',
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '500', marginBottom: 2 },
+          tabBarLabel: ({ focused, color }) =>
+            React.createElement(
+              Text,
+              { style: { fontSize: 11, fontWeight: focused ? '600' : '500', color, marginBottom: 2 } },
+              TAB_LABELS[route.name] ?? route.name,
+            ),
           tabBarStyle: isMobile
             ? {
                 height: 60 + safeBottom,
@@ -189,7 +203,7 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
               <View style={navStyles.modalSheet}>
                 <View style={navStyles.modalHandle} />
                 <View style={navStyles.modalIconWrap}>
-                  <Ionicons name="bookmark-outline" size={32} color="#22C55E" />
+                  <Ionicons name="bookmark-outline" size={32} color="#10B981" />
                 </View>
                 <Text style={navStyles.modalTitle}>Account Required</Text>
                 <Text style={navStyles.modalBody}>
@@ -417,15 +431,15 @@ const navStyles = StyleSheet.create({
     lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
   },
   primaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   outlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    width: '100%', borderWidth: 1.5, borderColor: '#10B981',
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  outlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
+  outlineBtnText: { color: '#10B981', fontSize: 16, fontWeight: '600' },
   ghostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   ghostBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
 });

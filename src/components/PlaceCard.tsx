@@ -82,7 +82,7 @@ const PlaceCard = React.memo(function PlaceCard({
 
         {/* Right: content */}
         <View style={styles.bodyH}>
-          <Text style={styles.nameH} numberOfLines={1}>{name}</Text>
+          <Text style={styles.nameH} numberOfLines={2}>{name}</Text>
 
           {(description || category) ? (
             <Text style={styles.descriptionH} numberOfLines={2}>
@@ -100,13 +100,13 @@ const PlaceCard = React.memo(function PlaceCard({
             ) : null}
             {distance ? (
               <View style={styles.metaItem}>
-                <Ionicons name="walk-outline" size={12} color="#57636C" />
+                <Ionicons name="walk-outline" size={12} color="#6B7280" />
                 <Text style={styles.metaText}>{distance}</Text>
               </View>
             ) : null}
             {duration ? (
               <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={12} color="#57636C" />
+                <Ionicons name="time-outline" size={12} color="#6B7280" />
                 <Text style={styles.metaText}>{duration}</Text>
               </View>
             ) : null}
@@ -116,9 +116,9 @@ const PlaceCard = React.memo(function PlaceCard({
           {(onAdd || onBook || onNavigate) ? (
             <View style={styles.actionRowH}>
               {onNavigate ? (
-                <TouchableOpacity style={styles.navBtnH} onPress={onNavigate}>
-                  <Ionicons name="navigate-outline" size={13} color="#22C55E" />
-                  <Text style={styles.navBtnHText}>Navigate</Text>
+                <TouchableOpacity style={styles.pillBtnH} onPress={onNavigate}>
+                  <Ionicons name="navigate-outline" size={12} color="#fff" />
+                  <Text style={styles.pillBtnHText}>Navigate</Text>
                 </TouchableOpacity>
               ) : null}
               {onBook ? (
@@ -160,14 +160,14 @@ const PlaceCard = React.memo(function PlaceCard({
             <Ionicons
               name={isSaved ? 'heart' : 'heart-outline'}
               size={22}
-              color={isSaved ? '#EF4444' : '#111827'}
+              color={isSaved ? '#EF4444' : '#1A1A1A'}
             />
           </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={1}>{name}</Text>
+        <Text style={styles.name} numberOfLines={2}>{name}</Text>
 
         {description ? (
           <Text style={styles.description} numberOfLines={2}>{description}</Text>
@@ -184,13 +184,13 @@ const PlaceCard = React.memo(function PlaceCard({
           )}
           {distance ? (
             <View style={styles.metaItem}>
-              <Ionicons name="walk-outline" size={13} color="#57636C" />
+              <Ionicons name="walk-outline" size={13} color="#6B7280" />
               <Text style={styles.metaText}>{distance}</Text>
             </View>
           ) : null}
           {duration ? (
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={13} color="#57636C" />
+              <Ionicons name="time-outline" size={13} color="#6B7280" />
               <Text style={styles.metaText}>{duration}</Text>
             </View>
           ) : null}
@@ -203,7 +203,11 @@ const PlaceCard = React.memo(function PlaceCard({
                 style={[styles.addBtn, isAdded && styles.addBtnSelected]}
                 onPress={onAdd}
               >
-                <Ionicons name={isAdded ? 'checkmark-circle' : 'add-circle-outline'} size={16} color={isAdded ? '#fff' : '#22C55E'} />
+                <Ionicons
+                  name={isAdded ? 'checkmark-circle' : 'add-circle-outline'}
+                  size={16}
+                  color={isAdded ? '#fff' : '#10B981'}
+                />
                 <Text style={[styles.addBtnText, isAdded && styles.addBtnTextSelected]}>
                   {isAdded ? 'Added' : 'Add to Itinerary'}
                 </Text>
@@ -217,7 +221,7 @@ const PlaceCard = React.memo(function PlaceCard({
             )}
             {onNavigate && (
               <TouchableOpacity style={styles.navBtn} onPress={onNavigate}>
-                <Ionicons name="navigate-outline" size={14} color="#22C55E" />
+                <Ionicons name="navigate-outline" size={14} color="#fff" />
                 <Text style={styles.navBtnText}>Navigate</Text>
               </TouchableOpacity>
             )}
@@ -236,23 +240,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 3,
     borderWidth: 0.5,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
-    minHeight: 130,
+    minHeight: 120,
   },
   imageContainerH: {
-    width: 116,
+    width: 100,
     position: 'relative',
   },
   imageH: {
-    width: 116,
+    width: 100,
     height: '100%',
-    minHeight: 130,
+    minHeight: 120,
     resizeMode: 'cover',
   },
   // Order badge — green circle top-left of image
@@ -260,10 +264,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(34, 197, 94, 0.92)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -271,7 +275,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
   },
-  badgeHText: { fontSize: 12, fontFamily: F.bold, color: '#fff' },
+  badgeHText: { fontSize: 11, fontFamily: F.bold, color: '#fff' },
   // Save heart — top-right of image
   heartBtnH: {
     position: 'absolute',
@@ -297,7 +301,7 @@ const styles = StyleSheet.create({
   nameH: {
     fontSize: 15,
     fontFamily: F.semibold,
-    color: '#111827',
+    color: '#1A1A1A',
     marginBottom: 3,
   },
   descriptionH: {
@@ -323,19 +327,18 @@ const styles = StyleSheet.create({
     gap: 6,
     flexWrap: 'wrap',
   },
-  // Navigate — green outline
-  navBtnH: {
+  // Navigate — dark pill
+  pillBtnH: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    borderWidth: 1.5,
-    borderColor: '#22C55E',
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 9999,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  navBtnHText: { fontSize: 12, fontFamily: F.semibold, color: '#22C55E' },
-  // Book Now — gray outline
+  pillBtnHText: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
+  // Book Now — subtle outline
   bookBtnH: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -344,22 +347,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: 8,
-    paddingHorizontal: 10,
+    borderRadius: 9999,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
   bookBtnHText: { fontSize: 12, fontFamily: F.medium, color: '#374151' },
-  // Add to Itinerary — green fill
+  // Add to Itinerary — dark fill or confirmed state
   addBtnH: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#22C55E',
-    borderRadius: 8,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 9999,
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  addBtnHSelected: { backgroundColor: '#16A34A' },
+  addBtnHSelected: { backgroundColor: '#10B981' },
   addBtnHText: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
   addBtnHTextSelected: { color: '#fff' },
 
@@ -369,21 +372,21 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 4,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F2F2F7',
+    borderColor: '#F3F4F6',
   },
   imageContainer: { position: 'relative' },
   image: { width: '100%', height: 200, resizeMode: 'cover' },
   badge: {
     position: 'absolute',
     top: 14, left: 14,
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(34, 197, 94, 0.9)',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#10B981',
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 }, elevation: 3,
@@ -397,34 +400,34 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
-  body: { padding: 20 },
-  name: { fontSize: 20, fontFamily: F.bold, color: '#111827', marginBottom: 6, letterSpacing: -0.4 },
+  body: { padding: 18 },
+  name: { fontSize: 18, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 6, letterSpacing: -0.3 },
   description: { fontSize: 14, fontFamily: F.regular, color: '#4B5563', marginBottom: 12, lineHeight: 22 },
   metaRow: { flexDirection: 'row', gap: 12, marginBottom: 14, flexWrap: 'wrap' },
   actionRow: {
     flexDirection: 'row', gap: 8,
-    borderTopWidth: 1, borderTopColor: '#F2F2F7',
+    borderTopWidth: 1, borderTopColor: '#F3F4F6',
     paddingTop: 14, flexWrap: 'wrap',
   },
   addBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 10, borderRadius: 12,
-    backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#10B981',
   },
-  addBtnSelected: { backgroundColor: '#22C55E' },
-  addBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
+  addBtnSelected: { backgroundColor: '#10B981' },
+  addBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#10B981' },
   addBtnTextSelected: { color: '#fff' },
   bookBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: '#1D4ED8', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: '#1A1A1A', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10,
   },
   bookBtnText: { fontSize: 13, fontFamily: F.bold, color: '#fff' },
   navBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderWidth: 1.5, borderColor: '#22C55E', borderRadius: 12,
+    backgroundColor: '#1A1A1A', borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 10,
   },
-  navBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
+  navBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#fff' },
 });
 
 export default PlaceCard;

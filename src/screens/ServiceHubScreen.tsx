@@ -12,6 +12,8 @@ import * as Sentry from '../services/sentry';
 import { searchNearby, PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
+import AppBar from '../components/AppBar';
+import { getPlaceDisplayType } from '../utils/placeTypeMap';
 
 const CATEGORIES = [
   { id: 'Medical',           label: 'Medical',        icon: 'medkit',              color: '#EF4444' },
@@ -145,7 +147,9 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
       />
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.cardSub} numberOfLines={1}>{item.category}</Text>
+        <Text style={styles.cardSub} numberOfLines={1}>
+          {getPlaceDisplayType(item.types ?? (item.category ? [item.category] : []))}
+        </Text>
         <View style={styles.cardMeta}>
           <Ionicons name="walk-outline" size={13} color="#6B7280" />
           <Text style={styles.cardDistance}>
@@ -160,8 +164,8 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
         </View>
       </View>
       <TouchableOpacity style={styles.routeBtn} onPress={() => openRoute(item)}>
-        <Ionicons name="navigate-outline" size={16} color="#fff" />
-        <Text style={styles.routeBtnText}>ROUTE</Text>
+        <Ionicons name="navigate-outline" size={14} color="#fff" />
+        <Text style={styles.routeBtnText}>Route</Text>
       </TouchableOpacity>
     </View>
   );
@@ -169,18 +173,12 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header: back (left) | title (center) | logo (right) */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons name="chevron-back" size={26} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>ServiceHub</Text>
-        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-      </View>
+      {/* App bar */}
+      <AppBar
+        variant="sub"
+        title="ServiceHub"
+        onBack={() => navigation.goBack()}
+      />
 
       <Text style={styles.subtitle}>Find essential services near your current location</Text>
 
@@ -195,7 +193,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
             <Ionicons
               name={cat.icon as any}
               size={22}
-              color={selectedCategory === cat.id ? '#22C55E' : cat.color}
+              color={selectedCategory === cat.id ? '#10B981' : '#6B7280'}
             />
             <Text style={[styles.catLabel, selectedCategory === cat.id && styles.catLabelActive]}>
               {cat.label}
@@ -207,7 +205,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
       {/* Results */}
       {loadingResults ? (
         <ScrollView contentContainerStyle={styles.loadingWrap} showsVerticalScrollIndicator={false}>
-          <ActivityIndicator color="#22C55E" />
+          <ActivityIndicator color="#10B981" />
           <Text style={styles.loadingText}>Finding nearby services…</Text>
         </ScrollView>
       ) : results.length === 0 ? (
@@ -247,7 +245,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
               <View style={styles.modalSheet}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalIconWrap}>
-                  <Ionicons name="compass-outline" size={32} color="#22C55E" />
+                  <Ionicons name="compass-outline" size={32} color="#10B981" />
                 </View>
                 <Text style={styles.modalTitle}>Account Required</Text>
                 <Text style={styles.modalBody}>
@@ -288,7 +286,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   logo: { width: 50, height: 44, resizeMode: 'contain' },
-  topBarTitle: { fontSize: 20, fontWeight: '700', color: '#111827', flex: 1, textAlign: 'center' },
+  topBarTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', flex: 1, textAlign: 'center' },
   subtitle: { fontSize: 13, color: '#57636C', paddingHorizontal: 14, marginBottom: 10 },
   categoryGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
@@ -296,13 +294,13 @@ const styles = StyleSheet.create({
   },
   catCard: {
     width: '18%', margin: '1%', aspectRatio: 1,
-    borderRadius: 14, borderWidth: 1, borderColor: '#E5E5EA',
+    borderRadius: 12, borderWidth: 0.5, borderColor: '#E5E7EB',
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#fff', gap: 4,
   },
-  catCardActive: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
-  catLabel: { fontSize: 9, textAlign: 'center', color: '#57636C', fontWeight: '500' },
-  catLabelActive: { color: '#22C55E', fontWeight: '700' },
+  catCardActive: { borderColor: '#10B981', borderWidth: 1.5 },
+  catLabel: { fontSize: 9, textAlign: 'center', color: '#6B7280', fontWeight: '500' },
+  catLabelActive: { color: '#10B981', fontWeight: '600' },
   list: { paddingHorizontal: 14, paddingBottom: 100 },
   card: {
     flexDirection: 'row', alignItems: 'center',
@@ -312,29 +310,34 @@ const styles = StyleSheet.create({
   },
   cardImage: { width: 60, height: 60, borderRadius: 12, marginRight: 12 },
   cardBody: { flex: 1 },
-  cardName: { fontSize: 14, fontWeight: '600', color: '#111827', marginBottom: 4 },
+  cardName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   cardDistance: { fontSize: 12, color: '#57636C' },
   categoryBadge: {
     alignSelf: 'flex-start', backgroundColor: '#F0FDF4',
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
   },
-  categoryBadgeText: { fontSize: 11, color: '#22C55E', fontWeight: '500' },
+  categoryBadgeText: { fontSize: 11, color: '#10B981', fontWeight: '500' },
   routeBtn: {
-    backgroundColor: '#22C55E', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 9999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  routeBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  routeBtnText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   loadingWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 10 },
   loadingText: { fontSize: 14, color: '#57636C' },
   emptyState: {
     flexGrow: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 40, paddingVertical: 40,
   },
-  emptyTitle: { fontSize: 17, fontWeight: '600', color: '#111827', marginTop: 14, marginBottom: 6 },
+  emptyTitle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A', marginTop: 14, marginBottom: 6 },
   emptyText: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
   retryBtn: {
-    backgroundColor: '#22C55E', borderRadius: 14,
+    backgroundColor: '#10B981', borderRadius: 14,
     paddingHorizontal: 28, paddingVertical: 12,
   },
   retryBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
@@ -354,7 +357,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 22, fontWeight: '700', color: '#111827',
+    fontSize: 22, fontWeight: '700', color: '#1A1A1A',
     marginBottom: 10, textAlign: 'center',
   },
   modalBody: {
@@ -362,15 +365,15 @@ const styles = StyleSheet.create({
     lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
   },
   modalPrimaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalOutlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    width: '100%', borderWidth: 1.5, borderColor: '#10B981',
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
+  modalOutlineBtnText: { color: '#10B981', fontSize: 16, fontWeight: '600' },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
 });

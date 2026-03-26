@@ -12,6 +12,7 @@ import { useTempItineraryStore, TEMP_MAX_PLACES } from '../store/useTempItinerar
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import GuestGateModal from '../components/GuestGateModal';
 import PlaceCard from '../components/PlaceCard';
+import AppBar from '../components/AppBar';
 import { F } from '../theme/fonts';
 import { deleteItinerary } from '../services/database';
 import { useRecentTripStore, type RecentTrip } from '../store/useRecentTripStore';
@@ -116,16 +117,10 @@ export default function SavedScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Top bar */}
-      <View style={styles.topBar}>
-        <Image source={require('../../assets/logo-icon.png')} style={styles.logo} />
-        <Text style={styles.topBarTitle}>Saved</Text>
-        <TouchableOpacity
-          style={styles.avatarCircle}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Text style={styles.avatarText}>{displayName[0].toUpperCase()}</Text>
-        </TouchableOpacity>
-      </View>
+      <AppBar
+        variant="root"
+        onProfilePress={() => navigation.navigate('Profile')}
+      />
 
       {/* Tabs */}
       <View style={styles.header}>
@@ -317,7 +312,7 @@ export default function SavedScreen({ navigation }: Props) {
               <View style={styles.sheet}>
                 <View style={styles.sheetHandle} />
                 <View style={styles.sheetIconWrap}>
-                  <Ionicons name="map-outline" size={32} color="#22C55E" />
+                  <Ionicons name="map-outline" size={32} color="#10B981" />
                 </View>
                 <Text style={styles.sheetTitle}>Create Your Trip</Text>
                 <Text style={styles.sheetMessage}>
@@ -432,27 +427,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
   },
   logo: { width: 44, height: 44, resizeMode: 'contain' },
-  topBarTitle: { fontSize: 24, fontFamily: F.bold, color: '#111827', letterSpacing: -0.5 },
+  topBarTitle: { fontSize: 24, fontFamily: F.bold, color: '#1A1A1A', letterSpacing: -0.5 },
   avatarCircle: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#10B981', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
   avatarText: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
   header: { paddingHorizontal: 16, paddingTop: 8, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontFamily: F.bold, color: '#111827', marginBottom: 16, letterSpacing: -0.5 },
+  title: { fontSize: 28, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 16, letterSpacing: -0.5 },
   tabRow: { flexDirection: 'row', gap: 24 },
   tab: { paddingBottom: 12, borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#22C55E' },
+  tabActive: { borderBottomColor: '#10B981' },
   tabText: { fontSize: 16, color: '#6B7280', fontFamily: F.semibold },
-  tabTextActive: { color: '#111827' },
+  tabTextActive: { color: '#1A1A1A' },
   searchRow: { paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#fff' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#F3F4F6', borderRadius: 16,
     paddingHorizontal: 16, height: 48,
   },
-  searchInput: { flex: 1, fontSize: 15, color: '#111827', fontFamily: F.medium },
+  searchInput: { flex: 1, fontSize: 15, color: '#1A1A1A', fontFamily: F.medium },
   guestBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#EFF6FF', marginHorizontal: 16,
@@ -474,18 +469,18 @@ const styles = StyleSheet.create({
   },
   itineraryImage: { width: 70, height: 70, borderRadius: 14, backgroundColor: '#E5E7EB', marginRight: 16 },
   itineraryDetails: { flex: 1 },
-  itineraryTitle: { fontSize: 17, fontFamily: F.bold, color: '#111827', marginBottom: 4 },
+  itineraryTitle: { fontSize: 17, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 4 },
   itinerarySub: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, marginTop: 40 },
-  emptyTitle: { fontSize: 18, fontFamily: F.bold, color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: F.bold, color: '#1A1A1A', marginTop: 16, marginBottom: 8 },
   emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32, fontFamily: F.regular },
-  exploreBtn: { backgroundColor: '#22C55E', borderRadius: 18, paddingHorizontal: 32, paddingVertical: 14 },
+  exploreBtn: { backgroundColor: '#10B981', borderRadius: 18, paddingHorizontal: 32, paddingVertical: 14 },
   exploreBtnText: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
   tempBanner: {
     position: 'absolute', bottom: 32, left: 16, right: 16, zIndex: 100,
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#fff', borderRadius: 22, padding: 18,
-    borderWidth: 1, borderColor: '#22C55E',
+    borderWidth: 1, borderColor: '#10B981',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15, shadowOffset: { width: 0, height: 10 }, elevation: 10,
   },
   tempBannerText: { flex: 1, fontSize: 15, color: '#166534', fontFamily: F.bold },
@@ -511,7 +506,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sheetTitle: {
-    fontSize: 22, fontFamily: F.bold, color: '#111827',
+    fontSize: 22, fontFamily: F.bold, color: '#1A1A1A',
     marginBottom: 10, textAlign: 'center',
   },
   sheetMessage: {
@@ -519,15 +514,15 @@ const styles = StyleSheet.create({
     lineHeight: 22, marginBottom: 8, paddingHorizontal: 4,
   },
   sheetMeta: {
-    fontSize: 13, color: '#22C55E', fontFamily: F.medium,
+    fontSize: 13, color: '#10B981', fontFamily: F.medium,
     marginBottom: 20,
   },
   primaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
     height: 54, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center',
     marginTop: 16, marginBottom: 4,
-    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    shadowColor: '#10B981', shadowOpacity: 0.3,
     shadowRadius: 10, shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
@@ -535,7 +530,7 @@ const styles = StyleSheet.create({
   ghostBtn: { paddingVertical: 14, paddingHorizontal: 20 },
   ghostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
   recentTripsSection: { marginBottom: 20 },
-  recentTripsSectionTitle: { fontSize: 16, fontFamily: F.bold, color: '#111827', marginBottom: 10 },
+  recentTripsSectionTitle: { fontSize: 16, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 10 },
   recentTripCard: {
     backgroundColor: '#fff', borderRadius: 16, marginBottom: 10,
     borderWidth: 1, borderColor: '#F2F2F7',
@@ -546,12 +541,12 @@ const styles = StyleSheet.create({
     width: 42, height: 42, borderRadius: 14,
     backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
   },
-  recentTripCity: { fontSize: 15, fontFamily: F.bold, color: '#111827', marginBottom: 3 },
+  recentTripCity: { fontSize: 15, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 3 },
   recentTripMeta: { fontSize: 13, color: '#6B7280', fontFamily: F.medium },
   addToRouteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#F0FDF4', borderRadius: 10,
     paddingHorizontal: 10, paddingVertical: 6,
   },
-  addToRouteBtnText: { fontSize: 12, color: '#22C55E', fontFamily: F.bold },
+  addToRouteBtnText: { fontSize: 12, color: '#10B981', fontFamily: F.bold },
 });
