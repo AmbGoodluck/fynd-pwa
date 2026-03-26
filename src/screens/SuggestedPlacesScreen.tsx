@@ -45,14 +45,14 @@ function PlaceListItem({
   const savePlace = useGuestStore(s => s.savePlace);
   const unsavePlace = useGuestStore(s => s.unsavePlace);
 
-  const handleSave = () => {
-    if (!isAuthenticated || isGuest) { onShowGate(); return; }
-    if (isSaved) {
-      unsavePlace(item.placeId);
-    } else {
-      savePlace(item);
-    }
-  };
+  // Only allow save/unsave if logged in and not guest
+  const canSave = isAuthenticated && !isGuest;
+  const handleSave = canSave
+    ? (isSaved ? () => unsavePlace(item.placeId) : () => savePlace(item))
+    : () => {
+        if (onShowGate) onShowGate();
+        else alert('Sign in required to save places.');
+      };
 
   return (
     <TouchableOpacity
@@ -68,7 +68,7 @@ function PlaceListItem({
         rating={item.rating}
         distance={item.distanceKm ? `${item.distanceKm} km` : undefined}
         duration={item.walkMinutes ? `${item.walkMinutes} min` : undefined}
-        isSaved={isSaved}
+        isSaved={canSave && isSaved}
         onSave={handleSave}
         isAdded={isAdded}
         onAdd={onAdd}

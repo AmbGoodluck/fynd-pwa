@@ -71,10 +71,11 @@ export const useGuestStore = create<GuestStore>()(
 
       savePlace: async (place) => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        // Require an account; also verify Firebase Auth is live (guards against
-        // stale Zustand state on session restore when Firestore was briefly unavailable)
         const firebaseUser = auth.currentUser;
-        if (!isAuthenticated || !user || !firebaseUser) return;
+        if (!isAuthenticated || !user || !firebaseUser) {
+          Alert.alert('Sign in required', 'You must be logged in to save places.');
+          return;
+        }
 
         const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
         if (existing) return;
@@ -84,10 +85,8 @@ export const useGuestStore = create<GuestStore>()(
         set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
 
         try {
-          // Use live Firebase UID for the write to guarantee token is attached
           await savePlaceDb(firebaseUser.uid, savedPlace);
         } catch (e) {
-          // Rollback optimistic update on failure
           set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== savedPlace.placeId) }));
           if (__DEV__) console.error('Failed to sync saved place to Firestore', e);
           Alert.alert('Save failed', "Couldn't save this place. Check your connection and try again.");

@@ -488,8 +488,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               rating={p.rating}
               photoUrl={p.photoUrl}
               indexBadge={i + 1}
-              isSaved={isAuthenticated ? isPlaceSaved(p.placeId) : undefined}
-              onSave={isAuthenticated ? () => handleSavePlace(p) : undefined}
+              isSaved={isAuthenticated && isPlaceSaved(p.placeId)}
+              onSave={isAuthenticated ? () => handleSavePlace(p) : () => Alert.alert('Sign in required', 'You must be logged in to save places.')}
               onNavigate={() => navigateToPlace(p)}
               onBook={isValidBookingUrl(p.bookingUrl) ? () => {
                 setBookingTitle(p.name);
