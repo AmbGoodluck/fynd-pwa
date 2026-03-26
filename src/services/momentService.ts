@@ -128,27 +128,30 @@ function captureVideoFrame(dataUrl: string): Promise<string> {
 //               media_url == thumbnail_url until R2 upload is live.
 export async function uploadMomentMedia(
   file: File,
-  _trip_id: string
+  trip_id: string,
+  user_id?: string
 ): Promise<{ thumbnail_url: string; media_url: string }> {
-  return new Promise((resolve, reject) => {
+  // Read file as base64
+  const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = reject;
-    reader.onload = async () => {
-      const dataUrl = reader.result as string;
-      try {
-        if (file.type.startsWith('image/')) {
-          const thumbnail_url = await resizeImage(dataUrl, 300, 0.7);
-          const media_url = await resizeImage(dataUrl, 1200, 0.8);
-          resolve({ thumbnail_url, media_url });
-        } else {
-          // Video: store thumbnail only; full video requires R2.
-          const thumbnail_url = await captureVideoFrame(dataUrl);
-          resolve({ thumbnail_url, media_url: thumbnail_url });
-        }
-      } catch (e) {
-        reject(e);
-      }
-    };
+    reader.onload = () => resolve(reader.result as string);
     reader.readAsDataURL(file);
   });
+
+  // POST to Cloudflare Worker
+  const res = await fetch('https://fynd-pwa.jallohosmanamadu311.workers.dev/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      trip_id,
+      user_id: user_id || 'unknown',
+      file_name: file.name,
+      file_type: file.type,
+      data: dataUrl,
+    }),
+  });
+  if (!res.ok) throw new Error('Upload to R2 failed');
+  const { thumbnail_url, media_url } = await res.json();
+  return { thumbnail_url, media_url };
 }
