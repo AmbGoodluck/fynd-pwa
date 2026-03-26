@@ -8,3 +8,7 @@ OPENAI_DEFAULT_MODEL = "gpt-4o"
 
 # Run: wrangler secret put OPENAI_API_KEY
 # Then paste your key when prompted
+
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "fynd-moments"

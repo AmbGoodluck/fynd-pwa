@@ -211,6 +211,18 @@ export default {
       }
     }
 
+    // ── PUT /api/upload — R2 upload ─────────────
+    if (method === 'PUT' && url.pathname === '/api/upload') {
+      if (!env.MY_BUCKET) return json({ error: 'R2 binding not configured' }, 500, request);
+      const key = url.searchParams.get('key') || `upload-${Date.now()}`;
+      await env.MY_BUCKET.put(key, request.body);
+      return json({ success: true, key }, 200, request);
+    }
+
     return json({ error: 'Not found' }, 404, request);
+  // Note: Ensure your wrangler.toml includes:
+  // [[r2_buckets]]
+  // binding = "MY_BUCKET"
+  // bucket_name = "fynd-moments"
   },
 };
