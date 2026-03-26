@@ -72,23 +72,30 @@ export const useGuestStore = create<GuestStore>()(
       savePlace: async (place) => {
         const { user, isAuthenticated } = useAuthStore.getState();
         const firebaseUser = auth.currentUser;
+        console.log('[savePlace] called', { isAuthenticated, user, firebaseUser });
         if (!isAuthenticated || !user || !firebaseUser) {
+          console.warn('[savePlace] Blocked: not authenticated or missing user', { isAuthenticated, user, firebaseUser });
           Alert.alert('Sign in required', 'You must be logged in to save places.');
           return;
         }
 
         const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
-        if (existing) return;
+        if (existing) {
+          console.log('[savePlace] Place already saved', place.placeId);
+          return;
+        }
 
         const savedPlace = placeResultToSaved(place);
         // Optimistic update
         set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
+        console.log('[savePlace] Optimistically added', savedPlace);
 
         try {
           await savePlaceDb(firebaseUser.uid, savedPlace);
+          console.log('[savePlace] Synced to Firestore', savedPlace);
         } catch (e) {
           set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== savedPlace.placeId) }));
-          if (__DEV__) console.error('Failed to sync saved place to Firestore', e);
+          console.error('Failed to sync saved place to Firestore', e);
           Alert.alert('Save failed', "Couldn't save this place. Check your connection and try again.");
         }
       },

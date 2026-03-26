@@ -48,8 +48,18 @@ function PlaceListItem({
   // Only allow save/unsave if logged in and not guest
   const canSave = isAuthenticated && !isGuest;
   const handleSave = canSave
-    ? (isSaved ? () => unsavePlace(item.placeId) : () => savePlace(item))
+    ? (isSaved
+        ? () => {
+            console.log('[PlaceListItem] Unsave pressed', item.placeId);
+            unsavePlace(item.placeId);
+          }
+        : () => {
+            console.log('[PlaceListItem] Save pressed', item.placeId);
+            savePlace(item);
+          }
+      )
     : () => {
+        console.warn('[PlaceListItem] Save blocked, not authenticated or guest', { item });
         if (onShowGate) onShowGate();
         else alert('Sign in required to save places.');
       };
