@@ -85,7 +85,11 @@ export const useGuestStore = create<GuestStore>()(
           return;
         }
 
-        const savedPlace = placeResultToSaved(place);
+        let savedPlace = placeResultToSaved(place);
+        // Remove or set undefined fields to null (Firestore does not allow undefined)
+        savedPlace = Object.fromEntries(
+          Object.entries(savedPlace).filter(([_, v]) => v !== undefined)
+        );
         // Optimistic update
         set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
         console.log('[savePlace] Optimistically added', savedPlace);
