@@ -91,6 +91,10 @@ export interface PlaceResult {
   city?: string;
   types?: string[];
   matchedTags?: string[];
+  /** OPERATIONAL | CLOSED_TEMPORARILY | CLOSED_PERMANENTLY — returned by Google Places */
+  business_status?: string;
+  /** Google Places opening_hours basic field (open_now from Text/Nearby Search) */
+  opening_hours?: { open_now?: boolean };
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -214,6 +218,10 @@ export async function searchPlacesByVibe(
         walkMinutes: typeof dist === 'number' ? Math.round(dist * 12) : undefined,
         bookingUrl: getBookingUrl(p.place_id, placeTypes),
         matchedTags: matchedTags.length > 0 ? matchedTags : undefined,
+        business_status: typeof p.business_status === 'string' ? p.business_status : undefined,
+        opening_hours: p.opening_hours != null
+          ? { open_now: typeof p.opening_hours.open_now === 'boolean' ? p.opening_hours.open_now : undefined }
+          : undefined,
       };
     }
 

@@ -36,28 +36,89 @@ type Props = {
   };
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 const KM_PER_MILE = 1.60934;
-const TWO_MI_IN_KM = 2 * KM_PER_MILE; // ~3.22 km
+const TWO_MI_IN_KM = 2 * KM_PER_MILE;
 
+// ── Validity & time-context filtering ────────────────────────────────────────
+
+/** Hard filter: never show permanently or temporarily closed places. */
+function isPlaceValid(place: PlaceResult): boolean {
+  if (place.business_status === 'CLOSED_PERMANENTLY') return false;
+  if (place.business_status === 'CLOSED_TEMPORARILY') return false;
+  return true;
+}
+
+/**
+ * Time-context filter per category.
+ *
+ * Because Google Places Text/Nearby Search only returns `open_now` (not detailed
+ * periods), we use it as a proxy:
+ *
+ * open_now    → exclude places where open_now === false
+ * open_until  → same proxy (we can't verify closing time without periods data)
+ * open_after  → AGGRESSIVE: only include places where open_now === true;
+ *               places without hours data are also excluded for this category
+ *               because it is high-trust (user is hungry at midnight).
+ */
+function doesPlaceMatchTimeContext(
+  place: PlaceResult,
+  category: TrendingCategory
+): boolean {
+  const { timeFilter } = category;
+  const openNow = place.opening_hours?.open_now;
+
+  switch (timeFilter.type) {
+    case 'open_now':
+    case 'open_until':
+      // Confirmed closed → exclude. Unknown or confirmed open → include.
+      return openNow !== false;
+
+    case 'open_after':
+      // Late night eats: only confirmed-open places. No data → exclude.
+      return openNow === true;
+  }
+}
+
+// ── Sort helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Sort priority: confirmed-open first (0), no hours data (1), confirmed-closed (2).
+ * Within each group, sort by distance ascending.
+ */
+function openPriority(place: PlaceResult): number {
+  if (place.opening_hours?.open_now === true) return 0;
+  if (place.opening_hours?.open_now === false) return 2;
+  return 1; // undefined → "Hours N/A"
+}
+
+function buildDisplayList(
+  places: PlaceResult[],
+  filter: FilterId
+): PlaceResult[] {
+  let list = [...places];
+
+  if (filter === 'under2mi') {
+    list = list.filter((p) => p.distanceKm !== undefined && p.distanceKm < TWO_MI_IN_KM);
+  }
+
+  list.sort((a, b) => {
+    const oPriority = openPriority(a) - openPriority(b);
+    if (oPriority !== 0) return oPriority;
+
+    if (filter === 'toprated') {
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    }
+    return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+  });
+
+  return list;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtDistance(km: number | undefined): string {
   if (km === undefined) return '';
   return `${(km / KM_PER_MILE).toFixed(1)} mi`;
-}
-
-function applyFilter(places: PlaceResult[], filter: FilterId): PlaceResult[] {
-  let list = [...places];
-  if (filter === 'under2mi') {
-    list = list.filter((p) => p.distanceKm !== undefined && p.distanceKm < TWO_MI_IN_KM);
-  } else if (filter === 'toprated') {
-    list = list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-    return list;
-  }
-  // Default / under2mi: sort by distance ascending
-  list = list.sort(
-    (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
-  );
-  return list;
 }
 
 // ── Skeleton row ──────────────────────────────────────────────────────────────
@@ -72,6 +133,22 @@ function SkeletonRow() {
       </View>
     </View>
   );
+}
+
+// ── Open status badge ─────────────────────────────────────────────────────────
+function OpenBadge({ openNow }: { openNow: boolean | undefined }) {
+  if (openNow === true) {
+    return (
+      <View style={styles.openBadge}>
+        <View style={styles.openDot} />
+        <Text style={styles.openText}>Open</Text>
+      </View>
+    );
+  }
+  if (openNow === false) {
+    return <Text style={styles.closedText}>Closed</Text>;
+  }
+  return <Text style={styles.hoursNaText}>Hours N/A</Text>;
 }
 
 // ── Place row ─────────────────────────────────────────────────────────────────
@@ -89,10 +166,8 @@ const PlaceRow = React.memo(function PlaceRow({
   catGradient: [string, string, string];
 }) {
   const distLabel = fmtDistance(place.distanceKm);
-  const ratingLabel = place.rating ? place.rating.toFixed(1) : '—';
-  const typeLabel = place.category
-    ? place.category.replace(/_/g, ' ')
-    : '';
+  const ratingLabel = place.rating ? place.rating.toFixed(1) : '';
+  const typeLabel = place.category ? place.category.replace(/_/g, ' ') : '';
 
   return (
     <View style={styles.placeRow}>
@@ -101,12 +176,7 @@ const PlaceRow = React.memo(function PlaceRow({
         {place.photoUrl ? (
           <Image source={{ uri: place.photoUrl }} style={styles.thumb} />
         ) : (
-          <View
-            style={[
-              styles.thumb,
-              gradientStyle(catGradient) as ViewStyle,
-            ]}
-          />
+          <View style={[styles.thumb, gradientStyle(catGradient) as ViewStyle]} />
         )}
       </View>
 
@@ -136,19 +206,18 @@ const PlaceRow = React.memo(function PlaceRow({
           </Text>
         )}
 
-        {/* Bottom row: rating + distance + navigate */}
+        {/* Bottom row: open badge + rating + distance + navigate */}
         <View style={styles.placeBottomRow}>
           <View style={styles.placeMeta}>
-            {!!place.rating && (
+            <OpenBadge openNow={place.opening_hours?.open_now} />
+            {!!ratingLabel && (
               <View style={styles.metaItem}>
                 <Ionicons name="star" size={11} color="#EF9F27" />
                 <Text style={styles.metaText}>{ratingLabel}</Text>
               </View>
             )}
             {!!distLabel && (
-              <View style={styles.metaItem}>
-                <Text style={styles.metaText}>{distLabel}</Text>
-              </View>
+              <Text style={styles.metaText}>{distLabel}</Text>
             )}
           </View>
 
@@ -169,57 +238,73 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
   const { savePlace, unsavePlace, isPlaceSaved, isGuest } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
 
-  const [allPlaces, setAllPlaces] = useState<PlaceResult[]>([]);
+  // All valid + time-context-filtered places from the API
+  const [filteredPlaces, setFilteredPlaces] = useState<PlaceResult[]>([]);
+  // What's actually shown (after user filter pill)
   const [displayed, setDisplayed] = useState<PlaceResult[]>([]);
   const [filter, setFilter] = useState<FilterId>('all');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  // True if API returned results but ALL were filtered out by time context
+  const [allFilteredOut, setAllFilteredOut] = useState(false);
 
-  // Stable reference for re-fetch without stale closure
-  const fetchRef = useRef(false);
+  const unmountedRef = useRef(false);
 
   const fetchPlaces = useCallback(async () => {
-    fetchRef.current = false;
+    unmountedRef.current = false;
     setLoading(true);
     setFetchError(false);
+    setAllFilteredOut(false);
+
     try {
-      const results = await searchPlacesByVibe(
+      const raw = await searchPlacesByVibe(
         cityName || 'near me',
         category.searchTerms,
         userLat,
         userLng,
         13, // ~8 miles search radius in km
       );
-      if (fetchRef.current) return; // unmounted
-      const sorted = results.sort(
-        (a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)
-      );
-      setAllPlaces(sorted);
+
+      if (unmountedRef.current) return;
+
+      // Step 1: remove permanently / temporarily closed places
+      const valid = raw.filter(isPlaceValid);
+
+      // Step 2: apply time-context filter for this specific category
+      const relevant = valid.filter((p) => doesPlaceMatchTimeContext(p, category));
+
+      if (valid.length > 0 && relevant.length === 0) {
+        setAllFilteredOut(true);
+      }
+
+      // Step 3: default sort (open-first, then by distance)
+      const sorted = buildDisplayList(relevant, 'all');
+
+      setFilteredPlaces(sorted);
       setDisplayed(sorted);
       setFilter('all');
     } catch {
-      if (!fetchRef.current) setFetchError(true);
+      if (!unmountedRef.current) setFetchError(true);
     } finally {
-      if (!fetchRef.current) setLoading(false);
+      if (!unmountedRef.current) setLoading(false);
     }
   }, [category, userLat, userLng, cityName]);
 
   useEffect(() => {
     fetchPlaces();
     return () => {
-      fetchRef.current = true;
+      unmountedRef.current = true;
     };
   }, [fetchPlaces]);
 
-  // Re-apply filter when it changes
+  // Re-apply user filter pill when it changes
   useEffect(() => {
-    setDisplayed(applyFilter(allPlaces, filter));
-  }, [filter, allPlaces]);
+    setDisplayed(buildDisplayList(filteredPlaces, filter));
+  }, [filter, filteredPlaces]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleSave = (place: PlaceResult) => {
     if (isGuest || !isAuthenticated) {
-      // Prompt login — navigate to Auth choice
       navigation.navigate('AuthChoice');
       return;
     }
@@ -242,7 +327,7 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
       coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
     };
 
-    // Best-effort: save as Recent Trip for authenticated users
+    // Best-effort: prepend to local Recent Trips for authenticated users
     const userId = useAuthStore.getState().user?.id || '';
     if (userId) {
       const now = new Date().toISOString();
@@ -277,6 +362,14 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
     gradientStyle(category.gradient) as ViewStyle,
   ];
 
+  // ── Count label for header ───────────────────────────────────────────────────
+  function headerCountLabel(): string {
+    if (loading) return 'Loading…';
+    const count = displayed.length;
+    if (count === 0) return `Near ${cityName || 'you'}`;
+    return `${count} place${count !== 1 ? 's' : ''} near ${cityName || 'you'}`;
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
@@ -290,16 +383,12 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
           <Ionicons name="chevron-back" size={20} color="#fff" />
         </TouchableOpacity>
 
-        <View style={styles.headerContent}>
+        <View>
           <View style={styles.headerPill}>
             <Text style={styles.headerPillText}>{category.subtitle}</Text>
           </View>
           <Text style={styles.headerLabel}>{category.label}</Text>
-          <Text style={styles.headerCount}>
-            {loading
-              ? 'Loading…'
-              : `${displayed.length} place${displayed.length !== 1 ? 's' : ''} near ${cityName || 'you'}`}
-          </Text>
+          <Text style={styles.headerCount}>{headerCountLabel()}</Text>
         </View>
       </View>
 
@@ -318,10 +407,7 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
             onPress={() => setFilter(f.id)}
           >
             <Text
-              style={[
-                styles.filterText,
-                filter === f.id && styles.filterTextActive,
-              ]}
+              style={[styles.filterText, filter === f.id && styles.filterTextActive]}
             >
               {f.label}
             </Text>
@@ -344,34 +430,39 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
         <View style={styles.stateWrap}>
           <Ionicons name="wifi-outline" size={44} color="#D1D5DB" />
           <Text style={styles.stateTitle}>Couldn't load places</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchPlaces}>
-            <Text style={styles.retryText}>Retry</Text>
+          <TouchableOpacity style={styles.actionBtn} onPress={fetchPlaces}>
+            <Text style={styles.actionBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : allFilteredOut || (filteredPlaces.length === 0 && !allFilteredOut) ? (
+        // No results: either all filtered by time context or API returned nothing
+        <View style={styles.stateWrap}>
+          <Ionicons name="moon-outline" size={44} color="#D1D5DB" />
+          <Text style={styles.stateTitle}>
+            {allFilteredOut
+              ? 'No places open right now'
+              : 'No places found nearby'}
+          </Text>
+          <Text style={styles.stateHint}>
+            {allFilteredOut
+              ? 'Check back later or try creating a trip to explore further!'
+              : 'Try creating a trip to explore this area'}
+          </Text>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('Create Trip')}
+          >
+            <Text style={styles.actionBtnText}>Create a Trip</Text>
           </TouchableOpacity>
         </View>
       ) : displayed.length === 0 ? (
+        // User filter narrowed to zero
         <View style={styles.stateWrap}>
-          <Ionicons name="search-outline" size={44} color="#D1D5DB" />
-          <Text style={styles.stateTitle}>No places found nearby</Text>
-          <Text style={styles.stateHint}>
-            {filter !== 'all'
-              ? 'Try removing the filter'
-              : 'Try creating a trip to explore further'}
-          </Text>
-          {filter === 'all' ? (
-            <TouchableOpacity
-              style={styles.retryBtn}
-              onPress={() => navigation.navigate('Create Trip')}
-            >
-              <Text style={styles.retryText}>Create a Trip</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.retryBtn}
-              onPress={() => setFilter('all')}
-            >
-              <Text style={styles.retryText}>Show all</Text>
-            </TouchableOpacity>
-          )}
+          <Ionicons name="filter-outline" size={44} color="#D1D5DB" />
+          <Text style={styles.stateTitle}>No matches for this filter</Text>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => setFilter('all')}>
+            <Text style={styles.actionBtnText}>Show all</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
@@ -389,6 +480,13 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
               catGradient={category.gradient}
             />
           ))}
+
+          {/* Late night eats: low-count fallback note */}
+          {category.id === 'late-night-eats' && displayed.length < 3 && (
+            <Text style={styles.lateNightNote}>
+              Showing all confirmed late-night spots. Some places may have limited hours.
+            </Text>
+          )}
         </ScrollView>
       )}
     </View>
@@ -415,9 +513,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
   },
-  headerContent: {
-    // bottom of header
-  },
   headerPill: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -426,22 +521,9 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     marginBottom: 6,
   },
-  headerPillText: {
-    fontSize: 10,
-    color: '#fff',
-    fontFamily: F.medium,
-  },
-  headerLabel: {
-    fontSize: 22,
-    fontFamily: F.semibold,
-    color: '#fff',
-    marginBottom: 2,
-  },
-  headerCount: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    fontFamily: F.regular,
-  },
+  headerPillText: { fontSize: 10, color: '#fff', fontFamily: F.medium },
+  headerLabel: { fontSize: 22, fontFamily: F.semibold, color: '#fff', marginBottom: 2 },
+  headerCount: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontFamily: F.regular },
 
   // Filters
   filterRow: {
@@ -461,18 +543,9 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     backgroundColor: '#fff',
   },
-  filterPillActive: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
-  },
-  filterText: {
-    fontSize: 12,
-    fontFamily: F.medium,
-    color: '#6B7280',
-  },
-  filterTextActive: {
-    color: '#fff',
-  },
+  filterPillActive: { backgroundColor: '#111827', borderColor: '#111827' },
+  filterText: { fontSize: 12, fontFamily: F.medium, color: '#6B7280' },
+  filterTextActive: { color: '#fff' },
 
   // List
   list: { flex: 1 },
@@ -489,18 +562,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
     backgroundColor: '#fff',
   },
-  thumbWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  thumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    resizeMode: 'cover',
-  },
+  thumbWrap: { width: 80, height: 80, borderRadius: 10, overflow: 'hidden' },
+  thumb: { width: 80, height: 80, borderRadius: 10, resizeMode: 'cover' },
   placeInfo: { flex: 1 },
   placeTopRow: {
     flexDirection: 'row',
@@ -529,30 +592,28 @@ const styles = StyleSheet.create({
   },
   placeMeta: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  metaText: {
-    fontSize: 11,
-    fontFamily: F.regular,
-    color: '#6B7280',
-  },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaText: { fontSize: 11, fontFamily: F.regular, color: '#6B7280' },
+
+  // Open status badges
+  openBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  openDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#639922' },
+  openText: { fontSize: 11, fontFamily: F.medium, color: '#639922' },
+  closedText: { fontSize: 11, fontFamily: F.medium, color: '#A32D2D' },
+  hoursNaText: { fontSize: 11, fontFamily: F.regular, color: '#9CA3AF' },
+
+  // Navigate button
   navBtn: {
     backgroundColor: '#111827',
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
-  navBtnText: {
-    fontSize: 11,
-    fontFamily: F.semibold,
-    color: '#fff',
-  },
+  navBtnText: { fontSize: 11, fontFamily: F.semibold, color: '#fff' },
 
   // State screens
   stateWrap: {
@@ -575,17 +636,25 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     marginBottom: 20,
+    lineHeight: 20,
   },
-  retryBtn: {
+  actionBtn: {
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 10,
     backgroundColor: '#22C55E',
   },
-  retryText: {
-    fontSize: 14,
-    fontFamily: F.semibold,
-    color: '#fff',
+  actionBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#fff' },
+
+  // Late night fallback note
+  lateNightNote: {
+    textAlign: 'center',
+    fontSize: 12,
+    fontFamily: F.regular,
+    color: '#9CA3AF',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    lineHeight: 18,
   },
 
   // Skeleton
@@ -599,17 +668,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
     backgroundColor: '#fff',
   },
-  skeletonThumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    backgroundColor: '#E5E7EB',
-  },
+  skeletonThumb: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#E5E7EB' },
   skeletonLines: { flex: 1 },
-  skeletonLine: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#E5E7EB',
-  },
-
+  skeletonLine: { height: 12, borderRadius: 6, backgroundColor: '#E5E7EB' },
 });

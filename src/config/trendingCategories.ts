@@ -2,6 +2,23 @@ import { Platform } from 'react-native';
 
 export type TimeSlot = 'morning' | 'afternoon' | 'evening' | 'night';
 
+/**
+ * Describes how places in this category should be filtered by time context.
+ *
+ * open_now    — place must be currently open (open_now === true or no data)
+ * open_until  — place must be open until at least `hour` (22:00 for date night).
+ *               Without periods data we use open_now as a proxy.
+ * open_after  — place must be confirmed open at/after midnight (late night eats).
+ *               AGGRESSIVE: only open_now === true passes; no data → excluded.
+ */
+export type TimeFilterType = 'open_now' | 'open_until' | 'open_after';
+
+export interface TimeFilter {
+  type: TimeFilterType;
+  /** Target hour in 24h format. null = runtime-computed (current hour + 2 for study cafes). */
+  hour?: number | null;
+}
+
 export interface TrendingCategory {
   id: string;
   label: string;
@@ -9,6 +26,8 @@ export interface TrendingCategory {
   gradient: [string, string, string];
   searchTerms: string[];
   timeSlots: TimeSlot[];
+  /** Controls which places are shown for this category based on open/closed state. */
+  timeFilter: TimeFilter;
 }
 
 export const TRENDING_CATEGORIES: TrendingCategory[] = [
@@ -19,6 +38,7 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#ED93B1', '#72243E', '#4B1528'],
     searchTerms: ['romantic restaurant', 'fine dining', 'wine bar', 'cocktail bar', 'date restaurant'],
     timeSlots: ['evening', 'night'],
+    timeFilter: { type: 'open_until', hour: 22 },
   },
   {
     id: 'sunset-spots',
@@ -27,6 +47,7 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#EF9F27', '#854F0B', '#412402'],
     searchTerms: ['scenic viewpoint', 'park', 'rooftop bar', 'lakefront', 'overlook'],
     timeSlots: ['afternoon', 'evening'],
+    timeFilter: { type: 'open_now' },
   },
   {
     id: 'chill-hangouts',
@@ -35,6 +56,7 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#AFA9EC', '#534AB7', '#26215C'],
     searchTerms: ['cafe', 'lounge', 'tea house', 'bookstore cafe', 'chill bar'],
     timeSlots: ['morning', 'afternoon', 'evening', 'night'],
+    timeFilter: { type: 'open_now' },
   },
   {
     id: 'free-things',
@@ -43,6 +65,7 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#5DCAA5', '#0F6E56', '#04342C'],
     searchTerms: ['park', 'trail', 'public garden', 'free museum', 'community center', 'plaza'],
     timeSlots: ['morning', 'afternoon', 'evening', 'night'],
+    timeFilter: { type: 'open_now' },
   },
   {
     id: 'study-cafes',
@@ -51,6 +74,8 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#85B7EB', '#185FA5', '#042C53'],
     searchTerms: ['coffee shop', 'cafe', 'library', 'bookstore', 'study spot'],
     timeSlots: ['morning', 'afternoon'],
+    // null hour = current hour + 2 (proxy: must be currently open)
+    timeFilter: { type: 'open_until', hour: null },
   },
   {
     id: 'late-night-eats',
@@ -59,6 +84,7 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#F09595', '#A32D2D', '#501313'],
     searchTerms: ['late night food', '24 hour restaurant', 'diner', 'fast food', 'pizza'],
     timeSlots: ['night'],
+    timeFilter: { type: 'open_after', hour: 0 },
   },
   {
     id: 'weekend-adventures',
@@ -67,6 +93,7 @@ export const TRENDING_CATEGORIES: TrendingCategory[] = [
     gradient: ['#97C459', '#3B6D11', '#173404'],
     searchTerms: ['hiking trail', 'state park', 'adventure', 'kayak', 'climbing', 'outdoor activity'],
     timeSlots: ['morning', 'afternoon'],
+    timeFilter: { type: 'open_now' },
   },
 ];
 
