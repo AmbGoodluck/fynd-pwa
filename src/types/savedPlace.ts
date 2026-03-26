@@ -57,7 +57,7 @@ export function savedPlaceToDoc(
   userId: string,
   place: Omit<SavedPlace, 'savedAt'>
 ): Omit<SavedPlaceDoc, 'id' | 'savedAt'> {
-  return {
+  const doc = {
     userId,
     placeId: place.placeId,
     placeName: place.name || '',
@@ -70,4 +70,6 @@ export function savedPlaceToDoc(
     category: place.category,
     bookingUrl: place.bookingUrl,
   };
+  // Remove undefined fields (Firestore does not allow them)
+  return Object.fromEntries(Object.entries(doc).filter(([_, v]) => v !== undefined));
 }
