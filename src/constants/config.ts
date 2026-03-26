@@ -9,7 +9,7 @@ export const FIREBASE_CONFIG = {
 
 export const GOOGLE_WEB_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '';
-export const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+export const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_ONLY_API_KEY || '';
 // OpenAI calls always go through the Cloudflare proxy — never expose key client-side
 export const OPENAI_API_KEY = '';
 export const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';

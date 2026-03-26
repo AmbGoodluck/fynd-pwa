@@ -32,7 +32,7 @@ import { openInExternalMaps, openRouteInMaps } from '../services/mapsIntent';
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
-const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_ONLY_API_KEY || '';
 const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
 const MAP_H = 280;
 const LABELS = '123456789ABCDEFGHIJKLMNOP';

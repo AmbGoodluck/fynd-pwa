@@ -28,7 +28,7 @@ import { logEvent } from '../services/firebase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WEB_PROXY_FALLBACK = 'https://fynd-api.jallohosmanamadu311.workers.dev';
-const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_ONLY_API_KEY || '';
 const PROXY = ((process.env.EXPO_PUBLIC_OPENAI_PROXY || '').replace(/\/$/, '')) || WEB_PROXY_FALLBACK;
 
 type Coord = { latitude: number; longitude: number };
