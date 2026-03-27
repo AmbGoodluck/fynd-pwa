@@ -131,27 +131,23 @@ export async function uploadMomentMedia(
   trip_id: string,
   user_id?: string
 ): Promise<{ thumbnail_url: string; media_url: string }> {
-  // Read file as base64
-  const dataUrl: string = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(file);
-  });
+  // Use the file name as the R2 key, optionally prefix with trip_id for organization
+  const key = `${trip_id}/${Date.now()}_${file.name}`;
+  const uploadUrl = `https://autumn-bush-9a08.jallohosmanamadu311.workers.dev/api/upload?key=${encodeURIComponent(key)}`;
 
-  // POST to Cloudflare Worker
-  const res = await fetch('https://fynd-pwa.jallohosmanamadu311.workers.dev/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      trip_id,
-      user_id: user_id || 'unknown',
-      file_name: file.name,
-      file_type: file.type,
-      data: dataUrl,
-    }),
+  // PUT the file as binary
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+    body: file,
   });
   if (!res.ok) throw new Error('Upload to R2 failed');
-  const { thumbnail_url, media_url } = await res.json();
-  return { thumbnail_url, media_url };
+  // The Worker returns { success: true, key }
+  const { key: returnedKey } = await res.json();
+  // Construct the public URL (if you have a public R2 endpoint, otherwise use a Worker proxy to serve)
+  // For now, just return the key as the media_url; update this if you add a public R2 domain
+  const media_url = returnedKey;
+  return { thumbnail_url: '', media_url };
 }
