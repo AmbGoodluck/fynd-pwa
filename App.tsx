@@ -23,10 +23,10 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// Always load fonts via require() so the bundler registers the asset and
-// expo-font injects the correct @font-face CSS with the hashed URL.
-// (A previous URI-based workaround for _redirects issues is no longer needed
-// since _redirects was removed.)
+// Inter fonts via useFonts — bundler registers assets and expo-font injects
+// @font-face CSS. Ionicons is NOT loaded here: on web it's handled by a
+// synchronous CSS @font-face in injectWebGlobalStyles() (avoids async race);
+// on native it's handled by the expo-font plugin in app.json.
 const fontSources = {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Inter_400Regular: require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
@@ -36,8 +36,6 @@ const fontSources = {
   Inter_600SemiBold: require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Inter_700Bold: require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
 };
 
 // Catches React render errors so we see the message instead of blank screen.

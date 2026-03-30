@@ -83,6 +83,17 @@ export function injectWebGlobalStyles(): void {
     document.head.appendChild(l);
   }
 
+  // ── Ionicons @font-face — MUST be injected synchronously before any render.
+  // @expo/vector-icons on web uses CSS fontFamily:'Ionicons' directly.
+  // useFonts() is async and unreliable for icon fonts — direct CSS is the fix.
+  // The font file is served from /fonts/ (copied from node_modules at build time).
+  if (!document.getElementById('fynd-icon-font')) {
+    const iconFont = document.createElement('style');
+    iconFont.id = 'fynd-icon-font';
+    iconFont.textContent = `@font-face{font-family:'Ionicons';src:url('/fonts/Ionicons.ttf') format('truetype');font-display:block;}`;
+    document.head.insertBefore(iconFont, document.head.firstChild);
+  }
+
   // ── Global CSS ─────────────────────────────────────────────────────────────
   // WebAppViewport (React) now owns the 440px shell and live viewport height.
   // CSS here only locks the page surface and keeps RN roots full-height.
