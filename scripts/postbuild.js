@@ -3,9 +3,10 @@ const path = require('path');
 
 // 1. Copy static assets
 const cp = (s, d) => fs.copyFileSync(s, d);
+const cpIfExists = (s, d) => { if (fs.existsSync(s)) fs.copyFileSync(s, d); };
 cp('feedback/privacy-policy.html', 'dist/privacy-policy.html');
 cp('feedback/terms.html', 'dist/terms.html');
-cp('public/_redirects', 'dist/_redirects');
+cpIfExists('public/_redirects', 'dist/_redirects');
 cp('public/_headers', 'dist/_headers');
 cp('public/manifest.json', 'dist/manifest.json');
 cp('public/service-worker.js', 'dist/service-worker.js');
