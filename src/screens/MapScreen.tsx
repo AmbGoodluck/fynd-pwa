@@ -486,7 +486,9 @@ export default function MapScreen({ navigation, route }: Props) {
     [], // intentionally empty — stops don't change mid-session
   );
 
-  // Request live user location on mount and track consistently
+  // Request live user location on mount and track consistently.
+  // Calls getCurrentPosition / getCurrentPositionAsync first for an immediate
+  // fix, then sets up watchPosition for ongoing updates.
   useEffect(() => {
     async function startLocationTracking() {
       let locationSubscription: Location.LocationSubscription | null = null;
@@ -494,6 +496,13 @@ export default function MapScreen({ navigation, route }: Props) {
         if (Platform.OS === 'web') {
           const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
           if (geo && typeof geo.watchPosition === 'function') {
+            // Immediate one-shot fix so the map shows user location right away
+            geo.getCurrentPosition(
+              (pos: any) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+              () => {},
+              { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+            );
+            // Ongoing watch for accurate, live updates
             const watchId = geo.watchPosition(
               (pos: any) => setUserLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
               (err: any) => {
@@ -510,6 +519,10 @@ export default function MapScreen({ navigation, route }: Props) {
           // Native (Android/iOS)
           const { status } = await Location.requestForegroundPermissionsAsync();
           if (status === 'granted') {
+            // Immediate fix
+            const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            setUserLoc({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+            // Ongoing watch
             locationSubscription = await Location.watchPositionAsync(
               { accuracy: Location.Accuracy.Balanced, timeInterval: 3000, distanceInterval: 5 },
               (loc: any) => setUserLoc({ latitude: loc.coords.latitude, longitude: loc.coords.longitude })

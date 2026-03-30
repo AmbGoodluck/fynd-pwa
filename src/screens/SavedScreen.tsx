@@ -189,7 +189,7 @@ export default function SavedScreen({ navigation }: Props) {
       {activeTab === 'places' ? (
         filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="bookmark-outline" size={56} color="#E5E5EA" />
+            <Ionicons name="heart-outline" size={56} color="#E5E5EA" />
             <Text style={styles.emptyTitle}>
               {savedPlaces.length === 0 ? 'No saved places' : 'No results'}
             </Text>

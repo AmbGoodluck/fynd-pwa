@@ -23,31 +23,21 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// On production web, load fonts from /fonts/* to avoid @-scoped asset URLs
-// that can be misrouted by SPA redirect rules on some deployments.
-const useWebFontUris = Platform.OS === 'web' && !__DEV__;
-
+// Always load fonts via require() so the bundler registers the asset and
+// expo-font injects the correct @font-face CSS with the hashed URL.
+// (A previous URI-based workaround for _redirects issues is no longer needed
+// since _redirects was removed.)
 const fontSources = {
-  Inter_400Regular: useWebFontUris
-    ? { uri: '/fonts/Inter_400Regular.ttf' }
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
-  Inter_500Medium: useWebFontUris
-    ? { uri: '/fonts/Inter_500Medium.ttf' }
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
-  Inter_600SemiBold: useWebFontUris
-    ? { uri: '/fonts/Inter_600SemiBold.ttf' }
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
-  Inter_700Bold: useWebFontUris
-    ? { uri: '/fonts/Inter_700Bold.ttf' }
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
-  ionicons: useWebFontUris
-    ? { uri: '/fonts/Ionicons.ttf' }
-    : // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Inter_400Regular: require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Inter_500Medium: require('@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Inter_600SemiBold: require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Inter_700Bold: require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
 };
 
 // Catches React render errors so we see the message instead of blank screen.

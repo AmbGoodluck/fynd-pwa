@@ -26,6 +26,7 @@ const CATEGORIES = [
   { id: 'Pharmacy',          label: 'Pharmacy',        icon: 'medical',             color: '#10B981' },
   { id: 'Hotel',             label: 'Hotel',           icon: 'bed',                 color: '#F59E0B' },
   { id: 'Tourist Info',      label: 'Tourist Info',    icon: 'information-circle',  color: '#06B6D4' },
+  { id: 'Gas Station',       label: 'Gas Station',     icon: 'flame',               color: '#F97316' },
 ];
 
 type Props = { navigation: any; route?: any };
@@ -37,6 +38,9 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const [loadingResults, setLoadingResults] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showGuestModal, setShowGuestModal] = useState(false);
+  // Tracks why the results list is empty so we can show the right message
+  type EmptyReason = 'location_denied' | 'not_available' | 'error' | null;
+  const [emptyReason, setEmptyReason] = useState<EmptyReason>(null);
   const { isGuest } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
   const tabBarHeight = useTabBarHeight();
@@ -105,17 +109,28 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const fetchNearbyForCategory = async (category: string) => {
     setLoadingResults(true);
     setResults([]);
+    setEmptyReason(null);
     try {
       const loc = await getCurrentLocation();
-      if (!loc) { setLoadingResults(false); return; }
+      if (!loc) {
+        setEmptyReason('location_denied');
+        setLoadingResults(false);
+        return;
+      }
       setUserLocation(loc);
       const places = await searchNearby(loc.lat, loc.lng, category);
-      const withDist = places
-        .map(p => ({ ...p, distanceKm: calcDistanceKm(loc.lat, loc.lng, p.coordinates.lat, p.coordinates.lng) }))
-        .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
-      setResults(withDist);
+      if (places.length === 0) {
+        setEmptyReason('not_available');
+        setResults([]);
+      } else {
+        const withDist = places
+          .map(p => ({ ...p, distanceKm: calcDistanceKm(loc.lat, loc.lng, p.coordinates.lat, p.coordinates.lng) }))
+          .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+        setResults(withDist);
+      }
     } catch (e) {
       console.error('ServiceHub fetch error:', e);
+      setEmptyReason('error');
       setResults([]);
     } finally {
       setLoadingResults(false);
@@ -210,17 +225,63 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
         </ScrollView>
       ) : results.length === 0 ? (
         <ScrollView contentContainerStyle={styles.emptyState} showsVerticalScrollIndicator={false}>
-          <Ionicons name="search" size={48} color="#E5E5EA" />
-          <Text style={styles.emptyTitle}>No results found</Text>
-          <Text style={styles.emptyText}>
-            This service isn't available in your current location, or location access was denied.
-          </Text>
-          <TouchableOpacity
-            style={styles.retryBtn}
-            onPress={() => fetchNearbyForCategory(selectedCategory)}
-          >
-            <Text style={styles.retryBtnText}>Try Again</Text>
-          </TouchableOpacity>
+          {emptyReason === 'location_denied' ? (
+            <>
+              <Ionicons name="location-outline" size={48} color="#E5E5EA" />
+              <Text style={styles.emptyTitle}>Location access needed</Text>
+              <Text style={styles.emptyText}>
+                Allow location access so we can find nearby services. Enable it in your browser or device settings.
+              </Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => {
+                  if (Platform.OS !== 'web') Linking.openSettings();
+                  else fetchNearbyForCategory(selectedCategory);
+                }}
+              >
+                <Text style={styles.retryBtnText}>
+                  {Platform.OS !== 'web' ? 'Open Settings' : 'Try Again'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : emptyReason === 'not_available' ? (
+            <>
+              <Ionicons name="map-outline" size={48} color="#E5E5EA" />
+              <Text style={styles.emptyTitle}>Not available near you</Text>
+              <Text style={styles.emptyText}>
+                We couldn't find any {CATEGORIES.find(c => c.id === selectedCategory)?.label ?? selectedCategory} services in your current area.
+              </Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => fetchNearbyForCategory(selectedCategory)}
+              >
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </>
+          ) : emptyReason === 'error' ? (
+            <>
+              <Ionicons name="cloud-offline-outline" size={48} color="#E5E5EA" />
+              <Text style={styles.emptyTitle}>Something went wrong</Text>
+              <Text style={styles.emptyText}>
+                Check your connection and try again.
+              </Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => fetchNearbyForCategory(selectedCategory)}
+              >
+                <Text style={styles.retryBtnText}>Try Again</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            // Initial state before any fetch (e.g. guest modal dismissed without navigating away)
+            <>
+              <Ionicons name="search" size={48} color="#E5E5EA" />
+              <Text style={styles.emptyTitle}>Select a category</Text>
+              <Text style={styles.emptyText}>
+                Choose a service above to find what's nearby.
+              </Text>
+            </>
+          )}
         </ScrollView>
       ) : (
         <FlatList
@@ -310,7 +371,8 @@ const styles = StyleSheet.create({
   },
   cardImage: { width: 60, height: 60, borderRadius: 12, marginRight: 12 },
   cardBody: { flex: 1 },
-  cardName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', marginBottom: 4 },
+  cardName: { fontSize: 14, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
+  cardSub: { fontSize: 12, color: '#6B7280', marginBottom: 4 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   cardDistance: { fontSize: 12, color: '#57636C' },
   categoryBadge: {

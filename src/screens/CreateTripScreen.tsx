@@ -31,8 +31,8 @@ const VIBES = [
   { id: 'sports', label: 'Sports', icon: 'football-outline', color: '#2196F3', keyword: 'sports stadium arena recreation' },
   { id: 'wellness', label: 'Wellness', icon: 'heart-outline', color: '#00BCD4', keyword: 'spa wellness yoga meditation' },
   { id: 'photography', label: 'Photography', icon: 'camera-outline', color: '#FF9800', keyword: 'scenic viewpoint photography landmark' },
-  { id: 'salon_beauty', label: 'Salon & Beauty', icon: 'cut-outline', color: '#EC4899', keyword: 'beauty_salon hair_care spa nail salon' },
-  { id: 'parks_nature', label: 'Parks & Nature', icon: 'leaf-outline', color: '#16A34A', keyword: 'park national_park nature trail campground hiking' },
+  { id: 'salon_beauty', label: 'Salon & Beauty', icon: 'cut-outline', color: '#EC4899', keyword: 'beauty salon hair salon spa nail salon' },
+  { id: 'parks_nature', label: 'Parks & Nature', icon: 'leaf-outline', color: '#16A34A', keyword: 'park nature trail campground hiking' },
 ];
 
 const TIME_OF_DAY = [

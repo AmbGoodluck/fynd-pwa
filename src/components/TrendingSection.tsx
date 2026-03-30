@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import { useUserLocation } from '../hooks/useUserLocation';
 import {
@@ -83,8 +85,26 @@ export default function TrendingSection({ navigation }: Props) {
       .catch(() => {});
   }, [location]);
 
-  // Location denied — hide section completely.
-  if (locError === 'denied') return null;
+  const [retryFlag, setRetryFlag] = useState(0);
+
+  // Re-request location when user taps the prompt (web only).
+  const retryLocation = () => {
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        // Bust the module cache so useUserLocation picks up the new value on next mount,
+        // but for this session just update local display via retryFlag re-render trigger.
+        // (A full solution would expose a retry from the hook; this is V1-simple.)
+        setRetryFlag((f) => f + 1);
+        reverseGeocode(loc.latitude, loc.longitude)
+          .then((city) => { if (city) setCityName(city); })
+          .catch(() => {});
+      },
+      () => {},
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
 
   const handleCardPress = (category: TrendingCategory) => {
     if (!location) return;
@@ -96,12 +116,14 @@ export default function TrendingSection({ navigation }: Props) {
     });
   };
 
+  const locationDenied = locError === 'denied';
+
   return (
     <View style={styles.wrapper}>
       {/* Section header */}
       <View style={styles.header}>
         <Text style={styles.title}>Trending near you</Text>
-        <Text style={styles.subtitle}>{cityName}</Text>
+        <Text style={styles.subtitle}>{locationDenied ? 'Enable location for local results' : cityName}</Text>
       </View>
 
       {/* Horizontal scroll */}
@@ -110,15 +132,27 @@ export default function TrendingSection({ navigation }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {locLoading || !location
-          ? [0, 1, 2].map((i) => <SkeletonCard key={i} />)
-          : categories.map((cat) => (
-              <CategoryCard
-                key={cat.id}
-                category={cat}
-                onPress={() => handleCardPress(cat)}
-              />
-            ))}
+        {locationDenied ? (
+          <TouchableOpacity style={styles.locationPrompt} onPress={retryLocation} activeOpacity={0.85}>
+            <View style={styles.locationPromptIcon}>
+              <Ionicons name="location-outline" size={22} color="#10B981" />
+            </View>
+            <Text style={styles.locationPromptTitle}>Allow location access</Text>
+            <Text style={styles.locationPromptHint}>
+              Tap to see trending spots{'\n'}near you right now
+            </Text>
+          </TouchableOpacity>
+        ) : locLoading || !location ? (
+          [0, 1, 2].map((i) => <SkeletonCard key={i} />)
+        ) : (
+          categories.map((cat) => (
+            <CategoryCard
+              key={cat.id}
+              category={cat}
+              onPress={() => handleCardPress(cat)}
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -192,5 +226,41 @@ const styles = StyleSheet.create({
     height: CARD_H,
     borderRadius: 12,
     backgroundColor: '#E5E7EB',
+  },
+
+  // Location denied prompt
+  locationPrompt: {
+    width: 200,
+    height: CARD_H,
+    borderRadius: 12,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.5,
+    borderColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  locationPromptIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#D1FAE5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  locationPromptTitle: {
+    fontSize: 13,
+    fontFamily: F.semibold,
+    color: '#065F46',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  locationPromptHint: {
+    fontSize: 11,
+    fontFamily: F.regular,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

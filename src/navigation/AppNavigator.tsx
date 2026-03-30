@@ -83,7 +83,7 @@ const TAB_ICONS: Record<string, { default: string; active: string }> = {
   'Create Trip':  { default: 'add-circle-outline',   active: 'add-circle' },
   Map:            { default: 'map-outline',           active: 'map' },
   ServiceHub:     { default: 'compass-outline',       active: 'compass' },
-  Saved:          { default: 'bookmark-outline',      active: 'bookmark' },
+  Saved:          { default: 'heart-outline',          active: 'heart' },
 };
 
 // Shorter display labels for the tab bar
@@ -203,7 +203,7 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
               <View style={navStyles.modalSheet}>
                 <View style={navStyles.modalHandle} />
                 <View style={navStyles.modalIconWrap}>
-                  <Ionicons name="bookmark-outline" size={32} color="#10B981" />
+                  <Ionicons name="heart-outline" size={32} color="#10B981" />
                 </View>
                 <Text style={navStyles.modalTitle}>Account Required</Text>
                 <Text style={navStyles.modalBody}>

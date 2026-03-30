@@ -1,22 +1,26 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Image, StatusBar, Dimensions,
+  Image, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { height } = Dimensions.get('window');
 
 type Props = { navigation: any };
 
 export default function Onboarding2Screen({ navigation }: Props) {
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={styles.root}>
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      {/* Top: title + dots */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Plan Your{'\n'}Perfect Trip</Text>
+      <View style={styles.imgWrap}>
+        <Image
+          source={require('../../assets/onboarding2.png')}
+          style={styles.img}
+          resizeMode="cover"
+        />
+      </View>
+
+      <SafeAreaView style={styles.card} edges={['bottom']}>
         <View style={styles.dots}>
           <View style={styles.dot} />
           <View style={[styles.dot, styles.dotActive]} />
@@ -24,19 +28,7 @@ export default function Onboarding2Screen({ navigation }: Props) {
           <View style={styles.dot} />
           <View style={styles.dot} />
         </View>
-      </View>
-
-      {/* Illustration */}
-      <View style={styles.imgWrap}>
-        <Image
-          source={require('../../assets/onboarding2.png')}
-          style={styles.img}
-          resizeMode="contain"
-        />
-      </View>
-
-      {/* Bottom: subtitle + button */}
-      <View style={styles.bottom}>
+        <Text style={styles.title}>Plan Your{'\n'}Perfect Trip</Text>
         <Text style={styles.subtitle}>
           Build flexible, curated itineraries. Navigate live between stops and make the most of every moment.
         </Text>
@@ -47,43 +39,39 @@ export default function Onboarding2Screen({ navigation }: Props) {
         >
           <Text style={styles.nextBtnText}>Next</Text>
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  header: {
+  root: { flex: 1, backgroundColor: '#F3F4F6' },
+  imgWrap: { flex: 1, overflow: 'hidden' },
+  img: { width: '100%', height: '100%' },
+  card: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 28,
-    paddingTop: 28,
-    paddingBottom: 12,
+    paddingTop: 24,
+    paddingBottom: 32,
+    marginTop: -28,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
   },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#111827',
-    lineHeight: 38,
-    marginBottom: 16,
-    letterSpacing: -0.5,
-  },
-  dots: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  dots: { flexDirection: 'row', gap: 8, alignItems: 'center', marginBottom: 18 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E7EB' },
   dotActive: { backgroundColor: '#22C55E', width: 24 },
-  imgWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 0,
-  },
-  img: {
-    width: '100%',
-    height: height * 0.59,
-  },
-  bottom: {
-    paddingHorizontal: 28,
-    paddingBottom: 32,
-    paddingTop: 8,
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
+    lineHeight: 36,
+    marginBottom: 10,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,

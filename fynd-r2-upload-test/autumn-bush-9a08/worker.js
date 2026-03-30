@@ -32,6 +32,28 @@ export default {
       });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/file") {
+      const key = url.searchParams.get("key");
+      if (!key) {
+        return new Response("Missing key", {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+      const object = await env.MY_BUCKET.get(key);
+      if (!object) {
+        return new Response("Not found", {
+          status: 404,
+          headers: corsHeaders,
+        });
+      }
+      const headers = new Headers(corsHeaders);
+      object.writeHttpMetadata(headers);
+      headers.set("etag", object.httpEtag);
+      headers.set("cache-control", "public, max-age=31536000, immutable");
+      return new Response(object.body, { headers });
+    }
+
     if (request.method === "PUT" && url.pathname === "/api/upload") {
       const key = url.searchParams.get("key");
       if (!key) {
@@ -40,7 +62,9 @@ export default {
           headers: corsHeaders,
         });
       }
-      const object = await env.MY_BUCKET.put(key, request.body);
+      await env.MY_BUCKET.put(key, request.body, {
+        httpMetadata: { contentType: request.headers.get("Content-Type") || "application/octet-stream" },
+      });
       return new Response(JSON.stringify({ success: true, key }), {
         status: 200,
         headers: {

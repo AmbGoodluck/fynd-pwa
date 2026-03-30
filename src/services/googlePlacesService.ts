@@ -114,11 +114,12 @@ function textSearchUrl(queryStr: string): string {
 }
 
 /** Build a nearby-search URL based on platform */
-function nearbySearchUrl(lat: number, lng: number, type: string): string {
+function nearbySearchUrl(lat: number, lng: number, type: string, keyword?: string, radius = 2000): string {
+  const kw = keyword ? `&keyword=${encodeURIComponent(keyword)}` : '';
   if (isWeb && PROXY) {
-    return `${PROXY}/api/places/nearbysearch?location=${lat},${lng}&radius=2000&type=${encodeURIComponent(type)}`;
+    return `${PROXY}/api/places/nearbysearch?location=${lat},${lng}&radius=${radius}&type=${encodeURIComponent(type)}${kw}`;
   }
-  return `${GOOGLE_BASE}/nearbysearch/json?location=${lat},${lng}&radius=2000&type=${encodeURIComponent(type)}&key=${API_KEY}`;
+  return `${GOOGLE_BASE}/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${encodeURIComponent(type)}&key=${API_KEY}${kw}`;
 }
 
 /** Build a photo URL based on platform (web → proxy hides key, native → direct) */
@@ -386,32 +387,60 @@ export async function searchPlacesByVibe(
   }
 }
 
+interface NearbyConfig {
+  /** Valid Google Places type for nearbysearch */
+  type: string;
+  /** Optional keyword to narrow results (matched against name/category) */
+  keyword?: string;
+  /** Search radius in metres */
+  radius: number;
+}
+
+/** Per-category configuration for ServiceHub nearby searches.
+ *  Each entry maps a ServiceHub category ID to the correct Google Places query. */
+const NEARBY_CATEGORY_CONFIG: Record<string, NearbyConfig> = {
+  // Hospitals/clinics — wider radius since not every area has one
+  Medical:             { type: 'hospital',               radius: 5000 },
+  // Currency exchange offices — `bank` type + keyword filters to forex-specific places
+  'Currency Exchange': { type: 'bank',                   keyword: 'currency exchange foreign exchange forex money changer', radius: 3000 },
+  // Public toilets — `establishment` + keyword is the closest Google Places supports
+  'Public Bathrooms':  { type: 'establishment',          keyword: 'public toilet restroom bathroom', radius: 1000 },
+  // Transit (bus, metro, train)
+  Transport:           { type: 'transit_station',        radius: 2000 },
+  // Police stations — wider radius
+  Police:              { type: 'police',                 radius: 5000 },
+  // Embassies — `embassy` is not a valid Google type; use govt office + keyword, wide radius
+  Embassy:             { type: 'local_government_office', keyword: 'embassy consulate', radius: 15000 },
+  // ATMs — tight radius, they're everywhere
+  ATM:                 { type: 'atm',                    radius: 1500 },
+  // Pharmacies
+  Pharmacy:            { type: 'pharmacy',               radius: 2000 },
+  // Hotels / lodging
+  Hotel:               { type: 'lodging',                radius: 3000 },
+  // Tourist information centres — `establishment` + keyword to avoid monuments/restaurants
+  'Tourist Info':      { type: 'establishment',          keyword: 'tourist information visitor center tourism office', radius: 5000 },
+  // Gas stations / petrol stations
+  'Gas Station':       { type: 'gas_station',            radius: 3000 },
+};
+
 export async function searchNearby(lat: number, lng: number, type: string): Promise<PlaceResult[]> {
   try {
-    const typeMap: Record<string, string> = {
-      Medical: 'hospital',
-      'Currency Exchange': 'bank',
-      'Public Bathrooms': 'point_of_interest',
-      Transport: 'transit_station',
-      Police: 'police',
-      Embassy: 'embassy',
-      ATM: 'atm',
-      Pharmacy: 'pharmacy',
-      Hotel: 'lodging',
-      'Tourist Info': 'tourist_attraction',
-    };
-    const googleType = typeMap[type] || 'point_of_interest';
-    const url = nearbySearchUrl(lat, lng, googleType);
+    const config = NEARBY_CATEGORY_CONFIG[type] ?? { type: 'point_of_interest', radius: 2000 };
+    const url = nearbySearchUrl(lat, lng, config.type, config.keyword, config.radius);
     const res = await fetchWithTimeout(url);
     const data = await res.json();
-    if (!data.results) return [];
-    return data.results.slice(0, 8).map((p: any) => {
+    if (!data.results || data.status === 'ZERO_RESULTS') return [];
+    if (data.status && data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      debugWarn('[Places] searchNearby API status:', data.status, data.error_message);
+    }
+    return data.results.slice(0, 12).map((p: any) => {
       const ref = p.photos?.[0]?.photo_reference || '';
       const photoRefs = (p.photos || []).slice(0, 4).map((ph: any) => ph.photo_reference).filter(Boolean);
+      const placeTypes: string[] = Array.isArray(p.types) ? p.types : [];
       return {
         placeId: p.place_id,
         name: p.name,
-        address: p.vicinity,
+        address: p.vicinity || '',
         rating: p.rating || 0,
         description: '',
         photoRef: ref,
@@ -419,7 +448,12 @@ export async function searchNearby(lat: number, lng: number, type: string): Prom
         photoUrls: photoRefs.length > 0 ? photoRefs.map((r: string) => getPhotoUrl(r, 400)) : undefined,
         coordinates: { lat: p.geometry.location.lat, lng: p.geometry.location.lng },
         category: type,
+        types: placeTypes,
         city: '',
+        business_status: typeof p.business_status === 'string' ? p.business_status : undefined,
+        opening_hours: p.opening_hours != null
+          ? { open_now: typeof p.opening_hours.open_now === 'boolean' ? p.opening_hours.open_now : undefined }
+          : undefined,
       };
     });
   } catch (e) {

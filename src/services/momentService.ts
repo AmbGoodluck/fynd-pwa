@@ -114,40 +114,54 @@ function captureVideoFrame(dataUrl: string): Promise<string> {
   });
 }
 
-// ── Upload stub ───────────────────────────────────────────────────────────────
-// TODO: Replace with Cloudflare R2 Worker upload.
-//   Worker endpoint: https://YOUR_WORKER.workers.dev/upload
-//   POST body: { trip_id, user_id, file_name, file_type, data: base64 }
-//   Expected response: { thumbnail_url: string, media_url: string }
-//   Once R2 is wired, remove the inline base64 canvas approach below.
-//
-// Current fallback:
-//   • Images  → compressed via canvas; thumbnail (max 300px) + full (max 1200px)
-//               stored as base64 data URLs in Firestore. Stays within 1MB doc limit.
-//   • Videos  → first-frame JPEG captured; full video cannot be stored in Firestore.
-//               media_url == thumbnail_url until R2 upload is live.
+const R2_WORKER_BASE = 'https://autumn-bush-9a08.jallohosmanamadu311.workers.dev';
+
 export async function uploadMomentMedia(
   file: File,
   trip_id: string,
-  user_id?: string
+  _user_id?: string
 ): Promise<{ thumbnail_url: string; media_url: string }> {
-  // Use the file name as the R2 key, optionally prefix with trip_id for organization
-  const key = `${trip_id}/${Date.now()}_${file.name}`;
-  const uploadUrl = `https://autumn-bush-9a08.jallohosmanamadu311.workers.dev/api/upload?key=${encodeURIComponent(key)}`;
+  const isVideo = file.type.startsWith('video/');
+  const ext = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
+  const baseKey = `${trip_id}/${Date.now()}`;
+  const mediaKey = `${baseKey}.${ext}`;
 
-  // PUT the file as binary
+  // Upload the full media file
+  const uploadUrl = `${R2_WORKER_BASE}/api/upload?key=${encodeURIComponent(mediaKey)}`;
   const res = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': file.type || 'application/octet-stream',
-    },
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
     body: file,
   });
   if (!res.ok) throw new Error('Upload to R2 failed');
-  // The Worker returns { success: true, key }
   const { key: returnedKey } = await res.json();
-  // Construct the public URL (if you have a public R2 endpoint, otherwise use a Worker proxy to serve)
-  // For now, just return the key as the media_url; update this if you add a public R2 domain
-  const media_url = returnedKey;
-  return { thumbnail_url: '', media_url };
+  const media_url = `${R2_WORKER_BASE}/api/file?key=${encodeURIComponent(returnedKey)}`;
+
+  // Generate and upload a thumbnail for images; for video use same URL
+  let thumbnail_url = media_url;
+  if (!isVideo) {
+    try {
+      const reader = new FileReader();
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const thumbDataUrl = await resizeImage(dataUrl, 300, 0.75);
+      const thumbBlob = await (await fetch(thumbDataUrl)).blob();
+      const thumbKey = `${baseKey}_thumb.jpg`;
+      const thumbRes = await fetch(
+        `${R2_WORKER_BASE}/api/upload?key=${encodeURIComponent(thumbKey)}`,
+        { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: thumbBlob }
+      );
+      if (thumbRes.ok) {
+        const { key: tKey } = await thumbRes.json();
+        thumbnail_url = `${R2_WORKER_BASE}/api/file?key=${encodeURIComponent(tKey)}`;
+      }
+    } catch {
+      // thumbnail generation failed — fall back to full image URL
+    }
+  }
+
+  return { thumbnail_url, media_url };
 }

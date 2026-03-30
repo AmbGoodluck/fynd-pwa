@@ -54,14 +54,13 @@ export default function LogoScreen({ navigation }: Props) {
     const authCheck = new Promise<string>(async (resolve) => {
       const hasSeenOnboarding = await getHasSeenOnboarding();
 
-      // onAuthStateChanged fires once with the persisted Firebase session or null
-      const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-        unsub();
+      // authStateReady() (Firebase v10+) resolves once the SDK has finished
+      // reading the persisted session — auth.currentUser is definitively set
+      // after it, no race condition with onAuthStateChanged firing null first.
+      async function checkWithCurrentUser() {
+        const firebaseUser = (auth as any).currentUser;
         if (firebaseUser) {
-          // Clear any stale persisted guest state for authenticated users
           useGuestStore.getState().logout();
-          // Restore session state — always login with at least Firebase Auth info
-          // so isAuthenticated is set even if Firestore is temporarily unavailable.
           let fullName = firebaseUser.displayName || '';
           let isPremium = false;
           let travelPreferences: string[] = [];
@@ -82,14 +81,23 @@ export default function LogoScreen({ navigation }: Props) {
             isPremium,
             travelPreferences,
           });
-          // Hydrate saved places now that auth store has the user
           useGuestStore.getState().hydrateSavedPlaces().catch(() => {});
           resolve('MainTabs');
         } else {
-          // No active session -- route based on onboarding state
           resolve(hasSeenOnboarding ? 'AuthChoice' : 'Onboarding1');
         }
-      });
+      }
+
+      try {
+        await (auth as any).authStateReady();
+        await checkWithCurrentUser();
+      } catch {
+        // Fallback for environments where authStateReady isn't available
+        const unsub = onAuthStateChanged(auth, async () => {
+          unsub();
+          await checkWithCurrentUser();
+        });
+      }
     });
 
     // Navigate only after both logo display time and auth check complete
