@@ -95,6 +95,7 @@ export default function HomeScreen({ navigation }: Props) {
         <PWATopBar
           onSharedTripsPress={() => navigation.navigate('SharedTrips')}
           onProfilePress={() => navigation.navigate('Profile')}
+          onNotificationsPress={() => navigation.navigate('Notifications')}
         />
       )}
       {/* ── Native only topBar ──────────────────────────────────────── */}

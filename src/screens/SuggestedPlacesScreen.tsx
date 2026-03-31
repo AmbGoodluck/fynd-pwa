@@ -20,6 +20,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
+import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 
 // Each item subscribes directly to the store so it re-renders independently
 // when savedPlaces changes — FlatList extraData is not reliable on web.
@@ -164,6 +165,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       return;
     }
     savePlace(place);
+    markA2HSEligible();
   };
 
   const handleLongPress = (place: any) => {
@@ -177,6 +179,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
     if (bookingLink) setBookingLink(bookingLink);
 
+    markA2HSEligible();
     setPreviewPlace({
       placeId: place.placeId,
       name: place.name,

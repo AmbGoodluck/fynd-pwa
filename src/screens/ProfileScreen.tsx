@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
@@ -8,6 +8,7 @@ import { usePremiumStore } from '../store/usePremiumStore';
 import { useTripStore } from '../store/useTripStore';
 import { useTempItineraryStore } from '../store/useTempItineraryStore';
 import { F } from '../theme/fonts';
+import { useAddToHomeScreen } from '../hooks/useAddToHomeScreen';
 
 type Props = { navigation: any };
 
@@ -23,6 +24,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const { user, logout: firebaseLogout } = useAuthStore();
   const { isGuest, logout: guestLogout } = useGuestStore();
   const { isPremium } = usePremiumStore();
+  const { canInstall, isStandalone, triggerInstall } = useAddToHomeScreen();
   const displayName = user?.fullName?.split(' ')[0] || (isGuest ? 'Explorer' : 'Traveller');
   const displayEmail = user?.email || (isGuest ? 'Guest Session' : '');
   const avatarLetter = displayName[0]?.toUpperCase() ?? '?';
@@ -87,6 +89,33 @@ export default function ProfileScreen({ navigation }: Props) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Install row — web only, hidden on native and unsupported browsers */}
+        {Platform.OS === 'web' && (canInstall || isStandalone) && (
+          <View style={[styles.menuSection, { marginTop: 12 }]}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={isStandalone ? undefined : () => triggerInstall()}
+              activeOpacity={isStandalone ? 1 : 0.7}
+            >
+              <View style={styles.menuLeft}>
+                <View style={styles.iconWrap}>
+                  <Ionicons
+                    name={isStandalone ? 'checkmark-circle-outline' : 'download-outline'}
+                    size={20}
+                    color="#22C55E"
+                  />
+                </View>
+                <Text style={[styles.menuLabel, isStandalone && { color: '#9CA3AF' }]}>
+                  {isStandalone ? 'Fynd is installed ✓' : 'Install Fynd App'}
+                </Text>
+              </View>
+              {!isStandalone && (
+                <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.logoutSection}>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>

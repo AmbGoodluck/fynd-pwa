@@ -17,6 +17,7 @@ import {
   type TrendingCategory,
 } from '../config/trendingCategories';
 import { reverseGeocode } from '../services/googlePlacesService';
+import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 
 const CARD_W = 140;
 const CARD_H = 170;
@@ -108,6 +109,7 @@ export default function TrendingSection({ navigation }: Props) {
 
   const handleCardPress = (category: TrendingCategory) => {
     if (!location) return;
+    markA2HSEligible();
     navigation.navigate('CategoryPlaces', {
       category,
       userLat: location.latitude,

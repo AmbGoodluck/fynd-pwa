@@ -15,7 +15,9 @@ import {
   getSharedTrip,
   getMembership,
   joinSharedTrip,
+  getTripMembers,
 } from '../services/sharedTripService';
+import { notifyMemberJoined } from '../lib/notifications/createNotification';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import { useAuthStore } from '../store/useAuthStore';
 import type { SharedTrip } from '../types/sharedTrip';
@@ -92,6 +94,10 @@ export default function JoinTripScreen({ navigation, route }: Props) {
         user_name: effectiveUserName,
       });
       addJoinedTrip(trip);
+      getTripMembers(trip.trip_id).then((members) => {
+        const memberIds = members.map((m) => m.user_id);
+        notifyMemberJoined(memberIds, effectiveUserId, effectiveUserName, trip.trip_id, trip.trip_name);
+      }).catch(() => {});
       navigation.reset({
         index: 1,
         routes: [

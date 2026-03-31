@@ -22,6 +22,8 @@ import {
   uploadMomentMedia,
   createMomentRecord,
 } from '../services/momentService';
+import { getTripMembers } from '../services/sharedTripService';
+import { notifyMomentAdded } from '../lib/notifications/createNotification';
 import type { TripMoment } from '../types/moment';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
 
@@ -371,6 +373,10 @@ export default function MomentsTab({
           file_size: file.size,
         });
         await addMoment(moment);
+        getTripMembers(trip_id).then((members) => {
+          const memberIds = members.map((m) => m.user_id);
+          notifyMomentAdded(memberIds, effectiveUserId, effectiveUserName, trip_id, '', moment.moment_id);
+        }).catch(() => {});
         setMoments((prev) =>
           prev.map((m) => (m.moment_id === placeholderId ? moment : m))
         );

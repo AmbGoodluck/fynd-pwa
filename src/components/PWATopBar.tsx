@@ -12,13 +12,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LOGO_SIZE } from '../theme/sizes';
+import NotificationBell from './notifications/NotificationBell';
 
 interface Props {
   onSharedTripsPress: () => void;
   onProfilePress: () => void;
+  onNotificationsPress: () => void;
 }
 
-export default function PWATopBar({ onSharedTripsPress, onProfilePress }: Props) {
+export default function PWATopBar({ onSharedTripsPress, onProfilePress, onNotificationsPress }: Props) {
   if (Platform.OS !== 'web') return null;
 
   return (
@@ -32,6 +34,8 @@ export default function PWATopBar({ onSharedTripsPress, onProfilePress }: Props)
 
       {/* Right actions */}
       <View style={styles.actions}>
+        <NotificationBell onPress={onNotificationsPress} />
+
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={onSharedTripsPress}

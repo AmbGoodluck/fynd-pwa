@@ -23,6 +23,7 @@ import { getRecentItineraries } from '../services/database';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import OfflineBanner from '../components/OfflineBanner';
+import AddToHomeScreen from '../components/a2hs/AddToHomeScreen';
 
 // ── Core flow ──────────────────────────────────────────────────────────────────
 import LogoScreen from '../screens/LogoScreen';
@@ -70,6 +71,7 @@ import JoinTripScreen from '../screens/JoinTripScreen';
 import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
 import MomentsScreen from '../screens/MomentsScreen';
 import CategoryPlacesScreen from '../screens/CategoryPlacesScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 
 const MapTabScreen = (props: any) => <MapScreen {...props} />;
 const ServiceHubTabScreen = (props: any) => <ServiceHubScreen {...props} />;
@@ -338,6 +340,7 @@ export default function AppNavigator() {
     <NavigationContainer linking={linking} ref={navRef}>
       <View style={styles.appFrame}>
         <OfflineBanner />
+        <AddToHomeScreen />
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* ── Intro ─────────────────────────────────── */}
           <Stack.Screen name="Logo"        component={LogoScreen} />
@@ -390,6 +393,9 @@ export default function AppNavigator() {
 
           {/* ── Discovery ─────────────────────────────── */}
           <Stack.Screen name="CategoryPlaces" component={CategoryPlacesScreen} />
+
+          {/* ── Notifications ─────────────────────────── */}
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
         </Stack.Navigator>
       </View>
     </NavigationContainer>
