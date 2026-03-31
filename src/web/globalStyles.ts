@@ -87,10 +87,13 @@ export function injectWebGlobalStyles(): void {
   // @expo/vector-icons on web uses CSS fontFamily:'Ionicons' directly.
   // useFonts() is async and unreliable for icon fonts — direct CSS is the fix.
   // The font file is served from /fonts/ (copied from node_modules at build time).
+  // 'ionicons' lowercase — must match the fontName in @expo/vector-icons Ionicons.js
+  // exactly. This CSS injection is a synchronous fallback; useFonts in App.tsx
+  // is the primary loader and also uses 'ionicons' as the key.
   if (!document.getElementById('fynd-icon-font')) {
     const iconFont = document.createElement('style');
     iconFont.id = 'fynd-icon-font';
-    iconFont.textContent = `@font-face{font-family:'Ionicons';src:url('/fonts/Ionicons.ttf') format('truetype');font-display:block;}`;
+    iconFont.textContent = `@font-face{font-family:'ionicons';src:url('/fonts/Ionicons.ttf') format('truetype');font-display:block;}`;
     document.head.insertBefore(iconFont, document.head.firstChild);
   }
 

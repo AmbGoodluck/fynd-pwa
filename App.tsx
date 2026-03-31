@@ -23,10 +23,16 @@ Sentry.init({
   tracesSampleRate: 1.0,
 });
 
-// Inter fonts via useFonts — bundler registers assets and expo-font injects
-// @font-face CSS. Ionicons is NOT loaded here: on web it's handled by a
-// synchronous CSS @font-face in injectWebGlobalStyles() (avoids async race);
-// on native it's handled by the expo-font plugin in app.json.
+// Font loading strategy:
+// - Inter: loaded via require() so bundler registers the hashed asset URL.
+// - ionicons: loaded via { uri: '/fonts/Ionicons.ttf' } — a clean path with
+//   no '@' characters. The hashed bundled URL (@expo/...) causes @font-face
+//   injection to fail on some CDN/Pages hosts. postbuild.js copies the file
+//   to dist/fonts/ so this path is always available.
+//   KEY: the font-family name MUST be 'ionicons' (lowercase) — that is the
+//   exact name createIconSet() passes to Font.loadAsync and uses for rendering.
+//   App.tsx gates rendering on useFonts completing, so Font.isLoaded('ionicons')
+//   is already true when any icon first mounts.
 const fontSources = {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Inter_400Regular: require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
@@ -36,6 +42,8 @@ const fontSources = {
   Inter_600SemiBold: require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Inter_700Bold: require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
+  // 'ionicons' lowercase — must match createIconSet fontName exactly
+  ionicons: { uri: '/fonts/Ionicons.ttf' },
 };
 
 // Catches React render errors so we see the message instead of blank screen.
