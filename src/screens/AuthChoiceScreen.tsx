@@ -45,7 +45,7 @@ export default function AuthChoiceScreen({ navigation }: Props) {
     <ImageBackground
       source={require('../../assets/auth-bg.jpg')}
       style={styles.bg}
-      resizeMode="stretch"
+      resizeMode="cover"
     >
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.overlay} />
