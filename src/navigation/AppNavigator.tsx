@@ -145,8 +145,11 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
                 paddingBottom: Platform.OS === 'web' ? 4 : Math.max(6, safeBottom),
                 paddingTop: 4,
                 // On web: normal document flow (NOT absolute) so the bar sits
-                // above the mobile browser chrome like the Salone Opportunity
-                // Hub app. On native: normal flow already.
+                // above the mobile browser chrome. flexShrink:0 ensures it
+                // is never compressed when content is tall.
+                ...(Platform.OS === 'web'
+                  ? ({ flexShrink: 0 } as object)
+                  : {}),
                 backgroundColor: '#fff',
                 borderTopWidth: 1,
                 borderTopColor: '#F2F2F7',

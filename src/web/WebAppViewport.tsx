@@ -25,17 +25,17 @@ const styles = StyleSheet.create({
     backgroundColor: BACKDROP,
     alignItems: 'center',
     justifyContent: 'flex-start',
+    // Web flex container so child fills properly
+    ...(Platform.OS === 'web'
+      ? ({ display: 'flex' as any, flexDirection: 'column' as any } as any)
+      : {}),
   },
   deviceShell: {
     width: '100%',
-    height: '100%',
+    flex: 1,
     maxWidth: MAX_WIDTH,
     backgroundColor: '#FFFFFF',
     flexDirection: 'column',
-    // Only clip horizontal overflow — vertical layout must flow naturally
-    // so the tab bar sits above the mobile browser chrome.
-    ...(Platform.OS === 'web'
-      ? ({ overflowX: 'hidden', overflowY: 'hidden' } as any)
-      : {}),
+    overflow: 'hidden',
   },
 });
