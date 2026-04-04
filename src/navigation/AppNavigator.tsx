@@ -141,21 +141,12 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
             ),
           tabBarStyle: isMobile
             ? {
-                // On web, use CSS env() for safe-area so the bar sits above
-                // the mobile browser chrome / home indicator.
-                height: Platform.OS === 'web'
-                  ? ('calc(60px + env(safe-area-inset-bottom, 0px))' as any)
-                  : 60 + safeBottom,
-                paddingBottom: Platform.OS === 'web'
-                  ? ('calc(6px + env(safe-area-inset-bottom, 0px))' as any)
-                  : Math.max(6, safeBottom),
-                paddingTop: 6,
-                // absolute only on web (fixed footer inside max-width container);
-                // on Android/iOS let the tab bar sit in normal flow so it's
-                // never clipped or obscured by the system nav bar.
-                ...(Platform.OS === 'web'
-                  ? ({ position: 'absolute' as const, left: 0, right: 0, bottom: 0 } as object)
-                  : {}),
+                height: Platform.OS === 'web' ? 56 : 60 + safeBottom,
+                paddingBottom: Platform.OS === 'web' ? 4 : Math.max(6, safeBottom),
+                paddingTop: 4,
+                // On web: normal document flow (NOT absolute) so the bar sits
+                // above the mobile browser chrome like the Salone Opportunity
+                // Hub app. On native: normal flow already.
                 backgroundColor: '#fff',
                 borderTopWidth: 1,
                 borderTopColor: '#F2F2F7',

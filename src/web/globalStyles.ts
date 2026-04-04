@@ -111,7 +111,8 @@ export function injectWebGlobalStyles(): void {
 
     /* ── 1. PAGE SURFACE LOCK — outer page never scrolls ────────────────── */
     html {
-      height: 100%;
+      height: 100dvh;
+      height: -webkit-fill-available;
       width: 100%;
       overflow: hidden;
       overscroll-behavior: none;
@@ -121,7 +122,8 @@ export function injectWebGlobalStyles(): void {
     }
 
     body {
-      height: 100%;
+      height: 100dvh;
+      height: -webkit-fill-available;
       width: 100%;
       overflow: hidden;
       background-color: ${BACKDROP};
@@ -134,7 +136,8 @@ export function injectWebGlobalStyles(): void {
     /* ── 2. Root host stretches to viewport; React shell handles max-width ─ */
     #root {
       width: 100%;
-      height: 100%;
+      height: 100dvh;
+      height: -webkit-fill-available;
       overflow: hidden !important;
       display: flex !important;
       flex-direction: column !important;

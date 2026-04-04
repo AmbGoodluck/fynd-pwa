@@ -22,7 +22,6 @@ const styles = StyleSheet.create({
   viewport: {
     width: '100%',
     height: '100dvh',
-    minHeight: '100vh',
     backgroundColor: BACKDROP,
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -31,13 +30,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     maxWidth: MAX_WIDTH,
-    minHeight: '100vh',
     backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
     flexDirection: 'column',
-    // Ensure content is never clipped by iOS home indicator / Android nav bar
+    // Only clip horizontal overflow — vertical layout must flow naturally
+    // so the tab bar sits above the mobile browser chrome.
     ...(Platform.OS === 'web'
-      ? ({ paddingBottom: 'env(safe-area-inset-bottom, 0px)' } as any)
+      ? ({ overflowX: 'hidden', overflowY: 'hidden' } as any)
       : {}),
   },
 });
