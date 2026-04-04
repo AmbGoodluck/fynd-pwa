@@ -1,3 +1,10 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "chat.tools.terminal.autoApprove": {
+        "npm install": true,
+        "/^node scripts/generate-favicon\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

@@ -141,8 +141,14 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
             ),
           tabBarStyle: isMobile
             ? {
-                height: 60 + safeBottom,
-                paddingBottom: Math.max(6, safeBottom),
+                // On web, use CSS env() for safe-area so the bar sits above
+                // the mobile browser chrome / home indicator.
+                height: Platform.OS === 'web'
+                  ? ('calc(60px + env(safe-area-inset-bottom, 0px))' as any)
+                  : 60 + safeBottom,
+                paddingBottom: Platform.OS === 'web'
+                  ? ('calc(6px + env(safe-area-inset-bottom, 0px))' as any)
+                  : Math.max(6, safeBottom),
                 paddingTop: 6,
                 // absolute only on web (fixed footer inside max-width container);
                 // on Android/iOS let the tab bar sit in normal flow so it's
@@ -255,6 +261,53 @@ export default function AppNavigator() {
   const { setUser, login, isAuthenticated } = useAuthStore();
   const navRef = React.useRef<any>(null);
 
+  // ── Web / PWA: resolve auth BEFORE first render so returning users
+  //    land directly on MainTabs with no logo / login flash. ───────────
+  const [initialRoute, setInitialRoute] = React.useState<string | null>(
+    Platform.OS === 'web' ? null : 'Logo'
+  );
+
+  React.useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await (auth as any).authStateReady();
+        if (cancelled) return;
+        const firebaseUser = (auth as any).currentUser;
+        if (firebaseUser) {
+          // Pre-hydrate auth store so HomeScreen renders with user data.
+          useGuestStore.getState().setGuest(false);
+          let fullName = firebaseUser.displayName || '';
+          let isPremium = false;
+          let travelPreferences: string[] = [];
+          try {
+            const doc = await getUserDoc(firebaseUser.uid);
+            if (doc) {
+              fullName = doc.fullName || fullName;
+              isPremium = doc.isPremium ?? false;
+              travelPreferences = doc.travelPreferences ?? [];
+            }
+          } catch { /* Firestore unavailable — use Firebase Auth info */ }
+          if (cancelled) return;
+          useAuthStore.getState().login({
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            fullName,
+            isPremium,
+            travelPreferences,
+          });
+          setInitialRoute('MainTabs');
+        } else {
+          setInitialRoute('Logo');
+        }
+      } catch {
+        if (!cancelled) setInitialRoute('Logo');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   React.useEffect(() => {
     // Global listener: syncs Firebase session → Zustand stores.
     // IMPORTANT: dep array is [] — setUser/login are Zustand actions and get
@@ -336,12 +389,17 @@ export default function AppNavigator() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // While resolving auth on web, show a blank white screen (instant, no flash).
+  if (!initialRoute) {
+    return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+  }
+
   return (
     <NavigationContainer linking={linking} ref={navRef}>
       <View style={styles.appFrame}>
         <OfflineBanner />
         <AddToHomeScreen />
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
           {/* ── Intro ─────────────────────────────────── */}
           <Stack.Screen name="Logo"        component={LogoScreen} />
           <Stack.Screen name="Splash"      component={SplashScreen} />
