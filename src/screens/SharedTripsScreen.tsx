@@ -259,7 +259,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
                   </Text>
                 </View>
               ) : (
-                myTrips.map((t) => (
+                [...myTrips].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((t) => (
                   <TripCard
                     key={t.trip_id}
                     trip={t}
@@ -282,7 +282,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
                   </Text>
                 </View>
               ) : (
-                joinedTrips.map((t) => (
+                [...joinedTrips].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((t) => (
                   <TripCard
                     key={t.trip_id}
                     trip={t}

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { LOGO_SIZE } from '../theme/sizes';
 
 type Props = {
   title: string;
@@ -74,8 +75,8 @@ const styles = StyleSheet.create({
     marginLeft: -10,
   },
   logoIcon: {
-    width: 32.2,
-    height: 32.2,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
   },
   titleRow: {
     flex: 1,

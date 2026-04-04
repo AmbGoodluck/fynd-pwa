@@ -599,8 +599,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
                     {linkCopied ? 'Link Copied!' : 'Copy Link'}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.confirmCancelBtn} onPress={() => setShowShareModal(false)}>
-                  <Text style={styles.confirmCancelBtnText}>Done</Text>
+                <TouchableOpacity style={styles.shareDoneBtn} onPress={() => setShowShareModal(false)}>
+                  <Text style={styles.shareDoneBtnText}>Done</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -978,6 +978,11 @@ const styles = StyleSheet.create({
   confirmDestructiveBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
   confirmCancelBtn: { paddingVertical: 14, paddingHorizontal: 20 },
   confirmCancelBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
+  shareDoneBtn: {
+    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    borderRadius: 16, height: 54, alignItems: 'center', justifyContent: 'center',
+  },
+  shareDoneBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.bold },
 
   shareSubtitle: {
     fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20,

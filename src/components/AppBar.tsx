@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { F } from '../theme/fonts';
+import { LOGO_SIZE } from '../theme/sizes';
 
 interface AppBarProps {
   variant: 'root' | 'sub';
@@ -100,8 +101,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   rootLogo: {
-    width: 36.8,
-    height: 36.8,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
   },
   spacer: { flex: 1 },
   iconBtn: {
@@ -144,8 +145,8 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   subLogo: {
-    width: 32.2,
-    height: 32.2,
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     marginLeft: 8,
   },
 });
