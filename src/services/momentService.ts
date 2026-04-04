@@ -114,7 +114,7 @@ function captureVideoFrame(dataUrl: string): Promise<string> {
   });
 }
 
-const R2_WORKER_BASE = 'https://autumn-bush-9a08.jallohosmanamadu311.workers.dev';
+const R2_WORKER_BASE = (process.env.EXPO_PUBLIC_R2_WORKER_URL || '').replace(/\/$/, '') || 'https://autumn-bush-9a08.jallohosmanamadu311.workers.dev';
 
 export async function uploadMomentMedia(
   file: File,

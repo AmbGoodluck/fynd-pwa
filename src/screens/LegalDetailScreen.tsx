@@ -56,7 +56,7 @@ const LEGAL_CONTENT: Record<string, { sections: { heading: string; bullets?: str
 };
 
 export default function LegalDetailScreen({ navigation, route }: Props) {
-  const { pageId, title } = route.params;
+  const { pageId = 'terms', title = 'Legal' } = route?.params || {};
   const content = LEGAL_CONTENT[pageId];
 
   return (

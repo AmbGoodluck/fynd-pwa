@@ -144,8 +144,10 @@ export async function joinSharedTrip(params: {
   const trip = await getSharedTrip(params.trip_id);
   if (!trip) throw new Error('TRIP_NOT_FOUND');
 
+  // Use a deterministic doc ID so concurrent joins for the same user are idempotent
+  const deterministicId = `${params.trip_id}_${params.user_id}`;
   const member: TripMember = {
-    member_id: uuid(),
+    member_id: deterministicId,
     trip_id: params.trip_id,
     user_id: params.user_id,
     user_name: params.user_name,
@@ -153,7 +155,7 @@ export async function joinSharedTrip(params: {
     joined_at: nowIso(),
   };
 
-  await setDoc(doc(db, MEMBERS_COL, member.member_id), member);
+  await setDoc(doc(db, MEMBERS_COL, deterministicId), member);
 
   // Best-effort: increment count and add to members[] array on the trip doc.
   // This can fail if Firestore rules only allow the owner to update the trip doc.

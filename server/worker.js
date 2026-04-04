@@ -57,8 +57,13 @@ export default {
       return json({ model: currentModel }, 200, request);
     }
 
-    // POST /admin/model
+    // POST /admin/model (requires ADMIN_SECRET)
     if (method === 'POST' && url.pathname === '/admin/model') {
+      const authHeader = request.headers.get('Authorization') || '';
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      if (!env.ADMIN_SECRET || token !== env.ADMIN_SECRET) {
+        return json({ error: 'unauthorized' }, 401, request);
+      }
       const body = await request.json().catch(() => ({}));
       if (!body.model) return json({ error: 'model required' }, 400, request);
       currentModel = body.model;

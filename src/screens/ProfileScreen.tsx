@@ -7,6 +7,8 @@ import { useGuestStore } from '../store/useGuestStore';
 import { usePremiumStore } from '../store/usePremiumStore';
 import { useTripStore } from '../store/useTripStore';
 import { useTempItineraryStore } from '../store/useTempItineraryStore';
+import { useRecentTripStore } from '../store/useRecentTripStore';
+import { useSharedTripStore } from '../store/useSharedTripStore';
 import { F } from '../theme/fonts';
 import { useAddToHomeScreen } from '../hooks/useAddToHomeScreen';
 
@@ -33,9 +35,11 @@ export default function ProfileScreen({ navigation }: Props) {
     try { await firebaseLogout(); } catch { /* ignore */ }
     guestLogout();
 
-
     useTripStore.getState().reset();
     useTempItineraryStore.getState().clear();
+    useRecentTripStore.getState().clearRecentTrips();
+    useSharedTripStore.getState().setMyTrips([]);
+    useSharedTripStore.getState().setJoinedTrips([]);
     navigation.reset({ index: 0, routes: [{ name: 'AuthChoice' }] });
   };
 
