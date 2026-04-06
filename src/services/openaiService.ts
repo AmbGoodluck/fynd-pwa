@@ -100,6 +100,69 @@ Include all ${input.places.length} places. Total time should fit within ${input.
   }
 }
 
+export interface PlaceDescriptionResult {
+  description: string;
+  knownFor: string[];
+  vibe: string;
+}
+
+/**
+ * Generate an AI-powered place description, known-for tags, and vibe label.
+ * Uses the existing Cloudflare Worker proxy so the OpenAI key stays server-side.
+ * Returns null on failure — callers should fall back to the Google editorial summary.
+ */
+export async function generatePlaceDescription(
+  placeName: string,
+  address: string,
+  city: string,
+  types: string[],
+  rating?: number,
+  priceLevel?: number,
+): Promise<PlaceDescriptionResult | null> {
+  const payload = {
+    model: 'gpt-4o-mini',
+    max_tokens: 300,
+    temperature: 0.7,
+    messages: [
+      {
+        role: 'system',
+        content: `You are a local guide writing for travellers discovering places. Write casual, opinionated, helpful descriptions — like a friend who's been there recommending it. Never be generic. Be specific about what makes this place worth visiting.\n\nReturn ONLY valid JSON with this exact structure:\n{\n  "description": "2-3 sentences. Casual, specific, opinionated. Mention what to order, when to go, or what the vibe is like.",\n  "known_for": ["3-5 short phrases of what this place is best known for"],\n  "vibe": "One word or short phrase: e.g. chill, date night, late-night energy, outdoor adventure"\n}`,
+      },
+      {
+        role: 'user',
+        content: `Place: ${placeName}\nAddress: ${address}\nCity: ${city}\nType: ${types.join(', ') || 'unknown'}\nRating: ${rating ?? 'unknown'}/5\nPrice level: ${priceLevel ?? 'unknown'}`,
+      },
+    ],
+  };
+
+  const target = `${OPENAI_PROXY}/api/chat`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(target, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const raw: string = data.choices?.[0]?.message?.content || '';
+    const cleaned = raw.replace(/```json\n?|```\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      description: parsed.description || '',
+      knownFor: Array.isArray(parsed.known_for) ? parsed.known_for : [],
+      vibe: parsed.vibe || '',
+    };
+  } catch {
+    clearTimeout(timeout);
+    return null;
+  }
+}
+
 export async function enhancePlaceDescription(placeName: string, vibes: string[], destination: string): Promise<string> {
   const prompt = `Write a 2-sentence vibe-aware description of "${placeName}" in ${destination} for a traveler interested in: ${vibes.join(', ')}. Be specific and evocative. Return only the description, no quotes.`;
 

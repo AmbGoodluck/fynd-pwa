@@ -10,6 +10,7 @@ import { FALLBACK_IMAGE } from '../constants';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import { logEvent, auth } from '../services/firebase';
+import { generateItinerary } from '../services/openaiService';
 import { createSharedTrip, buildShareLink, recordTripShared } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -110,6 +111,35 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
+  }, []);
+
+  // AI-enhance stop descriptions in the background
+  useEffect(() => {
+    if (initialStops.length === 0) return;
+    let cancelled = false;
+    setAiEnhancing(true);
+    generateItinerary({
+      destination,
+      vibes: tripVibes,
+      places: initialStops.map(s => ({ name: s.name, description: s.description })),
+      explorationHours: tripData.explorationHours || 3,
+      timeOfDay: tripData.timeOfDay || 'morning',
+    }).then(aiStops => {
+      if (cancelled) return;
+      setStops(prev => prev.map((s, i) => {
+        const ai = aiStops[i];
+        if (!ai) return s;
+        return {
+          ...s,
+          description: ai.description || s.description,
+          time: ai.estimatedMinutes ? `${ai.estimatedMinutes} min` : s.time,
+        };
+      }));
+    }).catch(() => {
+      // AI enrichment is non-fatal — keep original descriptions
+    });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const removePlace = (id: string) =>
@@ -300,6 +330,15 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     return (
     <TouchableOpacity
       activeOpacity={0.95}
+      onPress={() => {
+        navigation.navigate('PlaceDetail', {
+          placeId: item.id,
+          name: item.name,
+          photoUrl: item.image,
+          description: item.description,
+          rating: parseFloat(item.rating) || undefined,
+        });
+      }}
       onLongPress={() => {
         if (bookingLink) setBookingLink(bookingLink);
         setPreviewStop({

@@ -130,11 +130,62 @@ export default function CreateTripScreen({ navigation }: Props) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  // 'auto' = detected from device, 'manual' = typed by user, null = not yet set
+  const [locationSource, setLocationSource] = useState<'auto' | 'manual' | null>(null);
 
   // Autosuggest state
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-detect location on mount — silently, no permission prompt.
+  // Only runs if the user has already granted permission in this session.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (Platform.OS === 'web') {
+          if (!navigator.geolocation) return;
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              if (cancelled) return;
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              setLocationLoading(true);
+              const name = await reverseGeocode(lat, lng);
+              if (cancelled) return;
+              setLatitude(lat);
+              setLongitude(lng);
+              setDestination(name);
+              setLocationSource('auto');
+              setLocationLoading(false);
+            },
+            () => { /* permission not granted or unavailable — stay silent */ },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
+          );
+        } else {
+          // Native: check existing permission without asking
+          const existing = await Location.getForegroundPermissionsAsync();
+          if (existing.status !== 'granted') return;
+          setLocationLoading(true);
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          if (cancelled) return;
+          const { latitude: lat, longitude: lng } = loc.coords;
+          const name = await reverseGeocode(lat, lng);
+          if (cancelled) return;
+          setLatitude(lat);
+          setLongitude(lng);
+          setDestination(name);
+          setLocationSource('auto');
+          setLocationLoading(false);
+        }
+      } catch {
+        if (!cancelled) setLocationLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
@@ -158,6 +209,7 @@ export default function CreateTripScreen({ navigation }: Props) {
     setSuggestions([]);
     setShowLocationModal(false);
     setLocationInput('');
+    setLocationSource('manual');
   };
 
   // Step 2 state
@@ -198,6 +250,7 @@ export default function CreateTripScreen({ navigation }: Props) {
         // Use our cross-platform reverse geocoder (goes through proxy on web)
         const name = await reverseGeocode(lat, lng);
         setDestination(name);
+        setLocationSource('auto');
         Sentry.addBreadcrumb({ category: 'location', message: `Web location found: ${name} (${lat.toFixed(4)}, ${lng.toFixed(4)})`, level: 'info' });
         return;
       }
@@ -242,6 +295,7 @@ export default function CreateTripScreen({ navigation }: Props) {
       // Use cross-platform reverse geocode that works on all platforms
       const name = await reverseGeocode(lat, lng);
       setDestination(name);
+      setLocationSource('auto');
       Sentry.addBreadcrumb({ category: 'location', message: `Native location found: ${name} (${lat.toFixed(4)}, ${lng.toFixed(4)})`, level: 'info' });
     } catch (err: any) {
       // Web GeolocationPositionError has a code property
@@ -323,6 +377,7 @@ export default function CreateTripScreen({ navigation }: Props) {
     navigation.navigate('Processing', {
       vibeKeywords, destination, vibes: selectedVibes,
       explorationHours, distanceMiles, timeOfDay, latitude, longitude,
+      locationSource: locationSource ?? 'manual',
     });
   };
 
@@ -357,34 +412,75 @@ export default function CreateTripScreen({ navigation }: Props) {
             {/* Location card */}
             <View style={styles.card}>
               <Text style={styles.cardLabel}>Where are you exploring from?</Text>
-              <View style={styles.locationBtnRow}>
-                <TouchableOpacity
-                  style={[styles.locationBtn, styles.locationBtnOutline]}
-                  onPress={() => setShowLocationModal(true)}
-                >
-                  <Ionicons name="pencil-outline" size={16} color="#57636C" style={{ marginRight: 6 }} />
-                  <Text style={styles.locationBtnOutlineText} numberOfLines={1}>Input location</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.locationBtn, styles.locationBtnFilled]}
-                  onPress={handleUseLocation}
-                  disabled={locationLoading}
-                >
-                  {locationLoading
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <>
-                        <Ionicons name="locate-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                        <Text style={styles.locationBtnFilledText} numberOfLines={1}>Use my location</Text>
-                      </>
-                  }
-                </TouchableOpacity>
-              </View>
-              {destination ? (
-                <View style={styles.destinationBadge}>
-                  <Ionicons name="location" size={13} color="#10B981" />
-                  <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
-                </View>
-              ) : null}
+
+              {locationSource === 'auto' && destination ? (
+                /* Auto-detected state */
+                <>
+                  <View style={styles.destinationBadge}>
+                    <Ionicons name="location" size={13} color="#10B981" />
+                    <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
+                  </View>
+                  <View style={styles.locationHintRow}>
+                    <Text style={styles.locationHintText}>Based on your location</Text>
+                    <Text style={styles.locationHintDot}> · </Text>
+                    <TouchableOpacity onPress={() => { setLocationSource('manual'); setShowLocationModal(true); }}>
+                      <Text style={styles.locationHintChange}>Change</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : locationSource === 'manual' && destination ? (
+                /* Manual input state — show selected city with option to use location */
+                <>
+                  <View style={styles.destinationBadge}>
+                    <Ionicons name="search-outline" size={13} color="#10B981" />
+                    <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
+                  </View>
+                  <View style={styles.locationHintRow}>
+                    <TouchableOpacity onPress={() => setShowLocationModal(true)}>
+                      <Text style={styles.locationHintChange}>Change city</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.locationHintDot}> · </Text>
+                    <TouchableOpacity onPress={handleUseLocation} disabled={locationLoading}>
+                      {locationLoading
+                        ? <ActivityIndicator size="small" color="#10B981" />
+                        : <Text style={styles.locationHintChange}>Use my location</Text>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                /* No location yet — show the original two buttons */
+                <>
+                  <View style={styles.locationBtnRow}>
+                    <TouchableOpacity
+                      style={[styles.locationBtn, styles.locationBtnOutline]}
+                      onPress={() => { setLocationSource('manual'); setShowLocationModal(true); }}
+                    >
+                      <Ionicons name="pencil-outline" size={16} color="#57636C" style={{ marginRight: 6 }} />
+                      <Text style={styles.locationBtnOutlineText} numberOfLines={1}>Input location</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.locationBtn, styles.locationBtnFilled]}
+                      onPress={handleUseLocation}
+                      disabled={locationLoading}
+                    >
+                      {locationLoading
+                        ? <ActivityIndicator size="small" color="#fff" />
+                        : <>
+                            <Ionicons name="locate-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+                            <Text style={styles.locationBtnFilledText} numberOfLines={1}>Use my location</Text>
+                          </>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                  {destination ? (
+                    <View style={styles.destinationBadge}>
+                      <Ionicons name="location" size={13} color="#10B981" />
+                      <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
+                    </View>
+                  ) : null}
+                </>
+              )}
             </View>
 
             {/* Time card */}
@@ -615,6 +711,10 @@ const styles = StyleSheet.create({
   locationBtnFilledText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
   destinationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: '#F0FDF4', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8 },
   destinationBadgeText: { fontSize: 13, fontFamily: F.medium, color: '#16A34A', flex: 1 },
+  locationHintRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingHorizontal: 2 },
+  locationHintText: { fontSize: 12, fontFamily: F.regular, color: '#6B7280' },
+  locationHintDot: { fontSize: 12, color: '#9CA3AF' },
+  locationHintChange: { fontSize: 12, fontFamily: F.semibold, color: '#10B981' },
 
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 2 },
   sliderLabelText: { fontSize: 12, fontFamily: F.regular, color: '#9CA3AF' },

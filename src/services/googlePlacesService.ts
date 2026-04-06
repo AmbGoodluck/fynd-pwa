@@ -487,6 +487,146 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   }
 }
 
+// ── Place Details ─────────────────────────────────────────────────────────────
+
+export interface PlaceDetails {
+  placeId: string;
+  name: string;
+  formattedAddress: string;
+  city: string;
+  phone?: string;
+  website?: string;
+  rating?: number;
+  priceLevel?: number;
+  openingHours?: {
+    openNow?: boolean;
+    weekdayText?: string[];
+  };
+  photoUrls: string[];
+  photoRefs: string[];
+  types: string[];
+  lat: number;
+  lng: number;
+  editorialSummary?: string;
+  mapsUrl?: string;
+}
+
+/** Fetch full place details from Google Places API.
+ *  On web: goes through the Cloudflare Pages Function at /api/places/details
+ *  On native: calls Google directly */
+export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
+  try {
+    let url: string;
+    if (isWeb) {
+      // Relative URL hits the Cloudflare Pages Function (functions/api/places/details.ts)
+      url = `/api/places/details?place_id=${encodeURIComponent(placeId)}`;
+    } else {
+      const fields = [
+        'name', 'formatted_address', 'geometry', 'opening_hours',
+        'formatted_phone_number', 'website', 'rating', 'price_level',
+        'photos', 'editorial_summary', 'types', 'business_status', 'url',
+      ].join(',');
+      url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=${encodeURIComponent(fields)}&key=${API_KEY}`;
+    }
+
+    const res = await fetchWithTimeout(url, 10000);
+    const data = await res.json();
+    if (data.status !== 'OK' || !data.result) {
+      debugWarn('[Places] fetchPlaceDetails status:', data.status, data.error_message);
+      return null;
+    }
+
+    const r = data.result;
+    const refs: string[] = (r.photos || []).slice(0, 5).map((p: any) => p.photo_reference).filter(Boolean);
+    const urls: string[] = refs.map((ref: string) => getPhotoUrl(ref, 800));
+
+    // Extract city from address_components
+    let city = '';
+    const comps: any[] = r.address_components || [];
+    const localityComp = comps.find((c: any) => c.types.includes('locality'));
+    const regionComp = comps.find((c: any) => c.types.includes('administrative_area_level_1'));
+    city = localityComp?.long_name || regionComp?.long_name || r.formatted_address?.split(',')[0] || '';
+
+    return {
+      placeId,
+      name: r.name || '',
+      formattedAddress: r.formatted_address || '',
+      city,
+      phone: r.formatted_phone_number,
+      website: r.website,
+      rating: r.rating,
+      priceLevel: r.price_level,
+      openingHours: r.opening_hours
+        ? {
+            openNow: r.opening_hours.open_now,
+            weekdayText: r.opening_hours.weekday_text,
+          }
+        : undefined,
+      photoUrls: urls,
+      photoRefs: refs,
+      types: r.types || [],
+      lat: r.geometry?.location?.lat ?? 0,
+      lng: r.geometry?.location?.lng ?? 0,
+      editorialSummary: r.editorial_summary?.overview,
+      mapsUrl: r.url,
+    };
+  } catch (e) {
+    debugWarn('[Places] fetchPlaceDetails error:', e);
+    Sentry.captureException(e, { tags: { context: 'fetchPlaceDetails', platform: Platform.OS }, extra: { placeId } });
+    return null;
+  }
+}
+
+// ── Establishment Search (for Universal Place Search feature) ─────────────────
+
+export interface EstablishmentSuggestion {
+  placeId: string;
+  name: string;
+  address: string;
+  types: string[];
+}
+
+/**
+ * Autocomplete suggestions for specific places/establishments (not regions).
+ * Pass lat/lng to bias results toward the trip destination.
+ */
+export async function searchEstablishments(
+  input: string,
+  lat: number,
+  lng: number,
+  radiusMeters = 50000,
+): Promise<EstablishmentSuggestion[]> {
+  if (!input || input.trim().length < 2) return [];
+  try {
+    const hasLocation = lat !== 0 && lng !== 0;
+    const locationParam = hasLocation ? `&location=${lat},${lng}&radius=${radiusMeters}` : '';
+    let url: string;
+    if (isWeb && PROXY) {
+      url = `${PROXY}/api/places/autocomplete?input=${encodeURIComponent(input)}&types=establishment${locationParam}`;
+    } else {
+      url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&types=establishment${locationParam}&key=${API_KEY}`;
+    }
+    const res = await fetchWithTimeout(url, 8000);
+    const data = await res.json();
+    if (data.status === 'ZERO_RESULTS' || !Array.isArray(data.predictions)) return [];
+    if (data.status !== 'OK') {
+      debugWarn('[Places] searchEstablishments status:', data.status);
+      return [];
+    }
+    return data.predictions.slice(0, 8).map((p: any) => ({
+      placeId: p.place_id,
+      name: p.structured_formatting?.main_text || p.description.split(',')[0],
+      address: p.structured_formatting?.secondary_text || p.description,
+      types: p.types || [],
+    }));
+  } catch (e) {
+    debugWarn('[Places] searchEstablishments error:', e);
+    return [];
+  }
+}
+
+// ── Autocomplete (region/city search) ─────────────────────────────────────────
+
 export interface AutocompleteSuggestion {
   placeId: string;
   description: string;

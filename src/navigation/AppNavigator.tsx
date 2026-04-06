@@ -72,6 +72,7 @@ import SharedTripDetailScreen from '../screens/SharedTripDetailScreen';
 import MomentsScreen from '../screens/MomentsScreen';
 import CategoryPlacesScreen from '../screens/CategoryPlacesScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import PlaceDetailScreen from '../screens/PlaceDetailScreen';
 
 const MapTabScreen = (props: any) => <MapScreen {...props} />;
 const ServiceHubTabScreen = (props: any) => <ServiceHubScreen {...props} />;
@@ -466,6 +467,9 @@ export default function AppNavigator() {
 
           {/* ── Notifications ─────────────────────────── */}
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
+
+          {/* ── Place Detail ──────────────────────────── */}
+          <Stack.Screen name="PlaceDetail" component={PlaceDetailScreen} />
         </Stack.Navigator>
       </View>
     </NavigationContainer>

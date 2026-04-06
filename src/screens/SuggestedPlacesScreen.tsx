@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   Platform, Modal, TouchableWithoutFeedback, FlatList,
-  Keyboard,
+  Keyboard, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +21,23 @@ import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
+import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion } from '../services/googlePlacesService';
+import { upsertSearchedPlace } from '../services/placeDetailsService';
+import { FALLBACK_IMAGE } from '../constants';
+
+// ── Haversine in-city check ─────────────────────────────────────────────────
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function isPlaceInCity(placeLat: number, placeLng: number, tripLat: number, tripLng: number, maxKm = 30): boolean {
+  if (!tripLat || !tripLng) return true; // no city anchor — allow all
+  return haversineKm(placeLat, placeLng, tripLat, tripLng) <= maxKm;
+}
 
 // Each item subscribes directly to the store so it re-renders independently
 // when savedPlaces changes — FlatList extraData is not reliable on web.
@@ -29,6 +46,7 @@ function PlaceListItem({
   isAdded,
   onAdd,
   onBook,
+  onPress,
   onLongPress,
   isAuthenticated,
   isGuest,
@@ -38,6 +56,7 @@ function PlaceListItem({
   isAdded: boolean;
   onAdd: () => void;
   onBook?: () => void;
+  onPress?: () => void;
   onLongPress: () => void;
   isAuthenticated: boolean;
   isGuest: boolean;
@@ -69,6 +88,7 @@ function PlaceListItem({
   return (
     <TouchableOpacity
       activeOpacity={0.9}
+      onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
     >
@@ -122,6 +142,16 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
 
+  // ── Universal place search state ───────────────────────────────────────────
+  const [placeSearch, setPlaceSearch] = useState('');
+  const [placeSearchResults, setPlaceSearchResults] = useState<EstablishmentSuggestion[]>([]);
+  const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
+  const [placeSearchFocused, setPlaceSearchFocused] = useState(false);
+  // placeId → { inCity, distKm, details }
+  const [resolvedPlaces, setResolvedPlaces] = useState<Record<string, { inCity: boolean; distKm: number; details: any | null; adding: boolean }>>({});
+  const placeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { user: currentUser } = useAuthStore();
+
   const bookingLinks = useBookingLinksStore(s => s.links);
   const setBookingLink = useBookingLinksStore(s => s.setLink);
   const applyBookingFeedback = useBookingLinksStore(s => s.applyFeedback);
@@ -136,7 +166,73 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
   }, []);
 
-  // Filter places by search query (name or description)
+  // ── Debounced establishment search ──────────────────────────────────────────
+  useEffect(() => {
+    if (placeDebounceRef.current) clearTimeout(placeDebounceRef.current);
+    if (!placeSearch.trim() || placeSearch.trim().length < 2) {
+      setPlaceSearchResults([]);
+      setPlaceSearchLoading(false);
+      return;
+    }
+    setPlaceSearchLoading(true);
+    placeDebounceRef.current = setTimeout(async () => {
+      const results = await searchEstablishments(
+        placeSearch,
+        userLatitude ?? 0,
+        userLongitude ?? 0,
+        50000,
+      );
+      setPlaceSearchResults(results);
+      setPlaceSearchLoading(false);
+    }, 300);
+    return () => { if (placeDebounceRef.current) clearTimeout(placeDebounceRef.current); };
+  }, [placeSearch, userLatitude, userLongitude]);
+
+  const handleSelectSearchResult = async (suggestion: EstablishmentSuggestion) => {
+    Keyboard.dismiss();
+    // If already resolved, skip re-fetch
+    if (resolvedPlaces[suggestion.placeId]) return;
+    setResolvedPlaces(prev => ({ ...prev, [suggestion.placeId]: { inCity: true, distKm: 0, details: null, adding: false } }));
+    const details = await fetchPlaceDetails(suggestion.placeId);
+    if (!details) return;
+    const distKm = (userLatitude && userLongitude)
+      ? haversineKm(details.lat, details.lng, userLatitude, userLongitude)
+      : 0;
+    const inCity = isPlaceInCity(details.lat, details.lng, userLatitude ?? 0, userLongitude ?? 0);
+    setResolvedPlaces(prev => ({ ...prev, [suggestion.placeId]: { inCity, distKm, details, adding: false } }));
+  };
+
+  const handleAddSearchedPlace = async (suggestion: EstablishmentSuggestion) => {
+    const resolved = resolvedPlaces[suggestion.placeId];
+    if (!resolved?.details || !resolved.inCity) return;
+    if (selectedForItinerary.length >= maxPlaces) { setShowUpgradeModal(true); return; }
+
+    const details = resolved.details;
+    const newPlace: any = {
+      placeId: suggestion.placeId,
+      name: details.name,
+      address: details.formattedAddress,
+      description: details.editorialSummary || details.types?.[0]?.replace(/_/g, ' ') || '',
+      rating: details.rating || 4.0,
+      photoUrl: details.photoUrls?.[0] || FALLBACK_IMAGE,
+      photoUrls: details.photoUrls,
+      coordinates: { lat: details.lat, lng: details.lng },
+      category: details.types?.[0]?.replace(/_/g, ' ') || 'place',
+      types: details.types,
+      distanceKm: Math.round(resolved.distKm * 10) / 10,
+    };
+
+    setSelectedForItinerary(prev => [...prev, newPlace]);
+    // Persist to Firestore so it enriches the places catalog
+    upsertSearchedPlace(suggestion.placeId, details, destination, currentUser?.id);
+    // Clear search
+    setPlaceSearch('');
+    setPlaceSearchResults([]);
+    setPlaceSearchFocused(false);
+    markA2HSEligible();
+  };
+
+  // ── Filter local pre-loaded places by search query ────────────────────────
   const filteredPlaces = searchQuery.trim()
     ? places.filter(p =>
         p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -232,6 +328,19 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         isAdded={isSelected}
         onAdd={() => handleAddToItinerary(item)}
         onBook={showBookNow && bookingLink ? () => openBookingUrl(bookingLink.booking_url, item.placeId, item.name) : undefined}
+        onPress={() => navigation.navigate('PlaceDetail', {
+          placeId: item.placeId,
+          name: item.name,
+          photoUrl: item.photoUrl,
+          photoUrls: item.photoUrls,
+          description: item.description || item.category,
+          rating: item.rating,
+          address: item.formatted_address || item.address,
+          category: item.category,
+          types: item.types,
+          lat: item.coordinates?.lat,
+          lng: item.coordinates?.lng,
+        })}
         onLongPress={() => handleLongPress(item)}
         isAuthenticated={isAuthenticated}
         isGuest={isGuest}
@@ -280,6 +389,95 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
             <Text style={styles.searchBtnText}>Search</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* ── Universal Place Search ───────────────────────────── */}
+      <View style={styles.uniSearchWrap}>
+        <View style={[styles.uniSearchRow, placeSearchFocused && styles.uniSearchRowFocused]}>
+          <Ionicons name="add-circle-outline" size={18} color="#10B981" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.uniSearchInput}
+            placeholder="Search any place to add…"
+            placeholderTextColor="rgba(0,0,0,0.38)"
+            value={placeSearch}
+            onChangeText={setPlaceSearch}
+            onFocus={() => setPlaceSearchFocused(true)}
+            onBlur={() => { if (!placeSearch) setPlaceSearchFocused(false); }}
+            returnKeyType="search"
+            onSubmitEditing={() => Keyboard.dismiss()}
+          />
+          {placeSearchLoading
+            ? <ActivityIndicator size="small" color="#10B981" />
+            : placeSearch.length > 0
+              ? <TouchableOpacity onPress={() => { setPlaceSearch(''); setPlaceSearchResults([]); setPlaceSearchFocused(false); }}>
+                  <Ionicons name="close-circle" size={16} color="#8E8E93" />
+                </TouchableOpacity>
+              : null
+          }
+        </View>
+
+        {/* Search results dropdown */}
+        {placeSearchFocused && placeSearchResults.length > 0 && (
+          <View style={styles.uniSearchDropdown}>
+            {placeSearchResults.map((item, idx) => {
+              const resolved = resolvedPlaces[item.placeId];
+              const isResolved = !!resolved?.details;
+              const inCity = resolved ? resolved.inCity : true;
+              const distKm = resolved?.distKm ?? 0;
+              const isAdded = !!selectedForItinerary.find(p => p.placeId === item.placeId);
+
+              return (
+                <TouchableOpacity
+                  key={item.placeId}
+                  style={[
+                    styles.uniResultItem,
+                    idx < placeSearchResults.length - 1 && styles.uniResultBorder,
+                    !inCity && styles.uniResultDimmed,
+                  ]}
+                  onPress={() => handleSelectSearchResult(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.uniResultNameRow}>
+                      <Text style={styles.uniResultName} numberOfLines={1}>{item.name}</Text>
+                      {!inCity && isResolved && (
+                        <Ionicons name="warning-outline" size={14} color="#D97706" style={{ marginLeft: 6 }} />
+                      )}
+                    </View>
+                    <Text style={styles.uniResultAddr} numberOfLines={1}>{item.address}</Text>
+                    {isResolved && !inCity && (
+                      <View style={styles.outOfCityBanner}>
+                        <Text style={styles.outOfCityText}>
+                          Outside trip area · {Math.round(distKm)} km away
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {isResolved && inCity && !isAdded && (
+                    <TouchableOpacity style={styles.uniAddBtn} onPress={() => handleAddSearchedPlace(item)}>
+                      <Ionicons name="add" size={14} color="#fff" />
+                      <Text style={styles.uniAddBtnText}>Add</Text>
+                    </TouchableOpacity>
+                  )}
+                  {isAdded && (
+                    <View style={styles.uniAddedBadge}>
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    </View>
+                  )}
+                  {!isResolved && (
+                    <ActivityIndicator size="small" color="#9CA3AF" style={{ marginLeft: 8 }} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {placeSearchFocused && !placeSearchLoading && placeSearch.trim().length >= 2 && placeSearchResults.length === 0 && (
+          <View style={styles.uniEmptyState}>
+            <Text style={styles.uniEmptyText}>No places found for "{placeSearch}"</Text>
+          </View>
+        )}
       </View>
 
       {/* ── Place list ────────────────────────────────────────── */}
@@ -519,6 +717,58 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   searchBtnText: { color: '#fff', fontSize: 13, fontFamily: F.semibold },
+
+  // ── Universal Search ─────────────────────────────────────────
+  uniSearchWrap: {
+    marginHorizontal: 14, marginBottom: 4, zIndex: 10,
+  },
+  uniSearchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F0FDF4', borderRadius: 14,
+    borderWidth: 1.5, borderColor: '#BBF7D0',
+    paddingHorizontal: 12, height: 44,
+  },
+  uniSearchRowFocused: { borderColor: '#10B981' },
+  uniSearchInput: { flex: 1, fontSize: 14, fontFamily: F.regular, color: '#1A1A1A' },
+  uniSearchDropdown: {
+    backgroundColor: '#fff', borderRadius: 14,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    marginTop: 4,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 6,
+    overflow: 'hidden',
+  },
+  uniResultItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  uniResultBorder: { borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+  uniResultDimmed: { opacity: 0.55 },
+  uniResultNameRow: { flexDirection: 'row', alignItems: 'center' },
+  uniResultName: { fontSize: 14, fontFamily: F.semibold, color: '#1A1A1A', flex: 1 },
+  uniResultAddr: { fontSize: 12, fontFamily: F.regular, color: '#6B7280', marginTop: 2 },
+  outOfCityBanner: {
+    marginTop: 4, backgroundColor: '#FEF3C7',
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  outOfCityText: { fontSize: 11, fontFamily: F.medium, color: '#92400E' },
+  uniAddBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#10B981', borderRadius: 9999,
+    paddingHorizontal: 12, paddingVertical: 6, marginLeft: 8,
+  },
+  uniAddBtnText: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
+  uniAddedBadge: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+  },
+  uniEmptyState: {
+    backgroundColor: '#fff', borderRadius: 14,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    marginTop: 4, paddingVertical: 14, paddingHorizontal: 16,
+  },
+  uniEmptyText: { fontSize: 13, fontFamily: F.regular, color: '#6B7280', textAlign: 'center' },
 
   // ── List ─────────────────────────────────────────────────────
   list: { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 24 },
