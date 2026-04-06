@@ -848,6 +848,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F2F2F7',
     gap: 8,
+    flexShrink: 0,
   },
   mapBtn: {
     backgroundColor: '#22C55E',

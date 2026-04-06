@@ -141,8 +141,10 @@ function MainTabs({ navigation: stackNavigation }: { navigation?: any }) {
             ),
           tabBarStyle: isMobile
             ? {
-                height: Platform.OS === 'web' ? 56 : 60 + safeBottom,
-                paddingBottom: Platform.OS === 'web' ? 4 : Math.max(6, safeBottom),
+                // Include safeBottom on web too: with viewport-fit=cover,
+                // env(safe-area-inset-bottom) is non-zero on iOS PWA (home indicator).
+                height: Platform.OS === 'web' ? 56 + safeBottom : 60 + safeBottom,
+                paddingBottom: Platform.OS === 'web' ? Math.max(4, safeBottom) : Math.max(6, safeBottom),
                 paddingTop: 4,
                 // On web: normal document flow (NOT absolute) so the bar sits
                 // above the mobile browser chrome. flexShrink:0 ensures it
@@ -254,6 +256,11 @@ const linking = {
 export default function AppNavigator() {
   const { setUser, login, isAuthenticated } = useAuthStore();
   const navRef = React.useRef<any>(null);
+  // On web, pin the root frame to the current visual viewport height so that
+  // react-navigation's CardContent (which uses minHeight:'100%' in full-screen
+  // mode) is properly bounded.  Without this, FlatList/ScrollView children
+  // with flex:1 expand to their full content height and push bottom CTAs off-screen.
+  const { height: _webWindowHeight } = useWindowDimensions();
 
   // ── Web / PWA: resolve auth BEFORE first render so returning users
   //    land directly on MainTabs with no logo / login flash. ───────────
@@ -390,10 +397,21 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer linking={linking} ref={navRef}>
-      <View style={styles.appFrame}>
+      <View style={[styles.appFrame, Platform.OS === 'web' && { height: _webWindowHeight }]}>
         <OfflineBanner />
         <AddToHomeScreen />
-        <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+        <Stack.Navigator
+          initialRouteName={initialRoute}
+          screenOptions={{
+            headerShown: false,
+            // On web, override react-navigation's CardContent style so it uses
+            // flex:1 (bounded) instead of minHeight:'100%' (unbounded).
+            // This ensures FlatList/ScrollView+bottom-bar layouts fit the screen.
+            ...(Platform.OS === 'web'
+              ? ({ cardStyle: { flex: 1, overflow: 'hidden' } } as object)
+              : {}),
+          }}
+        >
           {/* ── Intro ─────────────────────────────────── */}
           <Stack.Screen name="Logo"        component={LogoScreen} />
           <Stack.Screen name="Splash"      component={SplashScreen} />

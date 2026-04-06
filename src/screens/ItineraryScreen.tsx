@@ -747,6 +747,7 @@ const styles = StyleSheet.create({
   bottomBar: {
     paddingHorizontal: 16, paddingVertical: 16,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
+    flexShrink: 0,
   },
   bottomBtnRow: {
     flexDirection: 'row',

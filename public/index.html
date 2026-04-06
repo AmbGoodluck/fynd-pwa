@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <!--
+      viewport-fit=cover: lets content extend edge-to-edge on notch/home-bar devices
+      (iOS Safari / Android PWA). env(safe-area-inset-*) then provides exact insets
+      so react-native-safe-area-context can push content away from system chrome.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+    <!-- The `react-native-web` recommended style reset -->
+    <style id="expo-reset">
+      /* Full-height baseline — 100% of the viewport */
+      html,
+      body {
+        height: 100%;
+      }
+      /*
+        On browsers that support dynamic viewport units (Chrome 108+, Safari 15.4+,
+        Firefox 101+) use 100dvh so the root always fills the *current* visible area,
+        even when the mobile address bar is shown or hidden.
+      */
+      @supports (height: 100dvh) {
+        html,
+        body {
+          height: 100dvh;
+        }
+      }
+      /* Disable document-level scrolling — React Native ScrollView handles scrolling */
+      body {
+        overflow: hidden;
+      }
+      /* Root element fills its parent */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+      @supports (height: 100dvh) {
+        #root {
+          height: 100dvh;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>

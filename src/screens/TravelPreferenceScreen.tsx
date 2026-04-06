@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   vibeBorderSelected: { borderColor: '#22C55E' },
   checkBadge: { position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
   vibeLabel: { position: 'absolute', bottom: 10, left: 10, fontSize: 14, fontWeight: '600', color: '#fff' },
-  bottomBar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7' },
+  bottomBar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7', flexShrink: 0 },
   saveBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 50, alignItems: 'center', justifyContent: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   toast: { position: 'absolute', bottom: 90, left: 20, right: 20, alignItems: 'center' },

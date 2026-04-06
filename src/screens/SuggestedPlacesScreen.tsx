@@ -534,6 +534,7 @@ const styles = StyleSheet.create({
   ctaBar: {
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14,
     backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7',
+    flexShrink: 0,
   },
   ctaBtn: {
     backgroundColor: '#10B981', borderRadius: 12, height: 50,
