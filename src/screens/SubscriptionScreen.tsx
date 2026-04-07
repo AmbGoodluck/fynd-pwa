@@ -27,7 +27,7 @@ const FEATURES = [
     desc: 'Plan as many trips as you want without weekly limits.',
   },
   {
-    icon: 'bookmark-outline',
+    icon: 'heart-outline',
     color: '#3B82F6',
     bg: '#EFF6FF',
     title: 'Unlimited Saved Places',

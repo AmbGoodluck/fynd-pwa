@@ -19,6 +19,7 @@ import { COLORS } from '../theme/tokens';
 import { FALLBACK_IMAGE } from '../constants';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
+import GuestGateModal from '../components/GuestGateModal';
 import AppBar from '../components/AppBar';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -75,8 +76,12 @@ function PlaceRow({
       ? place.editorial_summary.split('.')[0] + '.'
       : '';
 
+  const [showGate, setShowGate] = useState(false);
   const handleSave = () => {
-    if (!isAuthenticated || isGuest) return;
+    if (!isAuthenticated || isGuest) {
+      setShowGate(true);
+      return;
+    }
     if (isSaved) {
       unsavePlace(place.place_id);
     } else {
@@ -117,11 +122,11 @@ function PlaceRow({
         <View style={styles.rowTop}>
           <Text style={styles.rowName} numberOfLines={1}>{place.place_name}</Text>
           <TouchableOpacity onPress={handleSave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons
-              name={isSaved ? 'bookmark' : 'bookmark-outline'}
-              size={18}
-              color={isSaved ? '#10B981' : '#9CA3AF'}
-            />
+              <Ionicons
+                name={isSaved ? 'heart' : 'heart-outline'}
+                size={18}
+                color={isSaved ? '#E24B4A' : '#9CA3AF'}
+              />
           </TouchableOpacity>
         </View>
 
@@ -148,6 +153,13 @@ function PlaceRow({
           ) : null}
         </View>
       </View>
+      <GuestGateModal
+        visible={showGate}
+        onDismiss={() => setShowGate(false)}
+        onLogin={() => { setShowGate(false); /* navigate to login if needed */ }}
+        onRegister={() => { setShowGate(false); /* navigate to register if needed */ }}
+        onContinueAsGuest={() => setShowGate(false)}
+      />
     </TouchableOpacity>
   );
 }

@@ -16,6 +16,7 @@ import { FALLBACK_IMAGE } from '../constants';
 import { searchPlacesByVibe, type PlaceResult } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
+import GuestGateModal from '../../components/GuestGateModal';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { gradientStyle, type TrendingCategory } from '../config/trendingCategories';
 import type { RecentTrip } from '../types/recentTrip';
@@ -237,6 +238,7 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
 
   const { savePlace, unsavePlace, isPlaceSaved, isGuest } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
+  const [showGate, setShowGate] = useState(false);
 
   // All valid + time-context-filtered places from the API
   const [filteredPlaces, setFilteredPlaces] = useState<PlaceResult[]>([]);
@@ -317,7 +319,7 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
 
   const handleNavigate = (place: PlaceResult) => {
     const stop = {
-      id: place.placeId,
+      setShowGate(true);
       name: place.name,
       description: place.description || place.category || '',
       distance: '',
@@ -489,6 +491,13 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
           )}
         </ScrollView>
       )}
+      <GuestGateModal
+        visible={showGate}
+        onDismiss={() => setShowGate(false)}
+        onLogin={() => { setShowGate(false); navigation.navigate('AuthChoice'); }}
+        onRegister={() => { setShowGate(false); navigation.navigate('AuthChoice'); }}
+        onContinueAsGuest={() => setShowGate(false)}
+      />
     </View>
   );
 }

@@ -32,7 +32,7 @@ export default function GuestGateModal({
 
               {/* Icon */}
               <View style={styles.iconWrap}>
-                <Ionicons name="bookmark-outline" size={32} color="#22C55E" />
+                <Ionicons name="heart-outline" size={32} color="#E24B4A" />
               </View>
 
               <Text style={styles.title}>Create an Account</Text>

@@ -93,7 +93,7 @@ const TAB_ICONS: Record<string, { default: string; active: string }> = {
 // Shorter display labels for the tab bar
 const TAB_LABELS: Record<string, string> = {
   Home:           'Home',
-  'Create Trip':  'Create',
+  'Create Trip':  'Create Trip',
   Map:            'Map',
   ServiceHub:     'Services',
   Saved:          'Saved',

@@ -1,3 +1,4 @@
+import GuestGateModal from '../components/GuestGateModal';
 import SuccessToast from '../components/SuccessToast';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, ActivityIndicator, Animated } from 'react-native';
@@ -29,7 +30,8 @@ type Props = { navigation: any };
 
 export default function TravelPreferenceScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, isAuthenticated } = useAuthStore();
+  const [showGate, setShowGate] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,6 +53,10 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
   };
 
   const toggleVibe = (id: string) => {
+    if (!isAuthenticated || !user?.id) {
+      setShowGate(true);
+      return;
+    }
     setSelected(prev => prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]);
   };
 
@@ -64,7 +70,11 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
   };
 
   const savePreferences = async () => {
-    if (!user?.id || saving) return;
+    if (!isAuthenticated || !user?.id) {
+      setShowGate(true);
+      return;
+    }
+    if (saving) return;
     setSaving(true);
     try {
       await updateDoc(doc(db, 'users', user.id), { travelPreferences: selected });
@@ -104,6 +114,13 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
   }
 
   return (
+        <GuestGateModal
+          visible={showGate}
+          onDismiss={() => setShowGate(false)}
+          onLogin={() => { setShowGate(false); navigation.navigate('AuthChoice'); }}
+          onRegister={() => { setShowGate(false); navigation.navigate('AuthChoice'); }}
+          onContinueAsGuest={() => setShowGate(false)}
+        />
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

@@ -442,7 +442,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
             {!isOwner && (
               <TouchableOpacity style={styles.quickBtn} onPress={() => setShowSaveModal(true)}>
                 <Ionicons
-                  name={saved ? 'bookmark' : 'bookmark-outline'}
+                  name={saved ? 'heart' : 'heart-outline'}
                   size={18}
                   color={saved ? '#22C55E' : '#22C55E'}
                 />
@@ -537,7 +537,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           <View style={styles.modalSheet}>
             <View style={styles.modalHandle} />
             <View style={styles.modalIconWrap}>
-              <Ionicons name="bookmark-outline" size={32} color="#22C55E" />
+              <Ionicons name="heart-outline" size={32} color="#E24B4A" />
             </View>
             <Text style={styles.modalTitle}>Save to My Trips</Text>
             <Text style={styles.modalBody}>

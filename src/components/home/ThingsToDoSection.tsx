@@ -11,6 +11,7 @@ import { COLORS } from '../../theme/tokens';
 import { FALLBACK_IMAGE } from '../../constants';
 import { useGuestStore } from '../../store/useGuestStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import GuestGateModal from '../GuestGateModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -174,9 +175,13 @@ function ThingsToDoCard({
   const badge = index < BADGES.length ? BADGES[index] : null;
   const rating = place.rating ? Number(place.rating).toFixed(1) : undefined;
   const vibe = (place as any).vibe || '';
+  const [showGate, setShowGate] = useState(false);
 
   const handleSave = () => {
-    if (!isAuthenticated || isGuest) return;
+    if (!isAuthenticated || isGuest) {
+      setShowGate(true);
+      return;
+    }
     if (isSaved) {
       unsavePlace(place.place_id);
     } else {
@@ -198,6 +203,13 @@ function ThingsToDoCard({
   };
 
   return (
+        <GuestGateModal
+          visible={showGate}
+          onDismiss={() => setShowGate(false)}
+          onLogin={() => setShowGate(false)}
+          onRegister={() => setShowGate(false)}
+          onContinueAsGuest={() => setShowGate(false)}
+        />
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
       {/* Image */}
       <ImageBackground
@@ -221,9 +233,9 @@ function ThingsToDoCard({
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
           <Ionicons
-            name={isSaved ? 'bookmark' : 'bookmark-outline'}
+            name={isSaved ? 'heart' : 'heart-outline'}
             size={14}
-            color={isSaved ? '#10B981' : '#1A1A1A'}
+            color={isSaved ? '#E24B4A' : '#9CA3AF'}
           />
         </TouchableOpacity>
       </ImageBackground>

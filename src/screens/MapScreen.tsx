@@ -258,9 +258,31 @@ function buildTripHtml(stops: Stop[], mapsJsUrl: string): string {
         map.setCenter({ lat: STOPS[0].lat, lng: STOPS[0].lng });
         map.setZoom(15);
         return;
-      }
       var b = new google.maps.LatLngBounds();
       STOPS.forEach(function(s) { b.extend({ lat: s.lat, lng: s.lng }); });
+          {/* Map and overlays here */}
+
+          {/* ServiceHub Floating Button */}
+          <TouchableOpacity
+            style={{
+              position: 'absolute',
+              bottom: 32,
+              right: 24,
+              backgroundColor: '#fff',
+              borderRadius: 28,
+              padding: 14,
+              elevation: 5,
+              shadowColor: '#000',
+              shadowOpacity: 0.15,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 2 },
+              zIndex: 100,
+            }}
+            onPress={handleServiceHubFab}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="construct" size={28} color="#10B981" />
+          </TouchableOpacity>
       if (USER) b.extend(USER);
       map.fitBounds(b, { top: 50, right: 30, bottom: 30, left: 30 });
     }
