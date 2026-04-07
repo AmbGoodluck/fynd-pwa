@@ -319,7 +319,6 @@ export default function CategoryPlacesScreen({ navigation, route }: Props) {
 
   const handleNavigate = (place: PlaceResult) => {
     const stop = {
-      setShowGate(true);
       name: place.name,
       description: place.description || place.category || '',
       distance: '',
