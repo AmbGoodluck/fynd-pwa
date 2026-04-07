@@ -37,36 +37,50 @@ export default function RegisterScreen({ navigation }: Props) {
       // Step 1: Create Firebase Auth user
       const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const uid = cred.user.uid;
+      // Ensure auth token is refreshed before Firestore writes
+      await cred.user.getIdToken(true);
 
-      // Step 2: Create user doc in Firestore
-      await setDoc(doc(db, 'users', uid), {
-        id: uid,
-        email: email.trim(),
-        fullName: fullName.trim(),
-        profilePhoto: null,
-        createdAt: serverTimestamp(),
-        homeCity: '',
-        travelStyle: [],
-        isPremium: false,
-      });
-
-      // Step 3: Create subscription doc
-      await setDoc(doc(db, 'subscriptions', uid), {
-        userId: uid,
-        isPremium: false,
-        plan: 'free',
-        status: 'active',
-        stripeCustomerId: null,
-        stripeSubscriptionId: null,
-        currentPeriodEnd: null,
-        tripsUsedThisMonth: 0,
-        itinerariesGenerated: 0,
-        savedPlacesCount: 0,
-        tripLimit: 3,
-        itineraryLimit: 1,
-        savedPlacesLimit: 5,
-        placesPerTripLimit: 5,
-      });
+      // Step 2: Create user doc in Firestore (with retry)
+      let userDocError = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await setDoc(doc(db, 'users', uid), {
+            id: uid,
+            email: email.trim(),
+            fullName: fullName.trim(),
+            profilePhoto: null,
+            createdAt: serverTimestamp(),
+            homeCity: '',
+            travelStyle: [],
+            isPremium: false,
+          });
+          await setDoc(doc(db, 'subscriptions', uid), {
+            userId: uid,
+            isPremium: false,
+            plan: 'free',
+            status: 'active',
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+            currentPeriodEnd: null,
+            tripsUsedThisMonth: 0,
+            itinerariesGenerated: 0,
+            savedPlacesCount: 0,
+            tripLimit: 3,
+            itineraryLimit: 1,
+            savedPlacesLimit: 5,
+            placesPerTripLimit: 5,
+          });
+          userDocError = null;
+          break;
+        } catch (err) {
+          userDocError = err;
+          if (attempt === 0) await new Promise(res => setTimeout(res, 1000));
+        }
+      }
+      if (userDocError) {
+        setError('Account created but setup failed. Please close the app and sign in again.');
+        return;
+      }
 
       // Step 4: Update auth store and navigate
       clearGuest(); // ensure guest state is cleared on registration
@@ -86,7 +100,6 @@ export default function RegisterScreen({ navigation }: Props) {
       const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered.' :
                   e.code === 'auth/invalid-email' ? 'Please enter a valid email.' :
                   e.code === 'auth/weak-password' ? 'Password must be at least 6 characters.' :
-                  e.code === 'permission-denied' ? 'Database permission error. Check Firestore rules.' :
                   (e.code || e.message || 'Registration failed. Please try again.');
       setError(msg);
     } finally {

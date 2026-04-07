@@ -27,7 +27,21 @@ export default function LoginScreen({ navigation }: Props) {
     setError('');
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const userDoc = await getUserDoc(cred.user.uid);
+      let userDoc = await getUserDoc(cred.user.uid);
+      // Lazy create user doc if missing
+      if (!userDoc) {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          id: cred.user.uid,
+          email: cred.user.email || '',
+          fullName: cred.user.displayName || '',
+          profilePhoto: null,
+          createdAt: new Date(),
+          homeCity: '',
+          travelStyle: [],
+          isPremium: false,
+        });
+        userDoc = await getUserDoc(cred.user.uid);
+      }
       clearGuest(); // ensure guest state is cleared on sign-in
       login({
         id: cred.user.uid,
