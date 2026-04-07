@@ -8,6 +8,30 @@ import * as Sentry from '../services/sentry';
 import { useAuthStore } from '../store/useAuthStore';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+
+export default function TravelPreferenceScreen({ navigation }: any) {
+  const { user, isAuthenticated, setUser } = useAuthStore();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showGate, setShowGate] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const toastAnim = React.useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => { loadPreferences(); }, []);
+
+  // ...existing code for loadPreferences, toggleVibe, showSuccessToast, savePreferences, renderVibe...
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ActivityIndicator size="large" color="#22C55E" style={{ flex: 1 }} />
+        <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <>
       <GuestGateModal
@@ -37,7 +61,8 @@ import { db } from '../services/firebase';
         {/* ...existing code... */}
       </SafeAreaView>
     </>
-  const [loading, setLoading] = useState(true);
+  );
+}
   const [saving, setSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const toastAnim = React.useRef(new Animated.Value(0)).current;
