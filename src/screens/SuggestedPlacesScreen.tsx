@@ -22,7 +22,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion, PlaceResult } from '../services/googlePlacesService';
-import { upsertSearchedPlace, getCachedSuggestedPlaces } from '../services/placeDetailsService';
+import { upsertSearchedPlace } from '../services/placeDetailsService';
 import { FALLBACK_IMAGE } from '../constants';
 
 // ── Haversine in-city check ─────────────────────────────────────────────────
@@ -88,7 +88,7 @@ function PlaceListItem({
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      onPress={() => navigation.navigate('PlaceDetail', { placeId: item.placeId })}
+      onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
     >
