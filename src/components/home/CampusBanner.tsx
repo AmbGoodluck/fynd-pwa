@@ -1,67 +1,66 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { F } from '../../theme/fonts';
+import { COLORS } from '../../theme/tokens';
+import { useUserLocation } from '../../hooks/useUserLocation';
+import { reverseGeocode } from '../../services/googlePlacesService';
 
 export default function CampusBanner() {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const { location, loading, error } = useUserLocation();
+  const [cityName, setCityName] = useState<string | null>(null);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.25, duration: 950, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 950, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
+    if (!location || cityName) return; // don't re-geocode if already resolved
+    reverseGeocode(location.latitude, location.longitude)
+      .then(city => { if (city) setCityName(city); })
+      .catch(() => {});
+  }, [location]);
+
+  let label: string;
+  let cityPart: string | null = null;
+
+  if (loading) {
+    label = '📍 Detecting your location...';
+  } else if (error || !location) {
+    label = '📍 Explore places near you';
+  } else {
+    cityPart = cityName || null;
+    label = '📍 Exploring ';
+  }
 
   return (
-    <View style={styles.banner}>
-      <Animated.View style={[styles.dot, { opacity: pulse }]} />
+    <View style={styles.wrap}>
       <Text style={styles.text} numberOfLines={1}>
-        <Text style={styles.semibold}>Berea College · </Text>
-        <Text style={styles.bold}>47 classmates</Text>
-        <Text style={styles.regular}> exploring today</Text>
+        {cityPart !== null ? (
+          <>
+            <Text style={styles.muted}>📍 Exploring </Text>
+            <Text style={styles.city}>{cityPart}</Text>
+          </>
+        ) : (
+          <Text style={styles.muted}>{label}</Text>
+        )}
       </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#D1FAE5',
-    borderRadius: 10,
-    gap: 8,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#10B981',
-    flexShrink: 0,
+  wrap: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   text: {
-    flex: 1,
-    fontSize: 12,
-    color: '#065F46',
+    fontSize: 14,
   },
-  semibold: {
+  muted: {
+    fontFamily: F.medium,
+    fontSize: 14,
+    color: COLORS.text.secondary,
+  },
+  city: {
     fontFamily: F.semibold,
-    color: '#065F46',
-  },
-  bold: {
-    fontFamily: F.bold,
-    color: '#065F46',
-  },
-  regular: {
-    fontFamily: F.regular,
-    color: '#065F46',
+    fontSize: 14,
+    color: COLORS.text.primary,
   },
 });

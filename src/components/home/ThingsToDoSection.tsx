@@ -196,7 +196,7 @@ export default function ThingsToDoSection({ navigation }: Props) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Things to Do</Text>
         <TouchableOpacity
-          onPress={() => console.log('[ThingsToDo] See all pressed')}
+          onPress={() => navigation.navigate('AllPlaces')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={styles.seeAll}>See all →</Text>

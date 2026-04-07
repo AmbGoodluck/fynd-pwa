@@ -73,6 +73,7 @@ import MomentsScreen from '../screens/MomentsScreen';
 import CategoryPlacesScreen from '../screens/CategoryPlacesScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import PlaceDetailScreen from '../screens/PlaceDetailScreen';
+import AllPlacesScreen from '../screens/AllPlacesScreen';
 
 const MapTabScreen = (props: any) => <MapScreen {...props} />;
 const ServiceHubTabScreen = (props: any) => <ServiceHubScreen {...props} />;
@@ -470,6 +471,9 @@ export default function AppNavigator() {
 
           {/* ── Place Detail ──────────────────────────── */}
           <Stack.Screen name="PlaceDetail" component={PlaceDetailScreen} />
+
+          {/* ── All Places (Things to Do) ─────────────── */}
+          <Stack.Screen name="AllPlaces" component={AllPlacesScreen} />
         </Stack.Navigator>
       </View>
     </NavigationContainer>
