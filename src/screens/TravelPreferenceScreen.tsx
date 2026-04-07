@@ -135,33 +135,35 @@ export default function TravelPreferenceScreen({ navigation }: any) {
 
   // Duplicate misplaced return blocks removed. Only the main export default function and its return remain.
 
-      <FlatList
-        data={VIBES}
-        keyExtractor={item => item.id}
-        numColumns={2}
-        style={{ flex: 1 }}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.grid, { paddingBottom: 16 }]}
-        renderItem={renderVibe}
-      />
+      <>
+        <FlatList
+          data={VIBES}
+          keyExtractor={item => item.id}
+          numColumns={2}
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.grid, { paddingBottom: 16 }]}
+          renderItem={renderVibe}
+        />
 
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(12, insets.bottom) }] }>
-        <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={savePreferences} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Preferences</Text>}
-        </TouchableOpacity>
-      </View>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(12, insets.bottom) }] }>
+          <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={savePreferences} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Preferences</Text>}
+          </TouchableOpacity>
+        </View>
 
-      {showToast && (
-        <Animated.View style={[styles.toast, { opacity: toastAnim, transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
-          <View style={styles.toastInner}>
-            <View style={styles.toastIcon}>
-              <Ionicons name="checkmark" size={18} color="#fff" />
+        {showToast && (
+          <Animated.View style={[styles.toast, { opacity: toastAnim, transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}> 
+            <View style={styles.toastInner}>
+              <View style={styles.toastIcon}>
+                <Ionicons name="checkmark" size={18} color="#fff" />
+              </View>
+              <Text style={styles.toastText}>Preferences saved!</Text>
             </View>
-            <Text style={styles.toastText}>Preferences saved!</Text>
-          </View>
-        </Animated.View>
-      )}
-      <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
+          </Animated.View>
+        )}
+        <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
+      </>
     </SafeAreaView>
   );
 }
