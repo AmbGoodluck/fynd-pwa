@@ -50,27 +50,96 @@ const BOOSTED_TYPES = new Set([
   'natural_feature',
 ]);
 
-function sortPlaces(places: CachedPlace[]): CachedPlace[] {
-  // 1. Filter out excluded types
-  const filtered = places.filter(place =>
-    !(place.types || []).some(t => EXCLUDED_TYPES.has(t))
-  );
-  // 2. Score for deprioritized/boosted
-  return filtered
-    .map(place => {
-      const types = place.types || [];
-      let score = 0;
-      if (types.some(t => BOOSTED_TYPES.has(t))) score += 2;
-      if (types.some(t => DEPRIORITIZED_TYPES.has(t))) score -= 2;
-      return { ...place, _score: score };
-    })
-    .sort((a, b) => {
-      if (b._score !== a._score) return b._score - a._score;
-      const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
-      if (ratingDiff !== 0) return ratingDiff;
-      return (b.photo_urls?.length ?? 0) - (a.photo_urls?.length ?? 0);
-    })
-    .slice(0, 15);
+// ── Personalization maps ───────────────────────────────────────────────────────
+
+const PREFERENCE_TO_TYPES: Record<string, string[]> = {
+  hidden_gems:   ['point_of_interest', 'establishment', 'art_gallery', 'museum'],
+  photography:   ['park', 'natural_feature', 'tourist_attraction', 'art_gallery', 'viewpoint'],
+  work_friendly: ['cafe', 'library', 'book_store', 'coworking'],
+  arts_culture:  ['art_gallery', 'museum', 'performing_arts_theater', 'cultural_center'],
+  outdoor_park:  ['park', 'campground', 'natural_feature', 'hiking_area', 'trail'],
+  food_drinks:   ['restaurant', 'cafe', 'bakery', 'bar', 'meal_delivery', 'meal_takeaway', 'food'],
+  nightlife:     ['bar', 'night_club', 'pub', 'lounge'],
+  shopping:      ['shopping_mall', 'store', 'clothing_store', 'home_goods_store', 'gift_shop', 'book_store'],
+  wellness:      ['spa', 'gym', 'yoga', 'health'],
+  adventure:     ['campground', 'natural_feature', 'park', 'tourist_attraction', 'amusement_park'],
+  beaches:       ['beach', 'natural_feature', 'water'],
+  history:       ['museum', 'church', 'cemetery', 'monument', 'historic', 'heritage'],
+  music:         ['night_club', 'bar', 'performing_arts_theater', 'music', 'entertainment'],
+  family:        ['park', 'amusement_park', 'zoo', 'aquarium', 'museum', 'bowling_alley', 'movie_theater'],
+};
+
+const PREFERENCE_TO_KEYWORDS: Record<string, string[]> = {
+  hidden_gems:   ['hidden', 'gem', 'unique', 'local', 'off-beat', 'quirky'],
+  photography:   ['scenic', 'view', 'sunset', 'overlook', 'panoramic', 'beautiful'],
+  work_friendly: ['study', 'wifi', 'quiet', 'laptop', 'cozy', 'coffee'],
+  arts_culture:  ['art', 'gallery', 'museum', 'craft', 'artisan', 'cultural'],
+  outdoor_park:  ['trail', 'hike', 'park', 'nature', 'forest', 'outdoor', 'lake', 'creek'],
+  food_drinks:   ['food', 'restaurant', 'cafe', 'pizza', 'brunch', 'dinner', 'lunch', 'coffee', 'bakery'],
+  nightlife:     ['bar', 'pub', 'tavern', 'lounge', 'nightlife', 'cocktail', 'beer', 'live music'],
+  shopping:      ['shop', 'store', 'mall', 'boutique', 'thrift', 'antique', 'market', 'gallery'],
+  wellness:      ['gym', 'yoga', 'fitness', 'spa', 'wellness', 'health'],
+  adventure:     ['adventure', 'hiking', 'trail', 'climbing', 'kayak', 'bike', 'outdoor'],
+  beaches:       ['beach', 'lake', 'swimming', 'water', 'shore'],
+  history:       ['historic', 'history', 'heritage', 'museum', 'monument', 'old', 'civil war'],
+  music:         ['music', 'live', 'concert', 'band', 'entertainment', 'show'],
+  family:        ['family', 'kids', 'children', 'playground', 'fun', 'arcade'],
+};
+
+function calculateRelevance(place: CachedPlace, preferences: string[]): number {
+  if (preferences.length === 0) return 0;
+  let score = 0;
+  const placeTypes = (place.types || []).map(t => t.toLowerCase());
+  const haystack = [
+    ...placeTypes,
+    ((place as any).known_for || []).join(' ').toLowerCase(),
+    ((place as any).vibe || '').toLowerCase(),
+    (place.ai_description || '').toLowerCase(),
+  ].join(' ');
+
+  for (const pref of preferences) {
+    for (const t of (PREFERENCE_TO_TYPES[pref] || [])) {
+      if (placeTypes.some(pt => pt.includes(t.replace(/_/g, ' ')) || pt.includes(t))) {
+        score += 3;
+      }
+    }
+    for (const kw of (PREFERENCE_TO_KEYWORDS[pref] || [])) {
+      if (haystack.includes(kw)) score += 1;
+    }
+  }
+  return score;
+}
+
+function sortPlaces(places: CachedPlace[], preferences: string[] = []): CachedPlace[] {
+  // Personalized sort when user has preferences and at least one place matches
+  if (preferences.length > 0) {
+    const scored = places.map(p => ({ place: p, relevance: calculateRelevance(p, preferences) }));
+    const hasRelevant = scored.some(s => s.relevance > 0);
+    if (hasRelevant) {
+      return scored
+        .sort((a, b) => {
+          if (b.relevance !== a.relevance) return b.relevance - a.relevance;
+          return (b.place.rating ?? 0) - (a.place.rating ?? 0);
+        })
+        .map(s => s.place);
+    }
+  }
+
+  // Default sort: boosted types first, then rating, then photos
+  return [...places].sort((a, b) => {
+    const aTypes = a.types || [];
+    const bTypes = b.types || [];
+    const aBoosted = aTypes.some(t => BOOSTED_TYPES.has(t)) ? 1 : 0;
+    const bBoosted = bTypes.some(t => BOOSTED_TYPES.has(t)) ? 1 : 0;
+    const aDeprio  = aTypes.some(t => DEPRIORITIZED_TYPES.has(t)) ? -1 : 0;
+    const bDeprio  = bTypes.some(t => DEPRIORITIZED_TYPES.has(t)) ? -1 : 0;
+    const aScore = aBoosted + aDeprio;
+    const bScore = bBoosted + bDeprio;
+    if (bScore !== aScore) return bScore - aScore;
+    const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
+    if (ratingDiff !== 0) return ratingDiff;
+    return (b.photo_urls?.length ?? 0) - (a.photo_urls?.length ?? 0);
+  });
 }
 
 const BADGES = [
@@ -78,10 +147,6 @@ const BADGES = [
   { label: '↑ Rising',    bg: '#10B981' },
   { label: '✦ Popular',   bg: '#1A1A1A' },
 ] as const;
-
-const CLASSMATE_COUNTS = [21, 14, 38, 9, 17, 6, 29, 11, 43, 7, 25, 18];
-const DISTANCES        = ['0.3 mi', '0.6 mi', '0.8 mi', '1.1 mi', '0.4 mi', '1.5 mi',
-                          '0.2 mi', '0.9 mi', '1.3 mi', '0.5 mi', '1.8 mi', '0.7 mi'];
 
 // ── Gradient overlay ──────────────────────────────────────────────────────────
 
@@ -107,10 +172,8 @@ function ThingsToDoCard({
   const isSaved = isPlaceSaved(place.place_id);
   const photoUrl = place.photo_urls?.[0] || FALLBACK_IMAGE;
   const badge = index < BADGES.length ? BADGES[index] : null;
-  // Remove fake classmate count and use rating and vibe
   const rating = place.rating ? Number(place.rating).toFixed(1) : undefined;
-  const vibe = place.vibe || '';
-  const distance = place.distanceKm ? `${place.distanceKm} mi` : '';
+  const vibe = (place as any).vibe || '';
 
   const handleSave = () => {
     if (!isAuthenticated || isGuest) return;
@@ -168,12 +231,11 @@ function ThingsToDoCard({
       {/* Body */}
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={1}>{place.place_name}</Text>
-        {/* Truncate to first sentence of ai_description, fallback to editorial_summary */}
         <Text style={styles.cardDesc} numberOfLines={2}>
           {place.ai_description
             ? place.ai_description.split('.')[0] + '.'
-            : place.editorial_summary
-              ? place.editorial_summary.split('.')[0] + '.'
+            : (place as any).editorial_summary
+              ? (place as any).editorial_summary.split('.')[0] + '.'
               : ''}
         </Text>
 
@@ -201,13 +263,15 @@ type Props = { navigation: any };
 
 export default function ThingsToDoSection({ navigation }: Props) {
   const [places, setPlaces] = useState<CachedPlace[]>([]);
+  const user = useAuthStore(s => s.user);
+  const preferences = user?.travelPreferences || [];
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        // Fetch 50 for generous client-side filtering, then boost/sort/cap at 15
+        // Fetch 50 for generous client-side filtering, then sort/cap at 15
         const q = query(
           collection(db, 'place_details_cache'),
           orderBy('rating', 'desc'),
@@ -220,7 +284,7 @@ export default function ThingsToDoSection({ navigation }: Props) {
           .map(d => ({ place_id: d.id, ...d.data() } as CachedPlace))
           .filter(p => !p.types?.some(t => EXCLUDED_TYPES.has(t)));
 
-        setPlaces(sortPlaces(filtered).slice(0, 15));
+        setPlaces(sortPlaces(filtered, preferences).slice(0, 15));
       } catch {
         // Firestore unavailable — section stays hidden
       }
@@ -231,11 +295,13 @@ export default function ThingsToDoSection({ navigation }: Props) {
 
   if (places.length === 0) return null;
 
+  const sectionTitle = preferences.length > 0 ? 'For You' : 'Things to Do';
+
   return (
     <View style={styles.wrapper}>
       {/* Section header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Things to Do</Text>
+        <Text style={styles.headerTitle}>{sectionTitle}</Text>
         <TouchableOpacity
           onPress={() => navigation.navigate('AllPlaces')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -388,15 +454,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-  },
-  classmateText: {
-    fontSize: 10.5,
-    fontFamily: F.medium,
-    color: '#10B981',
-  },
-  distanceText: {
-    fontSize: 10,
-    fontFamily: F.regular,
-    color: COLORS.text.tertiary,
   },
 });
