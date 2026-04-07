@@ -377,36 +377,11 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         onBack={() => navigation.goBack()}
       />
 
-      {/* ── Sub-header: subtitle + search ─────────────────────── */}
+      {/* ── Sub-header: subtitle only ─────────────────────── */}
       <View style={styles.subHeader}>
         <Text style={styles.sectionSubtitle}>
           Select places you'd like to include in your itinerary
         </Text>
-        <View style={styles.searchRow}>
-          <View style={styles.searchInputWrap}>
-            <Ionicons name="search-outline" size={18} color="#8E8E93" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search saved places"
-              placeholderTextColor="rgba(0,0,0,0.38)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-              onSubmitEditing={() => Keyboard.dismiss()}
-            />
-            {searchQuery.length > 0 ? (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color="#8E8E93" />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-          <TouchableOpacity
-            style={styles.searchBtn}
-            onPress={() => Keyboard.dismiss()}
-          >
-            <Text style={styles.searchBtnText}>Search</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       {/* ── Universal Place Search ───────────────────────────── */}
@@ -714,8 +689,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F2F2F7',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderWidth: 0,
+    borderColor: 'transparent',
     paddingHorizontal: 12,
     height: 42,
   },
@@ -743,10 +718,10 @@ const styles = StyleSheet.create({
   uniSearchRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#F0FDF4', borderRadius: 14,
-    borderWidth: 1.5, borderColor: '#BBF7D0',
+    borderWidth: 0, borderColor: 'transparent',
     paddingHorizontal: 12, height: 44,
   },
-  uniSearchRowFocused: { borderColor: '#10B981' },
+  uniSearchRowFocused: { borderColor: '#10B981', borderWidth: 1.5 },
   uniSearchInput: { flex: 1, fontSize: 14, fontFamily: F.regular, color: '#1A1A1A' },
   uniSearchDropdown: {
     backgroundColor: '#fff', borderRadius: 14,
