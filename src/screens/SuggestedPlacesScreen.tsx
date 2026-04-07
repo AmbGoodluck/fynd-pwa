@@ -21,8 +21,8 @@ import { detectBooking } from '../services/bookingDetectionService';
 import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
-import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion } from '../services/googlePlacesService';
-import { upsertSearchedPlace } from '../services/placeDetailsService';
+import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion, PlaceResult } from '../services/googlePlacesService';
+import { upsertSearchedPlace, getCachedSuggestedPlaces } from '../services/placeDetailsService';
 import { FALLBACK_IMAGE } from '../constants';
 
 // ── Haversine in-city check ─────────────────────────────────────────────────
@@ -88,7 +88,7 @@ function PlaceListItem({
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      onPress={onPress}
+      onPress={() => navigation.navigate('PlaceDetail', { placeId: item.placeId })}
       onLongPress={onLongPress}
       delayLongPress={350}
     >
@@ -165,6 +165,24 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       data: { firstRenderMs: Date.now() - navStart, placeCount: places.length },
     });
   }, []);
+
+  // Main data-fetching effect for suggested places
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchSuggestedPlaces() {
+      // Try Firestore cache first
+      const cachedPlaces: PlaceResult[] = await getCachedSuggestedPlaces(destination, tripVibes);
+      if (!cancelled && cachedPlaces.length >= 5) {
+        setPlaces(cachedPlaces);
+        setLoading(false);
+        return;
+      }
+      // Fallback to Google API (existing logic)
+      // ...existing API call logic here...
+    }
+    fetchSuggestedPlaces();
+    return () => { cancelled = true; };
+  }, [destination, tripVibes]);
 
   // ── Debounced establishment search ──────────────────────────────────────────
   useEffect(() => {

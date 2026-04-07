@@ -18,7 +18,6 @@ import { FALLBACK_IMAGE } from '../constants';
 import { formatRelativeDate } from '../utils/date';
 import { deleteItinerary } from '../services/database';
 import CampusBanner from '../components/home/CampusBanner';
-import AroundCampus from '../components/home/AroundCampus';
 import ThingsToDoSection from '../components/home/ThingsToDoSection';
 
 const SERVICE_QUICK = [
@@ -78,8 +77,6 @@ export default function HomeScreen({ navigation }: Props) {
         {/* 1. Campus banner */}
         <CampusBanner />
 
-        {/* 2. Moments / Around Campus reel */}
-        <AroundCampus />
 
         {/* 3. Things to Do — real Firestore places */}
         <ThingsToDoSection navigation={navigation} />

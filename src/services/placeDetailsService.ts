@@ -1,3 +1,72 @@
+import { collection, getDocs, limit as fsLimit } from 'firebase/firestore';
+import { PlaceResult } from './googlePlacesService';
+/**
+ * Query Firestore cache for suggested places by city and vibes.
+ */
+export async function getCachedSuggestedPlaces(
+  city: string,
+  vibes: string[],
+  maxResults: number = 40,
+): Promise<PlaceResult[]> {
+  try {
+    // Fetch up to 200 cached places
+    const snap = await getDocs(fsLimit(collection(db, 'place_details_cache'), 200));
+    const cityNorm = city.trim().toLowerCase();
+    const vibeTokens = vibes.map(v => v.toLowerCase().split(/\s+/)).flat();
+    const results: Array<{ place: PlaceDetailsCache; vibeMatches: number }> = [];
+    for (const docSnap of snap.docs) {
+      const place = docSnap.data() as PlaceDetailsCache;
+      // City match: check city or formatted_address includes city string
+      const cityField = (place.city || '').toLowerCase();
+      const addrField = (place.formatted_address || '').toLowerCase();
+      if (
+        !cityNorm ||
+        cityField.startsWith(cityNorm) ||
+        cityNorm.startsWith(cityField) ||
+        cityField.includes(cityNorm) ||
+        addrField.includes(cityNorm)
+      ) {
+        // Vibe match: count tokens in types, known_for, vibe, ai_description
+        const haystack = [
+          ...(place.types || []).map(t => t.toLowerCase()),
+          ...(place.known_for || []).map(k => k.toLowerCase()),
+          (place.vibe || '').toLowerCase(),
+          (place.ai_description || '').toLowerCase(),
+        ].join(' ');
+        let vibeMatches = 0;
+        for (const token of vibeTokens) {
+          if (token && haystack.includes(token)) vibeMatches++;
+        }
+        results.push({ place, vibeMatches });
+      }
+    }
+    // Sort: more vibe matches first, then rating desc
+    results.sort((a, b) =>
+      b.vibeMatches - a.vibeMatches || (b.place.rating || 0) - (a.place.rating || 0)
+    );
+    // Map to PlaceResult
+    return results.slice(0, maxResults).map(({ place }) => ({
+      placeId: place.place_id,
+      name: place.place_name,
+      address: place.formatted_address,
+      rating: place.rating ?? 0,
+      description: place.ai_description || place.editorial_summary || '',
+      photoRef: '',
+      photoUrl: place.photo_urls?.[0] || FALLBACK_IMAGE,
+      photoUrls: place.photo_urls,
+      coordinates: { lat: place.lat, lng: place.lng },
+      category: place.types?.[0]?.replace(/_/g, ' '),
+      types: place.types,
+      city: place.city,
+      matchedTags: (place.known_for || []).slice(0, 2),
+      bookingUrl: undefined,
+      opening_hours: place.opening_hours,
+      business_status: undefined,
+    }));
+  } catch (e) {
+    return [];
+  }
+}
 /**
  * Place Details Service
  *

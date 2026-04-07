@@ -65,8 +65,10 @@ function ThingsToDoCard({
   const isSaved = isPlaceSaved(place.place_id);
   const photoUrl = place.photo_urls?.[0] || FALLBACK_IMAGE;
   const badge = index < BADGES.length ? BADGES[index] : null;
-  const classmateCount = CLASSMATE_COUNTS[index % CLASSMATE_COUNTS.length];
-  const distance = DISTANCES[index % DISTANCES.length];
+  // Remove fake classmate count and use rating and vibe
+  const rating = place.rating ? Number(place.rating).toFixed(1) : undefined;
+  const vibe = place.vibe || '';
+  const distance = place.distanceKm ? `${place.distanceKm} mi` : '';
 
   const handleSave = () => {
     if (!isAuthenticated || isGuest) return;
@@ -124,15 +126,27 @@ function ThingsToDoCard({
       {/* Body */}
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={1}>{place.place_name}</Text>
-        <Text style={styles.cardDesc} numberOfLines={2}>{place.ai_description}</Text>
+        {/* Truncate to first sentence of ai_description, fallback to editorial_summary */}
+        <Text style={styles.cardDesc} numberOfLines={2}>
+          {place.ai_description
+            ? place.ai_description.split('.')[0] + '.'
+            : place.editorial_summary
+              ? place.editorial_summary.split('.')[0] + '.'
+              : ''}
+        </Text>
 
         {/* Footer */}
         <View style={styles.cardFooter}>
           <View style={styles.footerLeft}>
-            <Ionicons name="people-outline" size={11} color="#10B981" />
-            <Text style={styles.classmateText}>{classmateCount} this week</Text>
+            {rating && (
+              <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 12 }}>★ {rating}</Text>
+            )}
           </View>
-          <Text style={styles.distanceText}>{distance}</Text>
+          {vibe ? (
+            <View style={{ backgroundColor: '#F3F4F6', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 6 }}>
+              <Text style={{ color: '#6B7280', fontSize: 11 }}>{vibe}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>
