@@ -133,40 +133,7 @@ export default function TravelPreferenceScreen({ navigation }: any) {
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <ActivityIndicator size="large" color="#22C55E" style={{ flex: 1 }} />
-        <SuccessToast visible={showToast} title="Preferences Saved!" message="Your travel vibes have been updated." onDone={() => { setShowToast(false); navigation.goBack(); }} />
-    </SafeAreaView>
-    );
-  }
-
-  return (
-        <GuestGateModal
-          visible={showGate}
-          onDismiss={() => setShowGate(false)}
-          onLogin={() => { setShowGate(false); navigation.navigate('AuthChoice'); }}
-          onRegister={() => { setShowGate(false); navigation.navigate('AuthChoice'); }}
-          onContinueAsGuest={() => setShowGate(false)}
-        />
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={32} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Travel Preferences</Text>
-        <View style={{ width: 32 }} />
-      </View>
-
-      <View style={styles.header}>
-        <Text style={styles.subtitle}>Tell us what you love so we can personalise your experience</Text>
-        {selected.length > 0 && (
-          <View style={styles.selectedPill}>
-            <Text style={styles.selectedPillText}>Selected {selected.length}</Text>
-          </View>
-        )}
-      </View>
+  // Duplicate misplaced return blocks removed. Only the main export default function and its return remain.
 
       <FlatList
         data={VIBES}
