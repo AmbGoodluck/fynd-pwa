@@ -109,6 +109,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
   const { bottom: bottomInset } = useSafeAreaInsets();
 
+  const [aiEnhancing, setAiEnhancing] = useState(false);
+
   useEffect(() => {
     logEvent('itinerary_viewed', { destination, stop_count: initialStops.length });
   }, []);
