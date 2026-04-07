@@ -203,14 +203,15 @@ function ThingsToDoCard({
   };
 
   return (
-        <GuestGateModal
-          visible={showGate}
-          onDismiss={() => setShowGate(false)}
-          onLogin={() => setShowGate(false)}
-          onRegister={() => setShowGate(false)}
-          onContinueAsGuest={() => setShowGate(false)}
-        />
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
+    <>
+      <GuestGateModal
+        visible={showGate}
+        onDismiss={() => setShowGate(false)}
+        onLogin={() => setShowGate(false)}
+        onRegister={() => setShowGate(false)}
+        onContinueAsGuest={() => setShowGate(false)}
+      />
+      <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
       {/* Image */}
       <ImageBackground
         source={{ uri: photoUrl }}
@@ -266,6 +267,7 @@ function ThingsToDoCard({
         </View>
       </View>
     </TouchableOpacity>
+    </>
   );
 }
 
