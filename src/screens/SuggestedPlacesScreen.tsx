@@ -22,7 +22,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion, PlaceResult } from '../services/googlePlacesService';
-import { upsertSearchedPlace } from '../services/placeDetailsService';
+import { upsertSearchedPlace, readPlaceCache } from '../services/placeDetailsService';
 import { FALLBACK_IMAGE } from '../constants';
 
 // ── Haversine in-city check ─────────────────────────────────────────────────
@@ -166,24 +166,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     });
   }, []);
 
-  // Main data-fetching effect for suggested places
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchSuggestedPlaces() {
-      // Try Firestore cache first
-      const cachedPlaces: PlaceResult[] = await getCachedSuggestedPlaces(destination, tripVibes);
-      if (!cancelled && cachedPlaces.length >= 5) {
-        setPlaces(cachedPlaces);
-        setLoading(false);
-        return;
-      }
-      // Fallback to Google API (existing logic)
-      // ...existing API call logic here...
-    }
-    fetchSuggestedPlaces();
-    return () => { cancelled = true; };
-  }, [destination, tripVibes]);
-
   // ── Debounced establishment search ──────────────────────────────────────────
   useEffect(() => {
     if (placeDebounceRef.current) clearTimeout(placeDebounceRef.current);
@@ -211,7 +193,30 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     // If already resolved, skip re-fetch
     if (resolvedPlaces[suggestion.placeId]) return;
     setResolvedPlaces(prev => ({ ...prev, [suggestion.placeId]: { inCity: true, distKm: 0, details: null, adding: false } }));
-    const details = await fetchPlaceDetails(suggestion.placeId);
+    // Check Firestore cache first — zero API cost if seeded
+    const cached = await readPlaceCache(suggestion.placeId);
+    const details = cached
+      ? {
+          placeId: cached.place_id,
+          name: cached.place_name,
+          formattedAddress: cached.formatted_address,
+          city: cached.city,
+          phone: cached.phone,
+          website: cached.website,
+          rating: cached.rating,
+          priceLevel: cached.price_level,
+          openingHours: cached.opening_hours
+            ? { openNow: cached.opening_hours.open_now, weekdayText: cached.opening_hours.weekday_text }
+            : undefined,
+          photoUrls: cached.photo_urls || [],
+          photoRefs: [],
+          types: cached.types || [],
+          lat: cached.lat,
+          lng: cached.lng,
+          editorialSummary: cached.editorial_summary,
+          mapsUrl: cached.maps_url,
+        }
+      : await fetchPlaceDetails(suggestion.placeId);
     if (!details) return;
     const distKm = (userLatitude && userLongitude)
       ? haversineKm(details.lat, details.lng, userLatitude, userLongitude)

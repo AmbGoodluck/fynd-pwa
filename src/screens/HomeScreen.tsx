@@ -115,8 +115,8 @@ export default function HomeScreen({ navigation }: Props) {
           ))}
         </ScrollView>
 
-        {/* 5. Recent Itineraries */}
-        <View style={styles.sectionHeader}>
+        {/* 5. Recent Itineraries — hidden when list is empty and not loading */}
+        {(isHydrating || fetchError || recentTrips.length > 0) && <View style={styles.sectionHeader}>
           <View style={styles.sectionLeft}>
             <Ionicons name="calendar-outline" size={18} color={COLORS.text.primary} />
             <Text style={styles.sectionTitle}>Recent Itineraries</Text>
@@ -127,7 +127,7 @@ export default function HomeScreen({ navigation }: Props) {
               <Ionicons name="chevron-forward" size={15} color="#10B981" />
             </TouchableOpacity>
           )}
-        </View>
+        </View>}
 
         {isHydrating && recentTrips.length === 0 ? (
           <ScrollView

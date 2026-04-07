@@ -43,6 +43,11 @@
           height: 100dvh;
         }
       }
+      /* Remove browser focus outline on all React Native TextInput elements */
+      input:focus, textarea:focus {
+        outline: none !important;
+        box-shadow: none !important;
+      }
     </style>
   </head>
 

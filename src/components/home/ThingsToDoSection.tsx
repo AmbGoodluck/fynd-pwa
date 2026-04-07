@@ -29,7 +29,49 @@ interface CachedPlace {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const EXCLUDED_TYPES = new Set(['gas_station', 'convenience_store', 'atm', 'car_wash', 'storage']);
+const EXCLUDED_TYPES = new Set([
+  'gas_station', 'convenience_store', 'atm',
+  'parking', 'storage', 'car_dealer', 'car_rental', 'car_repair', 'car_wash',
+  'insurance_agency', 'real_estate_agency', 'moving_company', 'locksmith',
+  'electrician', 'plumber', 'roofing_contractor', 'painter', 'lawyer',
+  'accounting', 'funeral_home',
+]);
+
+const DEPRIORITIZED_TYPES = new Set([
+  'gym', 'fitness_center', 'health', 'martial_arts', 'physiotherapist',
+  'hair_care', 'beauty_salon', 'laundry', 'church', 'place_of_worship',
+  'dentist', 'doctor', 'veterinary_care',
+]);
+
+const BOOSTED_TYPES = new Set([
+  'restaurant', 'cafe', 'bar', 'park', 'museum', 'tourist_attraction',
+  'art_gallery', 'library', 'book_store', 'bakery', 'night_club',
+  'movie_theater', 'bowling_alley', 'amusement_park', 'campground',
+  'natural_feature',
+]);
+
+function sortPlaces(places: CachedPlace[]): CachedPlace[] {
+  // 1. Filter out excluded types
+  const filtered = places.filter(place =>
+    !(place.types || []).some(t => EXCLUDED_TYPES.has(t))
+  );
+  // 2. Score for deprioritized/boosted
+  return filtered
+    .map(place => {
+      const types = place.types || [];
+      let score = 0;
+      if (types.some(t => BOOSTED_TYPES.has(t))) score += 2;
+      if (types.some(t => DEPRIORITIZED_TYPES.has(t))) score -= 2;
+      return { ...place, _score: score };
+    })
+    .sort((a, b) => {
+      if (b._score !== a._score) return b._score - a._score;
+      const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
+      if (ratingDiff !== 0) return ratingDiff;
+      return (b.photo_urls?.length ?? 0) - (a.photo_urls?.length ?? 0);
+    })
+    .slice(0, 15);
+}
 
 const BADGES = [
   { label: '🔥 Hot',      bg: '#EF4444' },
@@ -165,21 +207,20 @@ export default function ThingsToDoSection({ navigation }: Props) {
 
     (async () => {
       try {
-        // Fetch 25 to allow client-side filtering of excluded types → take 12
+        // Fetch 50 for generous client-side filtering, then boost/sort/cap at 15
         const q = query(
           collection(db, 'place_details_cache'),
           orderBy('rating', 'desc'),
-          limit(25),
+          limit(50),
         );
         const snap = await getDocs(q);
         if (cancelled) return;
 
         const filtered = snap.docs
           .map(d => ({ place_id: d.id, ...d.data() } as CachedPlace))
-          .filter(p => !p.types?.some(t => EXCLUDED_TYPES.has(t)))
-          .slice(0, 12);
+          .filter(p => !p.types?.some(t => EXCLUDED_TYPES.has(t)));
 
-        setPlaces(filtered);
+        setPlaces(sortPlaces(filtered).slice(0, 15));
       } catch {
         // Firestore unavailable — section stays hidden
       }
