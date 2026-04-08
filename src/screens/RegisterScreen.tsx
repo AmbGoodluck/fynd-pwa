@@ -97,10 +97,13 @@ export default function RegisterScreen({ navigation }: Props) {
 
     } catch (e: any) {
       console.error('Register error:', e.code, e.message);
-      const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered.' :
-                  e.code === 'auth/invalid-email' ? 'Please enter a valid email.' :
+      const isBlocked = e.code?.includes('blocked') || e.message?.includes('blocked') || e.message?.includes('403');
+      const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered. Try logging in.' :
+                  e.code === 'auth/invalid-email' ? 'Please enter a valid email address.' :
                   e.code === 'auth/weak-password' ? 'Password must be at least 6 characters.' :
-                  (e.code || e.message || 'Registration failed. Please try again.');
+                  e.code === 'auth/network-request-failed' ? 'Network error. Check your connection and try again.' :
+                  isBlocked ? 'Sign-up is temporarily unavailable. Please try again later.' :
+                  'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);

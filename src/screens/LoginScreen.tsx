@@ -53,10 +53,14 @@ export default function LoginScreen({ navigation }: Props) {
       await useGuestStore.getState().hydrateSavedPlaces();
       navigation.replace('MainTabs');
     } catch (e: any) {
+      const isBlocked = e.code?.includes('blocked') || e.message?.includes('blocked') || e.message?.includes('403');
       const msg = e.code === 'auth/invalid-credential' ? 'Incorrect email or password.' :
                   e.code === 'auth/user-not-found' ? 'No account found with this email.' :
-                  e.code === 'auth/too-many-requests' ? 'Too many attempts. Try again later.' :
-                  'Login failed. Please try again. (' + e.code + ')';
+                  e.code === 'auth/wrong-password' ? 'Incorrect email or password.' :
+                  e.code === 'auth/too-many-requests' ? 'Too many attempts. Please try again later.' :
+                  e.code === 'auth/network-request-failed' ? 'Network error. Check your connection and try again.' :
+                  isBlocked ? 'Login is temporarily unavailable. Please try again later.' :
+                  'Login failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
