@@ -44,8 +44,12 @@ export default function RegisterScreen({ navigation }: Props) {
 
       const uid = data.user.id;
 
-      // Step 2: Create Firestore user + subscription docs
-      await createUserDoc(uid, fullName.trim(), email.trim());
+      // Step 2: Create Firestore user + subscription docs (best-effort — don't block login)
+      try {
+        await createUserDoc(uid, fullName.trim(), email.trim());
+      } catch (firestoreErr: any) {
+        console.warn('Register: Firestore createUserDoc failed (non-fatal):', firestoreErr?.message);
+      }
 
       // Step 3: Update auth store and navigate
       clearGuest();
@@ -61,7 +65,8 @@ export default function RegisterScreen({ navigation }: Props) {
 
     } catch (e: any) {
       console.error('Register error:', e.message);
-      const msg = e.message?.includes('already registered') || e.message?.includes('already in use') || e.message?.includes('User already registered')
+      const isAlreadyRegistered = e.message?.includes('already registered') || e.message?.includes('already in use') || e.message?.includes('User already registered');
+      const msg = isAlreadyRegistered
         ? 'This email is already registered. Try logging in.'
         : e.message?.includes('sending confirmation') || e.message?.includes('confirmation email')
           ? 'Account created! Check your email to confirm before logging in.'
