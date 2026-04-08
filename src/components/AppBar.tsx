@@ -40,13 +40,6 @@ export default function AppBar({
         />
         <View style={styles.spacer} />
         <TouchableOpacity
-          style={styles.iconBtn}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="notifications-outline" size={24} color="#1A1A1A" />
-        </TouchableOpacity>
-        <TouchableOpacity
           style={styles.avatarCircle}
           onPress={onProfilePress}
           activeOpacity={0.8}
