@@ -23,6 +23,7 @@ import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePre
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion, PlaceResult } from '../services/googlePlacesService';
 import { upsertSearchedPlace, readPlaceCache } from '../services/placeDetailsService';
+import { checkAndSeedCity } from '../services/citySeedService';
 import { FALLBACK_IMAGE } from '../constants';
 
 // ── Haversine in-city check ─────────────────────────────────────────────────
@@ -164,6 +165,10 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       level: 'info',
       data: { firstRenderMs: Date.now() - navStart, placeCount: places.length },
     });
+    // Fire-and-forget: seed the trip destination city in the background
+    if (destination && userLatitude && userLongitude && currentUser?.id) {
+      checkAndSeedCity(destination, userLatitude, userLongitude, currentUser.id).catch(() => {});
+    }
   }, []);
 
   // ── Debounced establishment search ──────────────────────────────────────────

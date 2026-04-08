@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, Platform,
+  ImageBackground, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { F } from '../../theme/fonts';
 import { COLORS } from '../../theme/tokens';
 import { FALLBACK_IMAGE } from '../../constants';
 import { useGuestStore } from '../../store/useGuestStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useUserLocation } from '../../hooks/useUserLocation';
 import GuestGateModal from '../GuestGateModal';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -271,32 +272,58 @@ function ThingsToDoCard({
   );
 }
 
+// ── Haversine helper ──────────────────────────────────────────────────────────
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 type Props = { navigation: any };
 
 export default function ThingsToDoSection({ navigation }: Props) {
   const [places, setPlaces] = useState<CachedPlace[]>([]);
+  const [locationFiltered, setLocationFiltered] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const user = useAuthStore(s => s.user);
   const preferences = user?.travelPreferences || [];
+  const { location } = useUserLocation();
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        // Fetch 50 for generous client-side filtering, then sort/cap at 15
-        const q = query(
-          collection(db, 'place_details_cache'),
-          orderBy('rating', 'desc'),
-          limit(50),
-        );
-        const snap = await getDocs(q);
+        // Fetch all cached places (client-side proximity filter below)
+        const snap = await getDocs(collection(db, 'place_details_cache'));
         if (cancelled) return;
 
-        const filtered = snap.docs
+        const all = snap.docs
           .map(d => ({ place_id: d.id, ...d.data() } as CachedPlace))
           .filter(p => !p.types?.some(t => EXCLUDED_TYPES.has(t)));
+
+        // If we have user location, filter to within 30km
+        let filtered = all;
+        if (location) {
+          const nearby = all.filter(p =>
+            p.lat && p.lng &&
+            haversineKm(location.latitude, location.longitude, p.lat, p.lng) <= 30
+          );
+          if (nearby.length >= 3) {
+            filtered = nearby;
+            setLocationFiltered(true);
+          }
+          // Fewer than 3 nearby → city likely not seeded yet
+          if (nearby.length < 3) {
+            setSeeding(true);
+          }
+        }
 
         setPlaces(sortPlaces(filtered, preferences).slice(0, 15));
       } catch {
@@ -305,11 +332,26 @@ export default function ThingsToDoSection({ navigation }: Props) {
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [location]);
+
+  // Seeding in progress — show friendly message
+  if (seeding && places.length < 3) {
+    return (
+      <View style={styles.wrapper}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Things to Do</Text>
+        </View>
+        <View style={styles.seedingMsg}>
+          <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 10 }} />
+          <Text style={styles.seedingText}>Discovering places near you... Check back in a few minutes!</Text>
+        </View>
+      </View>
+    );
+  }
 
   if (places.length === 0) return null;
 
-  const sectionTitle = preferences.length > 0 ? 'For You' : 'Things to Do';
+  const sectionTitle = preferences.length > 0 && locationFiltered ? 'For You' : preferences.length > 0 ? 'For You' : 'Things to Do';
 
   return (
     <View style={styles.wrapper}>
@@ -383,6 +425,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 12,
     paddingBottom: 4,
+  },
+  seedingMsg: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  seedingText: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: F.regular,
+    color: COLORS.text.secondary,
+    lineHeight: 18,
   },
 
   // Card

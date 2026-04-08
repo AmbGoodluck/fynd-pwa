@@ -4,15 +4,27 @@ import { F } from '../../theme/fonts';
 import { COLORS } from '../../theme/tokens';
 import { useUserLocation } from '../../hooks/useUserLocation';
 import { reverseGeocode } from '../../services/googlePlacesService';
+import { useAuthStore } from '../../store/useAuthStore';
+import { checkAndSeedCity } from '../../services/citySeedService';
 
 export default function CampusBanner() {
   const { location, loading, error } = useUserLocation();
   const [cityName, setCityName] = useState<string | null>(null);
+  const user = useAuthStore(s => s.user);
 
   useEffect(() => {
     if (!location || cityName) return; // don't re-geocode if already resolved
     reverseGeocode(location.latitude, location.longitude)
-      .then(city => { if (city) setCityName(city); })
+      .then(city => {
+        if (city) {
+          setCityName(city);
+          // Fire-and-forget: seed this city if it hasn't been seeded yet
+          if (city !== 'My Location' && user?.id) {
+            checkAndSeedCity(city, location.latitude, location.longitude, user.id)
+              .catch(() => {});
+          }
+        }
+      })
       .catch(() => {});
   }, [location]);
 
