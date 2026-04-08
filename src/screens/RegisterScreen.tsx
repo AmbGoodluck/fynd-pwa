@@ -61,15 +61,17 @@ export default function RegisterScreen({ navigation }: Props) {
 
     } catch (e: any) {
       console.error('Register error:', e.message);
-      const msg = e.message?.includes('already registered') || e.message?.includes('already in use')
+      const msg = e.message?.includes('already registered') || e.message?.includes('already in use') || e.message?.includes('User already registered')
         ? 'This email is already registered. Try logging in.'
-        : e.message?.includes('invalid') || e.message?.includes('email')
-          ? 'Please enter a valid email address.'
-          : e.message?.includes('Password') || e.message?.includes('password')
-            ? 'Password must be at least 6 characters.'
-            : e.message?.includes('Network') || e.status === 0
-              ? 'Network error. Check your connection and try again.'
-              : 'Registration failed. Please try again.';
+        : e.message?.includes('sending confirmation') || e.message?.includes('confirmation email')
+          ? 'Account created! Check your email to confirm before logging in.'
+          : e.message?.includes('invalid email') || e.message?.includes('Invalid email')
+            ? 'Please enter a valid email address.'
+            : e.message?.includes('Password') || e.message?.includes('password')
+              ? 'Password must be at least 6 characters.'
+              : e.message?.includes('Network') || e.status === 0
+                ? 'Network error. Check your connection and try again.'
+                : 'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
