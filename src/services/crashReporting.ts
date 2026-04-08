@@ -14,8 +14,8 @@ export function initCrashReporting() {
 
   Sentry.init({
     dsn,
-    enabled: !__DEV__,
-    environment: process.env.EXPO_PUBLIC_ENV || 'development',
+    enabled: true, // Enable Sentry in all environments for pre-release QA
+    environment: process.env.EXPO_PUBLIC_ENV || (__DEV__ ? 'development' : 'production'),
     release: `${Constants.expoConfig?.slug || 'fynd-app'}@${Constants.expoConfig?.version || '1.0.0'}`,
     tracesSampleRate: 0.1,
   });

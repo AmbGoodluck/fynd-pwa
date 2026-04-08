@@ -1,7 +1,11 @@
+// --- EARLY SENTRY INIT ---
+import { initCrashReporting } from './src/services/crashReporting';
+initCrashReporting();
+// --- END SENTRY INIT ---
+
 import React, { useEffect, useState } from 'react';
 import { Platform, View, Text, ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as Sentry from './src/services/sentry';
 import {
   useFonts,
 } from '@expo-google-fonts/inter';
@@ -15,13 +19,7 @@ injectWebGlobalStyles();
 // Register service worker for offline support and PWA installability.
 registerServiceWorker();
 
-// sentry.web.ts stub is a no-op on web; real init only runs on native.
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  debug: __DEV__,
-  enableInExpoDevelopment: true,
-  tracesSampleRate: 1.0,
-});
+// Sentry is now initialized at the very top for early error detection.
 
 // Font loading strategy:
 // - Inter: loaded via require() so bundler registers the hashed asset URL.
