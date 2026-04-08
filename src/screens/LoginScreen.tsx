@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { supabase } from '../services/supabase';
 import { getUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
@@ -26,41 +25,38 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(true);
     setError('');
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      let userDoc = await getUserDoc(cred.user.uid);
-      // Lazy create user doc if missing
-      if (!userDoc) {
-        await setDoc(doc(db, 'users', cred.user.uid), {
-          id: cred.user.uid,
-          email: cred.user.email || '',
-          fullName: cred.user.displayName || '',
-          profilePhoto: null,
-          createdAt: new Date(),
-          homeCity: '',
-          travelStyle: [],
-          isPremium: false,
-        });
-        userDoc = await getUserDoc(cred.user.uid);
-      }
-      clearGuest(); // ensure guest state is cleared on sign-in
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) throw signInError;
+      if (!data.user) throw new Error('Login failed — no user returned.');
+
+      const uid = data.user.id;
+      const userDoc = await getUserDoc(uid);
+
+      clearGuest();
       login({
-        id: cred.user.uid,
-        email: cred.user.email || '',
-        fullName: userDoc?.fullName || cred.user.displayName || '',
+        id: uid,
+        email: data.user.email || email.trim(),
+        fullName: userDoc?.fullName || data.user.user_metadata?.full_name || '',
         isPremium: userDoc?.isPremium || false,
         travelPreferences: userDoc?.travelPreferences || [],
       });
       await useGuestStore.getState().hydrateSavedPlaces();
       navigation.replace('MainTabs');
     } catch (e: any) {
-      const isBlocked = e.code?.includes('blocked') || e.message?.includes('blocked') || e.message?.includes('403');
-      const msg = e.code === 'auth/invalid-credential' ? 'Incorrect email or password.' :
-                  e.code === 'auth/user-not-found' ? 'No account found with this email.' :
-                  e.code === 'auth/wrong-password' ? 'Incorrect email or password.' :
-                  e.code === 'auth/too-many-requests' ? 'Too many attempts. Please try again later.' :
-                  e.code === 'auth/network-request-failed' ? 'Network error. Check your connection and try again.' :
-                  isBlocked ? 'Login is temporarily unavailable. Please try again later.' :
-                  'Login failed. Please try again.';
+      console.error('Login error:', e.message);
+      const isInvalidCreds = e.message?.includes('Invalid login credentials') || e.message?.includes('invalid_grant');
+      const msg = isInvalidCreds
+        ? 'Incorrect email or password.'
+        : e.message?.includes('Email not confirmed')
+          ? 'Please confirm your email address first.'
+          : e.message?.includes('too many') || e.status === 429
+            ? 'Too many attempts. Please try again later.'
+            : e.message?.includes('Network') || e.status === 0
+              ? 'Network error. Check your connection and try again.'
+              : 'Login failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -70,7 +66,8 @@ export default function LoginScreen({ navigation }: Props) {
   const handleForgotPassword = async () => {
     if (!email.trim()) { setError('Enter your email above first.'); return; }
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (resetError) throw resetError;
       setError('Password reset email sent! Check your inbox.');
     } catch {
       setError('Could not send reset email. Check your email address.');

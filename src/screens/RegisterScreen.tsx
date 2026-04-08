@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../services/firebase';
+import { supabase } from '../services/supabase';
+import { createUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 
@@ -34,56 +33,22 @@ export default function RegisterScreen({ navigation }: Props) {
     setLoading(true);
     setError('');
     try {
-      // Step 1: Create Firebase Auth user
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-      const uid = cred.user.uid;
-      // Ensure auth token is refreshed before Firestore writes
-      await cred.user.getIdToken(true);
+      // Step 1: Create Supabase auth user
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { data: { full_name: fullName.trim() } },
+      });
+      if (signUpError) throw signUpError;
+      if (!data.user) throw new Error('Sign-up failed — no user returned.');
 
-      // Step 2: Create user doc in Firestore (with retry)
-      let userDocError = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          await setDoc(doc(db, 'users', uid), {
-            id: uid,
-            email: email.trim(),
-            fullName: fullName.trim(),
-            profilePhoto: null,
-            createdAt: serverTimestamp(),
-            homeCity: '',
-            travelStyle: [],
-            isPremium: false,
-          });
-          await setDoc(doc(db, 'subscriptions', uid), {
-            userId: uid,
-            isPremium: false,
-            plan: 'free',
-            status: 'active',
-            stripeCustomerId: null,
-            stripeSubscriptionId: null,
-            currentPeriodEnd: null,
-            tripsUsedThisMonth: 0,
-            itinerariesGenerated: 0,
-            savedPlacesCount: 0,
-            tripLimit: 3,
-            itineraryLimit: 1,
-            savedPlacesLimit: 5,
-            placesPerTripLimit: 5,
-          });
-          userDocError = null;
-          break;
-        } catch (err) {
-          userDocError = err;
-          if (attempt === 0) await new Promise(res => setTimeout(res, 1000));
-        }
-      }
-      if (userDocError) {
-        setError('Account created but setup failed. Please close the app and sign in again.');
-        return;
-      }
+      const uid = data.user.id;
 
-      // Step 4: Update auth store and navigate
-      clearGuest(); // ensure guest state is cleared on registration
+      // Step 2: Create Firestore user + subscription docs
+      await createUserDoc(uid, fullName.trim(), email.trim());
+
+      // Step 3: Update auth store and navigate
+      clearGuest();
       login({
         id: uid,
         email: email.trim(),
@@ -92,18 +57,19 @@ export default function RegisterScreen({ navigation }: Props) {
         travelPreferences: [],
       });
       await useGuestStore.getState().hydrateSavedPlaces();
-
       navigation.replace('MainTabs');
 
     } catch (e: any) {
-      console.error('Register error:', e.code, e.message);
-      const isBlocked = e.code?.includes('blocked') || e.message?.includes('blocked') || e.message?.includes('403');
-      const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered. Try logging in.' :
-                  e.code === 'auth/invalid-email' ? 'Please enter a valid email address.' :
-                  e.code === 'auth/weak-password' ? 'Password must be at least 6 characters.' :
-                  e.code === 'auth/network-request-failed' ? 'Network error. Check your connection and try again.' :
-                  isBlocked ? 'Sign-up is temporarily unavailable. Please try again later.' :
-                  'Registration failed. Please try again.';
+      console.error('Register error:', e.message);
+      const msg = e.message?.includes('already registered') || e.message?.includes('already in use')
+        ? 'This email is already registered. Try logging in.'
+        : e.message?.includes('invalid') || e.message?.includes('email')
+          ? 'Please enter a valid email address.'
+          : e.message?.includes('Password') || e.message?.includes('password')
+            ? 'Password must be at least 6 characters.'
+            : e.message?.includes('Network') || e.status === 0
+              ? 'Network error. Check your connection and try again.'
+              : 'Registration failed. Please try again.';
       setError(msg);
     } finally {
       setLoading(false);
