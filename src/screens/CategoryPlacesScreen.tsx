@@ -16,7 +16,7 @@ import { FALLBACK_IMAGE } from '../constants';
 import { searchPlacesByVibe, type PlaceResult } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
-import GuestGateModal from '../../components/GuestGateModal';
+import GuestGateModal from '../components/GuestGateModal';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { gradientStyle, type TrendingCategory } from '../config/trendingCategories';
 import type { RecentTrip } from '../types/recentTrip';
