@@ -4,6 +4,7 @@ import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sentry from '../services/sentry';
 import { searchPlacesByVibe } from '../services/googlePlacesService';
+import { getCachedSuggestedPlaces } from '../services/placeDetailsService';
 import { logEvent } from '../services/firebase';
 
 // LottieView is native-only — dynamically imported so the web bundle never touches it
@@ -33,18 +34,39 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
   const fetchPlaces = async (): Promise<any[]> => {
     try {
+      // Step 1: Try Firestore cache first (free, instant)
+      const cachedPlaces = await getCachedSuggestedPlaces(
+        destination || '',
+        vibeKeywords || vibes || [],
+        40,
+      );
+      
+      if (cachedPlaces && cachedPlaces.length >= 5) {
+        // Cache has enough results — use them, zero API cost
+        Sentry.addBreadcrumb({
+          category: 'perf.processing',
+          message: 'places_from_cache',
+          level: 'info',
+          data: { destination, cacheCount: cachedPlaces.length, platform: Platform.OS },
+        });
+        lastError.current = null;
+        return cachedPlaces;
+      }
+
+      // Step 2: Cache insufficient — fall back to Google Places API
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_start',
         level: 'info',
-        data: { attempt: retryCount.current + 1, destination, platform: Platform.OS },
+        data: { 
+          attempt: retryCount.current + 1, 
+          destination, 
+          platform: Platform.OS,
+          cacheCount: cachedPlaces?.length || 0,
+          reason: 'cache_insufficient',
+        },
       });
-      Sentry.addBreadcrumb({
-        category: 'processing',
-        message: `Searching places for "${destination}" (attempt ${retryCount.current + 1}/${MAX_RETRIES + 1})`,
-        level: 'info',
-        data: { destination, vibeKeywords, latitude, longitude, platform: Platform.OS },
-      });
+      
       const places = await searchPlacesByVibe(
         destination || '',
         vibeKeywords || [],
@@ -53,6 +75,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         typeof distanceMiles === 'number' ? distanceMiles * 1.60934 : undefined,
         timeOfDay || undefined
       );
+      
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_end',
@@ -65,7 +88,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       const msg = err?.message || String(err);
       lastError.current = msg;
       Sentry.captureException(err, {
-        tags: { context: 'ProcessingScreen.searchPlacesByVibe', platform: Platform.OS },
+        tags: { context: 'ProcessingScreen.fetchPlaces', platform: Platform.OS },
         extra: { destination, vibeKeywords, latitude, longitude, attempt: retryCount.current + 1 },
       });
       return [];
