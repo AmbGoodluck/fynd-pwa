@@ -24,6 +24,7 @@ import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import OfflineBanner from '../components/OfflineBanner';
 import AddToHomeScreen from '../components/a2hs/AddToHomeScreen';
+import { supabase } from '../services/supabase';
 
 // ── Core flow ──────────────────────────────────────────────────────────────────
 import LogoScreen from '../screens/LogoScreen';
@@ -271,41 +272,59 @@ export default function AppNavigator() {
   );
 
   React.useEffect(() => {
-    if (Platform.OS !== 'web') return;
     let cancelled = false;
     (async () => {
-      try {
-        await (auth as any).authStateReady();
-        if (cancelled) return;
-        const firebaseUser = (auth as any).currentUser;
-        if (firebaseUser) {
-          // Pre-hydrate auth store so HomeScreen renders with user data.
-          useGuestStore.getState().setGuest(false);
-          let fullName = firebaseUser.displayName || '';
-          let isPremium = false;
-          let travelPreferences: string[] = [];
-          try {
-            const doc = await getUserDoc(firebaseUser.uid);
-            if (doc) {
-              fullName = doc.fullName || fullName;
-              isPremium = doc.isPremium ?? false;
-              travelPreferences = doc.travelPreferences ?? [];
-            }
-          } catch { /* Firestore unavailable — use Firebase Auth info */ }
+      // Try Supabase session first
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      if (session && session.user) {
+        useGuestStore.getState().setGuest(false);
+        useAuthStore.getState().login({
+          id: session.user.id,
+          email: session.user.email || '',
+          fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          isPremium: false, // Optionally fetch from your profile table
+          travelPreferences: [],
+        });
+        setInitialRoute('MainTabs');
+        return;
+      }
+      // Fallback to Firebase if no Supabase session
+      if (Platform.OS === 'web') {
+        try {
+          await (auth as any).authStateReady();
           if (cancelled) return;
-          useAuthStore.getState().login({
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            fullName,
-            isPremium,
-            travelPreferences,
-          });
-          setInitialRoute('MainTabs');
-        } else {
-          setInitialRoute('Logo');
+          const firebaseUser = (auth as any).currentUser;
+          if (firebaseUser) {
+            useGuestStore.getState().setGuest(false);
+            let fullName = firebaseUser.displayName || '';
+            let isPremium = false;
+            let travelPreferences: string[] = [];
+            try {
+              const doc = await getUserDoc(firebaseUser.uid);
+              if (doc) {
+                fullName = doc.fullName || fullName;
+                isPremium = doc.isPremium ?? false;
+                travelPreferences = doc.travelPreferences ?? [];
+              }
+            } catch { /* Firestore unavailable — use Firebase Auth info */ }
+            if (cancelled) return;
+            useAuthStore.getState().login({
+              id: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              fullName,
+              isPremium,
+              travelPreferences,
+            });
+            setInitialRoute('MainTabs');
+          } else {
+            setInitialRoute('Logo');
+          }
+        } catch {
+          if (!cancelled) setInitialRoute('Logo');
         }
-      } catch {
-        if (!cancelled) setInitialRoute('Logo');
+      } else {
+        setInitialRoute('Logo');
       }
     })();
     return () => { cancelled = true; };
