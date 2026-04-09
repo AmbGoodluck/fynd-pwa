@@ -23,19 +23,9 @@ import type { RecentTrip } from '../types/recentTrip';
 import type { Place } from '../store/useTripStore';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type FilterId = 'all' | 'under2mi' | 'toprated';
 
-type Props = {
-  navigation: { navigate: (screen: string, params?: object) => void; goBack: () => void };
-  route: {
-    params: {
-      category: TrendingCategory;
-      userLat: number;
-      userLng: number;
-      cityName: string;
-    };
-  };
-};
+
+
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const KM_PER_MILE = 1.60934;
@@ -231,9 +221,19 @@ const PlaceRow = React.memo(function PlaceRow({
   );
 });
 
-// ── Main screen ───────────────────────────────────────────────────────────────
-export default function CategoryPlacesScreen({ navigation, route }: Props) {
+
+// Main screen: must use standard React Navigation props
+export default function CategoryPlacesScreen(props: any) {
+  const { navigation, route } = props;
   const { category, userLat, userLng, cityName } = route.params;
+  // ...existing code...
+  // The main render block must return JSX
+  return (
+    <View style={styles.container}>
+      {/* ...existing JSX... */}
+    </View>
+  );
+}
   const insets = useSafeAreaInsets();
 
   const { savePlace, unsavePlace, isPlaceSaved, isGuest } = useGuestStore();

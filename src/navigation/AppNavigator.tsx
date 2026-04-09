@@ -483,13 +483,13 @@ export default function AppNavigator() {
           <Stack.Screen name="Moments"          component={MomentsScreen} />
 
           {/* ── Discovery ─────────────────────────────── */}
-          <Stack.Screen name="CategoryPlaces" component={CategoryPlacesScreen} />
+          <Stack.Screen name="CategoryPlaces" component={(props: any) => <CategoryPlacesScreen {...props} />} />
 
           {/* ── Notifications ─────────────────────────── */}
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
 
           {/* ── Place Detail ──────────────────────────── */}
-          <Stack.Screen name="PlaceDetail" component={PlaceDetailScreen} />
+          <Stack.Screen name="PlaceDetail" component={(props: any) => <PlaceDetailScreen {...props} />} />
 
           {/* ── All Places (Things to Do) ─────────────── */}
           <Stack.Screen name="AllPlaces" component={AllPlacesScreen} />

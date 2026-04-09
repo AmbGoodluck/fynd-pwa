@@ -70,26 +70,21 @@ function getTodayGoogleIndex(): number {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type RouteParams = {
-  placeId: string;
-  name: string;
-  photoUrl?: string;
-  photoUrls?: string[];
-  description?: string;
-  rating?: number;
-  address?: string;
-  category?: string;
-  types?: string[];
-  lat?: number;
-  lng?: number;
-};
 
-type Props = { navigation: any; route: { params: RouteParams } };
-
-export default function PlaceDetailScreen({ navigation, route }: Props) {
+// Main screen: must use standard React Navigation props
+export default function PlaceDetailScreen(props: any) {
+  const { navigation, route } = props;
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const params = route.params || {};
+  // ...existing code...
+  // The main render block must return JSX
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* ...existing JSX... */}
+    </SafeAreaView>
+  );
+}
 
   const {
     placeId,
