@@ -1,5 +1,6 @@
 // --- EARLY SENTRY INIT ---
 import { initCrashReporting } from './src/services/crashReporting';
+import * as Sentry from './src/services/sentry';
 initCrashReporting();
 // --- END SENTRY INIT ---
 
