@@ -226,10 +226,172 @@ const PlaceRow = React.memo(function PlaceRow({
 export default function CategoryPlacesScreen(props: any) {
   const { navigation, route } = props;
   const { category, userLat, userLng, cityName } = route.params;
-  // ...existing code...
-  // The main render block must return JSX
+  const insets = useSafeAreaInsets();
+  const { savePlace, unsavePlace, isPlaceSaved, isGuest } = useGuestStore();
+  const { isAuthenticated } = useAuthStore();
+  const [showGate, setShowGate] = useState(false);
+  const [filteredPlaces, setFilteredPlaces] = useState<PlaceResult[]>([]);
+  const [displayed, setDisplayed] = useState<PlaceResult[]>([]);
+  const [filter, setFilter] = useState<FilterId>('all');
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [allFilteredOut, setAllFilteredOut] = useState(false);
+  const unmountedRef = useRef(false);
+
+  const fetchPlaces = useCallback(async () => {
+    unmountedRef.current = false;
+    setLoading(true);
+    setFetchError(false);
+    setAllFilteredOut(false);
+
+    try {
+      const raw = await searchPlacesByVibe(
+        cityName || 'near me',
+        category.searchTerms,
+        userLat,
+        userLng,
+        13, // ~8 miles search radius in km
+      );
+
+      if (unmountedRef.current) return;
+
+      // Step 1: remove permanently / temporarily closed places
+      const valid = raw.filter(isPlaceValid);
+
+      // Step 2: apply time-context filter for this specific category
+      const relevant = valid.filter((p) => doesPlaceMatchTimeContext(p, category));
+
+      if (valid.length > 0 && relevant.length === 0) {
+        setAllFilteredOut(true);
+      }
+
+      // Step 3: default sort (open-first, then by distance)
+      const sorted = buildDisplayList(relevant, 'all');
+
+      setFilteredPlaces(sorted);
+      setDisplayed(sorted);
+      setFilter('all');
+    } catch {
+      if (!unmountedRef.current) setFetchError(true);
+    } finally {
+      if (!unmountedRef.current) setLoading(false);
+    }
+  }, [category, userLat, userLng, cityName]);
+
+  useEffect(() => {
+    fetchPlaces();
+    return () => {
+      unmountedRef.current = true;
+    };
+  }, [fetchPlaces]);
+
+  useEffect(() => {
+    setDisplayed(buildDisplayList(filteredPlaces, filter));
+  }, [filter, filteredPlaces]);
+
+  const handleSave = (place: PlaceResult) => {
+    if (isGuest || !isAuthenticated) {
+      navigation.navigate('AuthChoice');
+      return;
+    }
+    if (isPlaceSaved(place.placeId)) {
+      unsavePlace(place.placeId);
+    } else {
+      savePlace(place);
+    }
+  };
+
+  const handleNavigate = (place: PlaceResult) => {
+    const stop = {
+      name: place.name,
+      description: place.description || place.category || '',
+      distance: '',
+      time: '',
+      rating: String((place.rating ?? 4.0).toFixed(1)),
+      image: place.photoUrl || FALLBACK_IMAGE,
+      coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
+    };
+
+    // Best-effort: prepend to local Recent Trips for authenticated users
+    const userId = useAuthStore.getState().user?.id || '';
+    if (userId) {
+      const now = new Date().toISOString();
+      const placeForTrip: Place = {
+        id: place.placeId,
+        name: place.name,
+        address: place.address,
+        image: place.photoUrl || FALLBACK_IMAGE,
+        coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
+        rating: place.rating,
+        description: place.description,
+      };
+      const recentTrip: RecentTrip = {
+        trip_id: `trip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        user_id: userId,
+        city: cityName || 'Nearby',
+        places: [placeForTrip],
+        created_at: now,
+        last_accessed: now,
+        is_shared: false,
+      };
+      useRecentTripStore.getState().prependTrip(recentTrip);
+    }
+
+    navigation.navigate('TripMap', { stops: [stop] });
+  };
+
+  const headerStyle = [
+    styles.header,
+    { paddingTop: Math.max(insets.top, 12) },
+    gradientStyle(category.gradient) as ViewStyle,
+  ];
+
+  function headerCountLabel(): string {
+    if (loading) return 'Loading…';
+    const count = displayed.length;
+    if (count === 0) return `Near ${cityName || 'you'}`;
+    return `${count} place${count !== 1 ? 's' : ''} near ${cityName || 'you'}`;
+  }
+
   return (
     <View style={styles.container}>
+      {/* Hero gradient header */}
+      <View style={headerStyle}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="chevron-back" size={20} color="#fff" />
+        </TouchableOpacity>
+
+        <View>
+          <View style={styles.headerPill}>
+            <Text style={styles.headerPillText}>{category.subtitle}</Text>
+          </View>
+          <Text style={styles.headerLabel}>{category.label}</Text>
+          <Text style={styles.headerCount}>{headerCountLabel()}</Text>
+        </View>
+      </View>
+
+      {/* Filter pills */}
+      <View style={styles.filterRow}>
+        {[
+          { id: 'all', label: 'All' },
+          { id: 'under2mi', label: 'Under 2 mi' },
+          { id: 'toprated', label: 'Top rated' },
+        ].map((f) => (
+          <TouchableOpacity
+            key={f.id}
+            style={[styles.filterPill, filter === f.id && styles.filterPillActive]}
+            onPress={() => setFilter(f.id as FilterId)}
+          >
+            <Text style={[styles.filterPillText, filter === f.id && styles.filterPillTextActive]}>{f.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Place list, loading, error, etc. would go here */}
       {/* ...existing JSX... */}
     </View>
   );
