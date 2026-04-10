@@ -12,7 +12,7 @@ export async function getCachedSuggestedPlaces(
   vibes: string[],
   maxResults: number = 40,
 ): Promise<any[]> {
-  // TEMPORARILY DEACTIVATED: Bypass cache to force direct API calls
+  // TEMPORARILY DEACTIVATED: Always bypass cache and force direct API calls
   return [];
 
   try {
@@ -159,7 +159,7 @@ export interface RichPlaceData {
 
 /** Read from Firestore cache. Returns null if missing or stale. */
 export async function readPlaceCache(placeId: string): Promise<PlaceDetailsCache | null> {
-  // TEMPORARILY DEACTIVATED: Bypass cache to force direct API calls
+  // TEMPORARILY DEACTIVATED: Always bypass cache
   return null;
 
   try {
@@ -180,7 +180,7 @@ export async function writePlaceCache(
   details: PlaceDetails,
   ai: { description: string; knownFor: string[]; vibe: string },
 ): Promise<void> {
-  // TEMPORARILY DEACTIVATED
+  // TEMPORARILY DEACTIVATED: Do not write to cache
   return;
 
   try {
@@ -324,7 +324,7 @@ export async function upsertSearchedPlace(
   tripDestinationCity: string,
   userId?: string,
 ): Promise<void> {
-  // TEMPORARILY DEACTIVATED
+  // TEMPORARILY DEACTIVATED: Do not write to places DB
   return;
 
   try {
