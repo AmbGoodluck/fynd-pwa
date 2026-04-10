@@ -19,7 +19,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Image, Linking, Platform, Animated, NativeSyntheticEvent,
-  NativeScrollEvent, Dimensions, useWindowDimensions,
+  NativeScrollEvent, Dimensions, useWindowDimensions, Share
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,6 +79,16 @@ export default function PlaceDetailScreen(props: any) {
   const params = route.params || {};
   const { isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
   const placeId = params.placeId;
+  const name = params.name || 'Unknown Place';
+  const photoUrl = params.photoUrl;
+  const initialPhotoUrls = params.photoUrls || [];
+  const initialDescription = params.description || '';
+  const initialRating = params.rating;
+  const initialAddress = params.address || '';
+  const category = params.category || '';
+  const initialLat = params.lat;
+  const initialLng = params.lng;
+
   const isSaved = isPlaceSaved(placeId);
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -92,6 +102,9 @@ export default function PlaceDetailScreen(props: any) {
   const [vibe, setVibe] = useState('');
   const [detailsLoading, setDetailsLoading] = useState(true);
   const [hoursExpanded, setHoursExpanded] = useState(false);
+
+  const openingHours = details?.openingHours;
+  const todayHours = openingHours?.weekdayText?.[getTodayGoogleIndex()];
 
   // ── Load rich data ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -153,17 +166,34 @@ export default function PlaceDetailScreen(props: any) {
     }
   };
 
-  const handleSave = () => {
-    const placeData = {
-      placeId,
-      name,
-      description: aiDescription || initialDescription || '',
-      photoUrl: photos[0] || FALLBACK_IMAGE,
-      rating: details?.rating ?? initialRating ?? 4,
-      category: category || details?.types?.[0]?.replace(/_/g, ' '),
-    };
-    // ...rest of handleSave logic...
+  const handleShare = async () => {
+    try {
+      const url = details?.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`;
+      await Share.share({
+        message: `Check out ${name} on Fynd!\n${url}`,
+      });
+    } catch (error) {
+      // ignore
+    }
+  };
 
+  const handleSave = () => {
+    if (isSaved) {
+      unsavePlace(placeId);
+    } else {
+      savePlace({
+        placeId,
+        name,
+        address: details?.formattedAddress || initialAddress,
+        description: aiDescription || initialDescription || '',
+        photoUrl: photos[0] || FALLBACK_IMAGE,
+        photoUrls: photos,
+        rating: details?.rating ?? initialRating ?? 4.0,
+        coordinates: { lat: details?.lat ?? initialLat ?? 0, lng: details?.lng ?? initialLng ?? 0 },
+        category: category || details?.types?.[0]?.replace(/_/g, ' ') || 'place',
+        types: details?.types || params.types || [],
+      } as any);
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
