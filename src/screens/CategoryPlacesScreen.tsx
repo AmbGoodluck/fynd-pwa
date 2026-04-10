@@ -22,67 +22,7 @@ import { gradientStyle, type TrendingCategory } from '../config/trendingCategori
 import type { RecentTrip } from '../types/recentTrip';
 import type { Place } from '../store/useTripStore';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-
-
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-const KM_PER_MILE = 1.60934;
-const TWO_MI_IN_KM = 2 * KM_PER_MILE;
-
-// ── Validity & time-context filtering ────────────────────────────────────────
-
-/** Hard filter: never show permanently or temporarily closed places. */
-function isPlaceValid(place: PlaceResult): boolean {
-  if (place.business_status === 'CLOSED_PERMANENTLY') return false;
-  if (place.business_status === 'CLOSED_TEMPORARILY') return false;
-  return true;
-}
-
-/**
- * Time-context filter per category.
- *
- * Because Google Places Text/Nearby Search only returns `open_now` (not detailed
- * periods), we use it as a proxy:
- *
- * open_now    → exclude places where open_now === false
- * open_until  → same proxy (we can't verify closing time without periods data)
- * open_after  → AGGRESSIVE: only include places where open_now === true;
- *               places without hours data are also excluded for this category
- *               because it is high-trust (user is hungry at midnight).
- */
-function doesPlaceMatchTimeContext(
-  place: PlaceResult,
-  category: TrendingCategory
-): boolean {
-  const { timeFilter } = category;
-  const openNow = place.opening_hours?.open_now;
-
-  switch (timeFilter.type) {
-    case 'open_now':
-    case 'open_until':
-      // Confirmed closed → exclude. Unknown or confirmed open → include.
-      return openNow !== false;
-
-    case 'open_after':
-      // Late night eats: only confirmed-open places. No data → exclude.
-      return openNow === true;
-  }
-}
-
-// ── Sort helpers ──────────────────────────────────────────────────────────────
-
-/**
- * Sort priority: confirmed-open first (0), no hours data (1), confirmed-closed (2).
- * Within each group, sort by distance ascending.
- */
-function openPriority(place: PlaceResult): number {
-  if (place.opening_hours?.open_now === true) return 0;
-  if (place.opening_hours?.open_now === false) return 2;
-  return 1; // undefined → "Hours N/A"
-}
-
+// ── buildDisplayList helper ──
 function buildDisplayList(
   places: PlaceResult[],
   filter: FilterId
@@ -106,144 +46,7 @@ function buildDisplayList(
   return list;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtDistance(km: number | undefined): string {
-  if (km === undefined) return '';
-  return `${(km / KM_PER_MILE).toFixed(1)} mi`;
-}
-
-// ── Skeleton row ──────────────────────────────────────────────────────────────
-function SkeletonRow() {
-  return (
-    <View style={styles.skeletonRow}>
-      <View style={styles.skeletonThumb} />
-      <View style={styles.skeletonLines}>
-        <View style={[styles.skeletonLine, { width: '60%' }]} />
-        <View style={[styles.skeletonLine, { width: '40%', marginTop: 6 }]} />
-        <View style={[styles.skeletonLine, { width: '50%', marginTop: 6 }]} />
-      </View>
-    </View>
-  );
-}
-
-// ── Open status badge ─────────────────────────────────────────────────────────
-function OpenBadge({ openNow }: { openNow: boolean | undefined }) {
-  if (openNow === true) {
-    return (
-      <View style={styles.openBadge}>
-        <View style={styles.openDot} />
-        <Text style={styles.openText}>Open</Text>
-      </View>
-    );
-  }
-  if (openNow === false) {
-    return <Text style={styles.closedText}>Closed</Text>;
-  }
-  return <Text style={styles.hoursNaText}>Hours N/A</Text>;
-}
-
-// ── Place row ─────────────────────────────────────────────────────────────────
-const PlaceRow = React.memo(function PlaceRow({
-  place,
-  isSaved,
-  onSave,
-  onNavigate,
-  catGradient,
-}: {
-  place: PlaceResult;
-  isSaved: boolean;
-  onSave: () => void;
-  onNavigate: () => void;
-  catGradient: [string, string, string];
-}) {
-  const distLabel = fmtDistance(place.distanceKm);
-  const ratingLabel = place.rating ? place.rating.toFixed(1) : '';
-  const typeLabel = place.category ? place.category.replace(/_/g, ' ') : '';
-
-  return (
-    <View style={styles.placeRow}>
-      {/* Thumbnail */}
-      <View style={styles.thumbWrap}>
-        {place.photoUrl ? (
-          <Image source={{ uri: place.photoUrl }} style={styles.thumb} />
-        ) : (
-          <View style={[styles.thumb, gradientStyle(catGradient) as ViewStyle]} />
-        )}
-      </View>
-
-      {/* Info */}
-      <View style={styles.placeInfo}>
-        {/* Top row: name + heart */}
-        <View style={styles.placeTopRow}>
-          <Text style={styles.placeName} numberOfLines={1}>
-            {place.name}
-          </Text>
-          <TouchableOpacity
-            onPress={onSave}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={isSaved ? 'heart' : 'heart-outline'}
-              size={18}
-              color={isSaved ? '#E24B4A' : '#9CA3AF'}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Type */}
-        {!!typeLabel && (
-          <Text style={styles.placeType} numberOfLines={1}>
-            {typeLabel}
-          </Text>
-        )}
-
-        {/* Bottom row: open badge + rating + distance + navigate */}
-        <View style={styles.placeBottomRow}>
-          <View style={styles.placeMeta}>
-            <OpenBadge openNow={place.opening_hours?.open_now} />
-            {!!ratingLabel && (
-              <View style={styles.metaItem}>
-                <Ionicons name="star" size={11} color="#EF9F27" />
-                <Text style={styles.metaText}>{ratingLabel}</Text>
-              </View>
-            )}
-            {!!distLabel && (
-              <Text style={styles.metaText}>{distLabel}</Text>
-            )}
-          </View>
-
-          <TouchableOpacity style={styles.navBtn} onPress={onNavigate}>
-            <Text style={styles.navBtnText}>Navigate</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-});
-
-
-// Main screen: must use standard React Navigation props
-export default function CategoryPlacesScreen(props: any) {
-  const { navigation, route } = props;
-  const { category, userLat, userLng, cityName } = route.params;
-  const insets = useSafeAreaInsets();
-  const { savePlace, unsavePlace, isPlaceSaved, isGuest } = useGuestStore();
-  const { isAuthenticated } = useAuthStore();
-  const [showGate, setShowGate] = useState(false);
-  const [filteredPlaces, setFilteredPlaces] = useState<PlaceResult[]>([]);
-  const [displayed, setDisplayed] = useState<PlaceResult[]>([]);
-  const [filter, setFilter] = useState<FilterId>('all');
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
-  const [allFilteredOut, setAllFilteredOut] = useState(false);
-  const unmountedRef = useRef(false);
-
   const fetchPlaces = useCallback(async () => {
-    unmountedRef.current = false;
-    setLoading(true);
-    setFetchError(false);
-    setAllFilteredOut(false);
-
     try {
       const raw = await searchPlacesByVibe(
         cityName || 'near me',
@@ -285,60 +88,11 @@ export default function CategoryPlacesScreen(props: any) {
     };
   }, [fetchPlaces]);
 
+
+
   useEffect(() => {
     setDisplayed(buildDisplayList(filteredPlaces, filter));
   }, [filter, filteredPlaces]);
-
-  const handleSave = (place: PlaceResult) => {
-    if (isGuest || !isAuthenticated) {
-      navigation.navigate('AuthChoice');
-      return;
-    }
-    if (isPlaceSaved(place.placeId)) {
-      unsavePlace(place.placeId);
-    } else {
-      savePlace(place);
-    }
-  };
-
-  const handleNavigate = (place: PlaceResult) => {
-    const stop = {
-      name: place.name,
-      description: place.description || place.category || '',
-      distance: '',
-      time: '',
-      rating: String((place.rating ?? 4.0).toFixed(1)),
-      image: place.photoUrl || FALLBACK_IMAGE,
-      coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
-    };
-
-    // Best-effort: prepend to local Recent Trips for authenticated users
-    const userId = useAuthStore.getState().user?.id || '';
-    if (userId) {
-      const now = new Date().toISOString();
-      const placeForTrip: Place = {
-        id: place.placeId,
-        name: place.name,
-        address: place.address,
-        image: place.photoUrl || FALLBACK_IMAGE,
-        coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
-        rating: place.rating,
-        description: place.description,
-      };
-      const recentTrip: RecentTrip = {
-        trip_id: `trip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        user_id: userId,
-        city: cityName || 'Nearby',
-        places: [placeForTrip],
-        created_at: now,
-        last_accessed: now,
-        is_shared: false,
-      };
-      useRecentTripStore.getState().prependTrip(recentTrip);
-    }
-
-    navigation.navigate('TripMap', { stops: [stop] });
-  };
 
   const headerStyle = [
     styles.header,
@@ -353,6 +107,12 @@ export default function CategoryPlacesScreen(props: any) {
     return `${count} place${count !== 1 ? 's' : ''} near ${cityName || 'you'}`;
   }
 
+
+// Main screen component
+function CategoryPlacesScreen({ navigation, route }) {
+  // ...existing hooks, state, and logic...
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       {/* Hero gradient header */}
@@ -391,147 +151,50 @@ export default function CategoryPlacesScreen(props: any) {
         ))}
       </View>
 
-      {/* Place list, loading, error, etc. would go here */}
-      {/* ...existing JSX... */}
+      {/* Content area */}
+      {loading ? (
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          scrollEnabled={false}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonRow key={i} />
+          ))}
+        </ScrollView>
+      ) : fetchError ? (
+        <View style={styles.stateWrap}>
+          <Ionicons name="wifi-outline" size={44} color="#D1D5DB" />
+          <Text style={styles.stateTitle}>Couldn't load places</Text>
+          <TouchableOpacity style={styles.actionBtn} onPress={fetchPlaces}>
+            <Text style={styles.actionBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : allFilteredOut || (filteredPlaces.length === 0 && !allFilteredOut) ? (
+        <View style={styles.stateWrap}>
+          <Ionicons name="search-outline" size={44} color="#D1D5DB" />
+          <Text style={styles.stateTitle}>No places found</Text>
+          <Text style={styles.stateDesc}>Try a different filter or category.</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+          {displayed.map((place) => (
+            <PlaceRow
+              key={place.placeId}
+              place={place}
+              isSaved={isPlaceSaved(place.placeId)}
+              onSave={() => handleSave(place)}
+              onNavigate={() => handleNavigate(place)}
+              catGradient={category.gradient}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Guest gate modal */}
+      {/* ...rest of the component... */}
     </View>
   );
-}
-  const insets = useSafeAreaInsets();
-
-  const { savePlace, unsavePlace, isPlaceSaved, isGuest } = useGuestStore();
-  const { isAuthenticated } = useAuthStore();
-  const [showGate, setShowGate] = useState(false);
-
-  // All valid + time-context-filtered places from the API
-  const [filteredPlaces, setFilteredPlaces] = useState<PlaceResult[]>([]);
-  // What's actually shown (after user filter pill)
-  const [displayed, setDisplayed] = useState<PlaceResult[]>([]);
-  const [filter, setFilter] = useState<FilterId>('all');
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(false);
-  // True if API returned results but ALL were filtered out by time context
-  const [allFilteredOut, setAllFilteredOut] = useState(false);
-
-  const unmountedRef = useRef(false);
-
-  const fetchPlaces = useCallback(async () => {
-    unmountedRef.current = false;
-    setLoading(true);
-    setFetchError(false);
-    setAllFilteredOut(false);
-
-    try {
-      const raw = await searchPlacesByVibe(
-        cityName || 'near me',
-        category.searchTerms,
-        userLat,
-        userLng,
-        13, // ~8 miles search radius in km
-      );
-
-      if (unmountedRef.current) return;
-
-      // Step 1: remove permanently / temporarily closed places
-      const valid = raw.filter(isPlaceValid);
-
-      // Step 2: apply time-context filter for this specific category
-      const relevant = valid.filter((p) => doesPlaceMatchTimeContext(p, category));
-
-      if (valid.length > 0 && relevant.length === 0) {
-        setAllFilteredOut(true);
-      }
-
-      // Step 3: default sort (open-first, then by distance)
-      const sorted = buildDisplayList(relevant, 'all');
-
-      setFilteredPlaces(sorted);
-      setDisplayed(sorted);
-      setFilter('all');
-    } catch {
-      if (!unmountedRef.current) setFetchError(true);
-    } finally {
-      if (!unmountedRef.current) setLoading(false);
-    }
-  }, [category, userLat, userLng, cityName]);
-
-  useEffect(() => {
-    fetchPlaces();
-    return () => {
-      unmountedRef.current = true;
-    };
-  }, [fetchPlaces]);
-
-  // Re-apply user filter pill when it changes
-  useEffect(() => {
-    setDisplayed(buildDisplayList(filteredPlaces, filter));
-  }, [filter, filteredPlaces]);
-
-  // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleSave = (place: PlaceResult) => {
-    if (isGuest || !isAuthenticated) {
-      navigation.navigate('AuthChoice');
-      return;
-    }
-    if (isPlaceSaved(place.placeId)) {
-      unsavePlace(place.placeId);
-    } else {
-      savePlace(place);
-    }
-  };
-
-  const handleNavigate = (place: PlaceResult) => {
-    const stop = {
-      name: place.name,
-      description: place.description || place.category || '',
-      distance: '',
-      time: '',
-      rating: String((place.rating ?? 4.0).toFixed(1)),
-      image: place.photoUrl || FALLBACK_IMAGE,
-      coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
-    };
-
-    // Best-effort: prepend to local Recent Trips for authenticated users
-    const userId = useAuthStore.getState().user?.id || '';
-    if (userId) {
-      const now = new Date().toISOString();
-      const placeForTrip: Place = {
-        id: place.placeId,
-        name: place.name,
-        address: place.address,
-        image: place.photoUrl || FALLBACK_IMAGE,
-        coordinate: { latitude: place.coordinates.lat, longitude: place.coordinates.lng },
-        rating: place.rating,
-        description: place.description,
-      };
-      const recentTrip: RecentTrip = {
-        trip_id: `trip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        user_id: userId,
-        city: cityName || 'Nearby',
-        places: [placeForTrip],
-        created_at: now,
-        last_accessed: now,
-        is_shared: false,
-      };
-      useRecentTripStore.getState().prependTrip(recentTrip);
-    }
-
-    navigation.navigate('TripMap', { stops: [stop] });
-  };
-
-  // ── Header gradient ──────────────────────────────────────────────────────────
-  const headerStyle = [
-    styles.header,
-    { paddingTop: Math.max(insets.top, 12) },
-    gradientStyle(category.gradient) as ViewStyle,
-  ];
-
-  // ── Count label for header ───────────────────────────────────────────────────
-  function headerCountLabel(): string {
-    if (loading) return 'Loading…';
-    const count = displayed.length;
-    if (count === 0) return `Near ${cityName || 'you'}`;
-    return `${count} place${count !== 1 ? 's' : ''} near ${cityName || 'you'}`;
-  }
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (

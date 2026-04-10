@@ -77,28 +77,8 @@ export default function PlaceDetailScreen(props: any) {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const params = route.params || {};
-  // ...existing code...
-  // The main render block must return JSX
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* ...existing JSX... */}
-    </SafeAreaView>
-  );
-}
-
-  const {
-    placeId,
-    name,
-    photoUrl,
-    photoUrls: initialPhotoUrls,
-    description: initialDescription,
-    rating: initialRating,
-    address: initialAddress,
-    category,
-    types: initialTypes,
-    lat: initialLat,
-    lng: initialLng,
-  } = params;
+  const { isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
+  const isSaved = isPlaceSaved(placeId);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [photos, setPhotos] = useState<string[]>(
@@ -111,9 +91,6 @@ export default function PlaceDetailScreen(props: any) {
   const [vibe, setVibe] = useState('');
   const [detailsLoading, setDetailsLoading] = useState(true);
   const [hoursExpanded, setHoursExpanded] = useState(false);
-
-  const { isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
-  const isSaved = isPlaceSaved(placeId);
 
   // ── Load rich data ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -131,8 +108,7 @@ export default function PlaceDetailScreen(props: any) {
       setDetailsLoading(false);
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [placeId]);
+  }, [placeId, initialDescription]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const openMaps = () => {
@@ -184,31 +160,10 @@ export default function PlaceDetailScreen(props: any) {
       photoUrl: photos[0] || FALLBACK_IMAGE,
       rating: details?.rating ?? initialRating ?? 4,
       category: category || details?.types?.[0]?.replace(/_/g, ' '),
-      address: details?.formattedAddress || initialAddress,
-      coordinates: { lat: details?.lat ?? initialLat ?? 0, lng: details?.lng ?? initialLng ?? 0 },
-      types: details?.types || initialTypes,
     };
-    if (isSaved) {
-      unsavePlace(placeId);
-    } else {
-      savePlace(placeData);
-    }
-  };
+    // ...rest of handleSave logic...
 
-  const handleShare = () => {
-    const url = details?.mapsUrl || `https://www.google.com/maps/place/?q=place_id:${placeId}`;
-    if (Platform.OS === 'web' && navigator.share) {
-      navigator.share({ title: name, text: aiDescription, url }).catch(() => {});
-    } else if (Platform.OS === 'web') {
-      navigator.clipboard?.writeText(url).catch(() => {});
-    } else {
-      Linking.openURL(url);
-    }
   };
-
-  // ── Opening hours helpers ──────────────────────────────────────────────────
-  const openingHours = details?.openingHours;
-  const todayHours = openingHours?.weekdayText?.[getTodayGoogleIndex()];
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const HERO_HEIGHT = 240;
