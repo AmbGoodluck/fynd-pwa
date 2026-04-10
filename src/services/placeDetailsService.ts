@@ -1,5 +1,9 @@
-import { collection, getDocs, limit as fsLimit } from 'firebase/firestore';
-import { PlaceResult } from './googlePlacesService';
+import { collection, getDocs, doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from './firebase';
+import { fetchPlaceDetails, PlaceDetails, PlaceResult } from './googlePlacesService';
+import { generatePlaceDescription } from './openaiService';
+import { FALLBACK_IMAGE } from '../constants';
+
 /**
  * Query Firestore cache for suggested places by city and vibes.
  */
@@ -7,63 +11,79 @@ export async function getCachedSuggestedPlaces(
   city: string,
   vibes: string[],
   maxResults: number = 40,
-): Promise<PlaceResult[]> {
+): Promise<any[]> {
   try {
-    // Fetch up to 200 cached places
-    const snap = await getDocs(fsLimit(collection(db, 'place_details_cache'), 200));
-    const cityNorm = city.trim().toLowerCase();
-    const vibeTokens = vibes.map(v => v.toLowerCase().split(/\s+/)).flat();
-    const results: Array<{ place: PlaceDetailsCache; vibeMatches: number }> = [];
-    for (const docSnap of snap.docs) {
-      const place = docSnap.data() as PlaceDetailsCache;
-      // City match: check city or formatted_address includes city string
-      const cityField = (place.city || '').toLowerCase();
-      const addrField = (place.formatted_address || '').toLowerCase();
-      if (
-        !cityNorm ||
-        cityField.startsWith(cityNorm) ||
-        cityNorm.startsWith(cityField) ||
-        cityField.includes(cityNorm) ||
-        addrField.includes(cityNorm)
-      ) {
-        // Vibe match: count tokens in types, known_for, vibe, ai_description
+    const snap = await getDocs(collection(db, 'place_details_cache'));
+    if (snap.empty) return [];
+    
+    const allPlaces = snap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+    
+    // Filter by city — check if the place's city or formatted_address contains the destination
+    const cityLower = city.toLowerCase().split(',')[0].trim();
+    const cityFiltered = cityLower
+      ? allPlaces.filter(p => {
+          const pCity = (p.city || '').toLowerCase();
+          const pAddr = (p.formatted_address || '').toLowerCase();
+          return pCity.includes(cityLower) || pAddr.includes(cityLower);
+        })
+      : allPlaces;
+    
+    if (cityFiltered.length === 0) return [];
+    
+    // Filter out non-exploration place types
+    const excluded = ['gas_station', 'convenience_store', 'atm', 'car_wash', 'car_repair', 'parking', 'storage', 'insurance_agency', 'real_estate_agency', 'funeral_home'];
+    const cleaned = cityFiltered.filter(p => {
+      const types = p.types || [];
+      return !types.some((t: string) => excluded.includes(t));
+    });
+    
+    // Score by vibe match
+    const vibeTokens = vibes.flatMap(v => String(v).toLowerCase().split(/[^a-z0-9]+/g)).filter(t => t.length >= 3);
+    
+    const scored = cleaned.map(p => {
+      let score = 0;
+      if (vibeTokens.length > 0) {
         const haystack = [
-          ...(place.types || []).map(t => t.toLowerCase()),
-          ...(place.known_for || []).map(k => k.toLowerCase()),
-          (place.vibe || '').toLowerCase(),
-          (place.ai_description || '').toLowerCase(),
-        ].join(' ');
-        let vibeMatches = 0;
+          ...(p.types || []),
+          p.ai_description || '',
+          (p.known_for || []).join(' '),
+          p.vibe || '',
+          p.place_name || '',
+        ].join(' ').toLowerCase();
         for (const token of vibeTokens) {
-          if (token && haystack.includes(token)) vibeMatches++;
+          if (haystack.includes(token)) score += 1;
         }
-        results.push({ place, vibeMatches });
       }
-    }
-    // Sort: more vibe matches first, then rating desc
-    results.sort((a, b) =>
-      b.vibeMatches - a.vibeMatches || (b.place.rating || 0) - (a.place.rating || 0)
-    );
-    // Map to PlaceResult
-    return results.slice(0, maxResults).map(({ place }) => ({
-      placeId: place.place_id,
-      name: place.place_name,
-      address: place.formatted_address,
-      rating: place.rating ?? 0,
-      description: place.ai_description || place.editorial_summary || '',
+      return { ...p, _score: score };
+    });
+    
+    // Sort: vibe match first, then rating
+    scored.sort((a, b) => {
+      if (b._score !== a._score) return b._score - a._score;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+    
+    // Map to PlaceResult shape expected by SuggestedPlacesScreen
+    return scored.slice(0, maxResults).map(p => ({
+      placeId: p.place_id || p.id,
+      name: p.place_name || '',
+      address: p.formatted_address || '',
+      rating: p.rating || 4.0,
+      description: p.ai_description || p.editorial_summary || p.types?.[0]?.replace(/_/g, ' ') || '',
       photoRef: '',
-      photoUrl: place.photo_urls?.[0] || FALLBACK_IMAGE,
-      photoUrls: place.photo_urls,
-      coordinates: { lat: place.lat, lng: place.lng },
-      category: place.types?.[0]?.replace(/_/g, ' '),
-      types: place.types,
-      city: place.city,
-      matchedTags: (place.known_for || []).slice(0, 2),
-      bookingUrl: undefined,
-      opening_hours: place.opening_hours,
-      business_status: undefined,
+      photoUrl: (p.photo_urls && p.photo_urls.length > 0) ? p.photo_urls[0] : FALLBACK_IMAGE,
+      photoUrls: p.photo_urls || [],
+      coordinates: { lat: p.lat || 0, lng: p.lng || 0 },
+      category: p.types?.[0]?.replace(/_/g, ' ') || 'place',
+      types: p.types || [],
+      city: p.city || city,
+      distanceKm: undefined,
+      walkMinutes: undefined,
+      matchedTags: (p.known_for || []).slice(0, 2),
+      opening_hours: p.opening_hours || undefined,
     }));
   } catch (e) {
+    console.warn('[getCachedSuggestedPlaces] error:', e);
     return [];
   }
 }
@@ -81,11 +101,6 @@ export async function getCachedSuggestedPlaces(
  * the detail screen renders immediately with whatever data is available
  * and updates state as richer data arrives.
  */
-
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from './firebase';
-import { fetchPlaceDetails, PlaceDetails } from './googlePlacesService';
-import { generatePlaceDescription } from './openaiService';
 
 export const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
