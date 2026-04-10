@@ -19,19 +19,23 @@ export default function RegisterScreen({ navigation }: Props) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [showResend, setShowResend] = useState(false);
 
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
-      setError('Please fill in all fields.'); return;
+      setError('Please fill in all fields.'); setInfo(''); return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match.'); return;
+      setError('Passwords do not match.'); setInfo(''); return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.'); return;
+      setError('Password must be at least 6 characters.'); setInfo(''); return;
     }
     setLoading(true);
     setError('');
+    setInfo('');
+    setShowResend(false);
     try {
       // Step 1: Create Supabase auth user
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -42,26 +46,16 @@ export default function RegisterScreen({ navigation }: Props) {
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('Sign-up failed — no user returned.');
 
-      const uid = data.user.id;
+      // Supabase will send a confirmation email if required
+      setInfo('Account created! Please check your email to confirm your account before logging in.');
+      setShowResend(true);
 
-      // Step 2: Create Firestore user + subscription docs (best-effort — don't block login)
+      // Optionally, create Firestore user doc (best-effort, not blocking)
       try {
-        await createUserDoc(uid, fullName.trim(), email.trim());
+        await createUserDoc(data.user.id, fullName.trim(), email.trim());
       } catch (firestoreErr: any) {
         console.warn('Register: Firestore createUserDoc failed (non-fatal):', firestoreErr?.message);
       }
-
-      // Step 3: Update auth store and navigate
-      clearGuest();
-      login({
-        id: uid,
-        email: email.trim(),
-        fullName: fullName.trim(),
-        isPremium: false,
-        travelPreferences: [],
-      });
-      await useGuestStore.getState().hydrateSavedPlaces();
-      navigation.replace('MainTabs');
 
     } catch (e: any) {
       console.error('Register error:', e.message);
@@ -78,6 +72,26 @@ export default function RegisterScreen({ navigation }: Props) {
                 ? 'Network error. Check your connection and try again.'
                 : 'Registration failed. Please try again.';
       setError(msg);
+      setShowResend(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Utility: Resend confirmation email
+  const handleResendConfirmation = async () => {
+    setLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+      });
+      if (error) throw error;
+      setInfo('Confirmation email resent. Please check your inbox.');
+    } catch (e: any) {
+      setError('Could not resend confirmation email. Try again later.');
     } finally {
       setLoading(false);
     }
@@ -90,6 +104,7 @@ export default function RegisterScreen({ navigation }: Props) {
       <Text style={styles.subtitle}>Let us make every travel count</Text>
 
       {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
+      {info ? <View style={styles.infoBox}><Text style={styles.infoText}>{info}</Text></View> : null}
 
       <View style={styles.inputWrap}>
         <Ionicons name="person-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
@@ -121,9 +136,16 @@ export default function RegisterScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+
       <TouchableOpacity style={styles.registerBtn} onPress={handleRegister} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.registerBtnText}>Create Account</Text>}
       </TouchableOpacity>
+
+      {showResend && (
+        <TouchableOpacity style={styles.resendBtn} onPress={handleResendConfirmation} disabled={loading}>
+          <Text style={styles.resendBtnText}>Resend Confirmation Email</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginWrap}>
         <Text style={styles.loginText}>Already have an account? <Text style={styles.loginLink}>Log in</Text></Text>
@@ -140,11 +162,15 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 15, color: '#57636C', marginBottom: 28 },
   errorBox: { width: '100%', backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12 },
   errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center' },
+  infoBox: { width: '100%', backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, marginBottom: 12 },
+  infoText: { color: '#059669', fontSize: 13, textAlign: 'center' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 14, height: 50, marginBottom: 12 },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: '#111827' },
   registerBtn: { width: '100%', backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: 8 },
   registerBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  resendBtn: { marginBottom: 8 },
+  resendBtnText: { color: '#22C55E', fontWeight: '600', fontSize: 14, textAlign: 'center' },
   loginWrap: { marginTop: 8 },
   loginText: { fontSize: 14, color: '#57636C' },
   loginLink: { color: '#22C55E', fontWeight: '600' },
