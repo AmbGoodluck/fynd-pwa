@@ -259,12 +259,23 @@ export async function fetchRichPlaceData(
     };
   }
 
-  // 2. Fetch from Google Places API + OpenAI in parallel
-  const [details, aiResult] = await Promise.all([
-    fetchPlaceDetails(placeId),
-    // We need details before calling OpenAI for best results; start with a
-    // quick fire-and-forget using whatever basic info we have, then refine.
-    Promise.resolve(null),
+  // 2. Fetch from Google Places API and OpenAI in parallel (if basicInfo is provided)
+  const fetchDetailsPromise = fetchPlaceDetails(placeId);
+  let aiPromise = Promise.resolve(null as any);
+  if (basicInfo) {
+    aiPromise = generatePlaceDescription(
+      basicInfo.name,
+      basicInfo.address,
+      basicInfo.city,
+      basicInfo.types,
+      basicInfo.rating,
+      basicInfo.priceLevel
+    );
+  }
+
+  const [details, parallelAiResult] = await Promise.all([
+    fetchDetailsPromise,
+    aiPromise
   ]);
 
   // 3. Generate AI description now that we have full place details
@@ -272,7 +283,12 @@ export async function fetchRichPlaceData(
   let knownFor: string[] = [];
   let vibe = '';
 
-  if (details) {
+  if (parallelAiResult) {
+    aiDescription = parallelAiResult.description;
+    knownFor = parallelAiResult.knownFor;
+    vibe = parallelAiResult.vibe;
+  } else if (details) {
+    // Only run sequential fallback if basicInfo wasn't provided to start with or parallel failed
     const aiRes = await generatePlaceDescription(
       details.name,
       details.formattedAddress,
@@ -288,8 +304,10 @@ export async function fetchRichPlaceData(
     } else {
       aiDescription = details.editorialSummary || fallbackEditorialSummary || '';
     }
+  }
 
-    // 4. Cache the result (non-blocking)
+  // 4. Cache the result (non-blocking)
+  if (details) {
     writePlaceCache(placeId, details, { description: aiDescription, knownFor, vibe });
   }
 
