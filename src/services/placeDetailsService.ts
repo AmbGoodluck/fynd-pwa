@@ -20,13 +20,13 @@ export async function getCachedSuggestedPlaces(
     
     // Filter by city — check if the place's city or formatted_address contains the destination
     const cityLower = city.toLowerCase().split(',')[0].trim();
-    const cityFiltered = cityLower
-      ? allPlaces.filter(p => {
-          const pCity = (p.city || '').toLowerCase();
-          const pAddr = (p.formatted_address || '').toLowerCase();
-          return pCity.includes(cityLower) || pAddr.includes(cityLower);
-        })
-      : allPlaces;
+    // If no city is provided, the cache cannot be used. Fall back to API.
+    if (!cityLower) return [];
+    const cityFiltered = allPlaces.filter(p => {
+        const pCity = (p.city || '').toLowerCase();
+        const pAddr = (p.formatted_address || '').toLowerCase();
+        return pCity.includes(cityLower) || pAddr.includes(cityLower);
+    });
     
     if (cityFiltered.length === 0) return [];
     
@@ -57,14 +57,17 @@ export async function getCachedSuggestedPlaces(
       return { ...p, _score: score };
     });
     
+    // Only keep places that actually matched at least one vibe token (if vibes were provided)
+    const vibeMatched = vibeTokens.length > 0 ? scored.filter(p => p._score > 0) : scored;
+    
     // Sort: vibe match first, then rating
-    scored.sort((a, b) => {
+    vibeMatched.sort((a, b) => {
       if (b._score !== a._score) return b._score - a._score;
       return (b.rating || 0) - (a.rating || 0);
     });
     
     // Map to PlaceResult shape expected by SuggestedPlacesScreen
-    return scored.slice(0, maxResults).map(p => ({
+    return vibeMatched.slice(0, maxResults).map(p => ({
       placeId: p.place_id || p.id,
       name: p.place_name || '',
       address: p.formatted_address || '',

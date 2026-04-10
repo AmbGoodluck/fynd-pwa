@@ -84,7 +84,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       const placesToEnrich = places.slice(0, 12);
       const remainingPlaces = places.slice(12);
       const enrichedPlaces = [];
-      const CHUNK_SIZE = 4;
+      const CHUNK_SIZE = 2; // Reduced chunk size to prevent OpenAI rate limits (429)
 
       for (let i = 0; i < placesToEnrich.length; i += CHUNK_SIZE) {
         const chunk = placesToEnrich.slice(i, i + CHUNK_SIZE);
@@ -104,6 +104,11 @@ export default function ProcessingScreen({ navigation, route }: Props) {
           }
         }));
         enrichedPlaces.push(...chunkResults);
+        
+        // Add a slight delay between chunks to allow token bucket to refill
+        if (i + CHUNK_SIZE < placesToEnrich.length) {
+          await new Promise(r => setTimeout(r, 600));
+        }
       }
 
       const finalPlaces = [...enrichedPlaces, ...remainingPlaces];
