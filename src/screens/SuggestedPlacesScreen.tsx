@@ -198,30 +198,8 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     // If already resolved, skip re-fetch
     if (resolvedPlaces[suggestion.placeId]) return;
     setResolvedPlaces(prev => ({ ...prev, [suggestion.placeId]: { inCity: true, distKm: 0, details: null, adding: false } }));
-    // Check Firestore cache first — zero API cost if seeded
-    const cached = await readPlaceCache(suggestion.placeId);
-    const details = cached
-      ? {
-          placeId: cached.place_id,
-          name: cached.place_name,
-          formattedAddress: cached.formatted_address,
-          city: cached.city,
-          phone: cached.phone,
-          website: cached.website,
-          rating: cached.rating,
-          priceLevel: cached.price_level,
-          openingHours: cached.opening_hours
-            ? { openNow: cached.opening_hours.open_now, weekdayText: cached.opening_hours.weekday_text }
-            : undefined,
-          photoUrls: cached.photo_urls || [],
-          photoRefs: [],
-          types: cached.types || [],
-          lat: cached.lat,
-          lng: cached.lng,
-          editorialSummary: cached.editorial_summary,
-          mapsUrl: cached.maps_url,
-        }
-      : await fetchPlaceDetails(suggestion.placeId);
+    // Always bypass cache/database and call API for place details
+    const details = await fetchPlaceDetails(suggestion.placeId);
     if (!details) return;
     const distKm = (userLatitude && userLongitude)
       ? haversineKm(details.lat, details.lng, userLatitude, userLongitude)
