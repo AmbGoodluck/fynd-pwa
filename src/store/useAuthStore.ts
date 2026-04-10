@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { signOut } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { supabase } from '../services/supabase';
 
 interface User {
   id: string;
@@ -28,7 +27,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   login: (user) => set({ user, isAuthenticated: true, isLoading: false }),
   setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
   logout: async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     set({ user: null, isAuthenticated: false });
   },
   setIsPremium: (val) => set((state) => ({
