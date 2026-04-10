@@ -78,19 +78,24 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       
       if (!places || places.length === 0) return [];
 
-      // Enrich the top results with Google Details + OpenAI descriptions, and cache them to Firestore.
-      // We process in small chunks of 4 to avoid OpenAI rate limits while keeping the loading time reasonable.
-      // The rest of the places are appended unenriched (they will be enriched on-demand if the user taps them).
-      const placesToEnrich = places.slice(0, 12);
-      const remainingPlaces = places.slice(12);
+      // Enrich ALL results with Google Details + OpenAI descriptions in parallel, and cache them to Firestore.
+      // We process in small chunks to avoid OpenAI rate limits.
+      const placesToEnrich = places;
+      const remainingPlaces: any[] = [];
       const enrichedPlaces = [];
-      const CHUNK_SIZE = 2; // Reduced chunk size to prevent OpenAI rate limits (429)
+      const CHUNK_SIZE = 3;
 
       for (let i = 0; i < placesToEnrich.length; i += CHUNK_SIZE) {
         const chunk = placesToEnrich.slice(i, i + CHUNK_SIZE);
         const chunkResults = await Promise.all(chunk.map(async (p) => {
           try {
-            const rich = await fetchRichPlaceData(p.placeId, p.description);
+            const rich = await fetchRichPlaceData(p.placeId, p.description, {
+              name: p.name,
+              address: p.address,
+              city: p.city || destination || '',
+              types: p.types || [],
+              rating: p.rating
+            });
             return {
               ...p,
               description: rich.aiDescription || p.description,

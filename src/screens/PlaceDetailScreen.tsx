@@ -110,7 +110,13 @@ export default function PlaceDetailScreen(props: any) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const result = await fetchRichPlaceData(placeId, initialDescription);
+      const result = await fetchRichPlaceData(placeId, initialDescription, {
+        name,
+        address: initialAddress,
+        city: params.city || '',
+        types: params.types || [],
+        rating: initialRating,
+      });
       if (cancelled) return;
       if (result.details) {
         setDetails(result.details);

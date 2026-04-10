@@ -12,6 +12,9 @@ export async function getCachedSuggestedPlaces(
   vibes: string[],
   maxResults: number = 40,
 ): Promise<any[]> {
+  // TEMPORARILY DEACTIVATED: Bypass cache to force direct API calls
+  return [];
+
   try {
     const snap = await getDocs(collection(db, 'place_details_cache'));
     if (snap.empty) return [];
@@ -156,6 +159,9 @@ export interface RichPlaceData {
 
 /** Read from Firestore cache. Returns null if missing or stale. */
 export async function readPlaceCache(placeId: string): Promise<PlaceDetailsCache | null> {
+  // TEMPORARILY DEACTIVATED: Bypass cache to force direct API calls
+  return null;
+
   try {
     const ref = doc(db, 'place_details_cache', placeId);
     const snap = await getDoc(ref);
@@ -174,6 +180,9 @@ export async function writePlaceCache(
   details: PlaceDetails,
   ai: { description: string; knownFor: string[]; vibe: string },
 ): Promise<void> {
+  // TEMPORARILY DEACTIVATED
+  return;
+
   try {
     const payload: PlaceDetailsCache = {
       place_id: placeId,
@@ -213,6 +222,7 @@ export async function writePlaceCache(
 export async function fetchRichPlaceData(
   placeId: string,
   fallbackEditorialSummary?: string,
+  basicInfo?: { name: string; address: string; city: string; types: string[]; rating?: number; priceLevel?: number }
 ): Promise<{
   details: PlaceDetails | null;
   aiDescription: string;
@@ -296,6 +306,9 @@ export async function upsertSearchedPlace(
   tripDestinationCity: string,
   userId?: string,
 ): Promise<void> {
+  // TEMPORARILY DEACTIVATED
+  return;
+
   try {
     const ref = doc(db, 'places', placeId);
     const existing = await getDoc(ref);
