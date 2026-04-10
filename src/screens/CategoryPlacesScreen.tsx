@@ -10,6 +10,8 @@ import {
   ViewStyle,
 } from 'react-native';
 
+
+import { F } from '../theme/fonts';
 import { useRoute } from '@react-navigation/native';
 
 export default function CategoryPlacesScreen({ navigation }) {
