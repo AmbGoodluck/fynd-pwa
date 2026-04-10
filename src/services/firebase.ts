@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { initializeAuth, getAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
+import { initializeAuth, getAuth, browserLocalPersistence } from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
@@ -30,14 +30,15 @@ if (missingKeys.length > 0) {
   console.error('[Firebase] Missing config keys:', missingKeys.join(', '), '— check EXPO_PUBLIC_FIREBASE_* env vars.');
 }
 
+
 let auth: any;
 try {
-  const persistence = Platform.OS === 'web'
-    ? browserLocalPersistence
-    : getReactNativePersistence(AsyncStorage);
-  auth = initializeAuth(app, { persistence });
+  if (Platform.OS === 'web') {
+    auth = initializeAuth(app, { persistence: browserLocalPersistence });
+  } else {
+    auth = getAuth(app); // Use default persistence for native
+  }
 } catch (e) {
-  // initializeAuth throws if already initialized — getAuth returns existing instance
   auth = getAuth(app);
 }
 
@@ -46,7 +47,7 @@ try { configureGoogle(); } catch (e) { /* ignore */ }
 // Analytics — only available in native builds, not Expo Go
 let analytics: Analytics | null = null;
 isSupported().then((supported) => {
-  if (supported) analytics = getAnalytics(app);
+  if (supported && Platform.OS !== 'web') analytics = getAnalytics(app);
 }).catch(() => {});
 
 // Helper — safe to call anywhere, silently no-ops in Expo Go
