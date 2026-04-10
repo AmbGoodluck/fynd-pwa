@@ -324,8 +324,8 @@ export async function upsertSearchedPlace(
   tripDestinationCity: string,
   userId?: string,
 ): Promise<void> {
-  // TEMPORARILY DEACTIVATED: Do not write to places DB
-  return;
+  // RE-ENABLED: Allow writing to places DB for saved places and trips sync
+  // (No-op here, actual DB logic is in savedPlacesService and trip services)
 
   try {
     const ref = doc(db, 'places', placeId);
