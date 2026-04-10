@@ -64,14 +64,7 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const handleForgotPassword = async () => {
-    if (!email.trim()) { setError('Enter your email above first.'); return; }
-    try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim());
-      if (resetError) throw resetError;
-      setError('Password reset email sent! Check your inbox.');
-    } catch {
-      setError('Could not send reset email. Check your email address.');
-    }
+    navigation.navigate('ResetPassword', { defaultEmail: email.trim() });
   };
 
   return (

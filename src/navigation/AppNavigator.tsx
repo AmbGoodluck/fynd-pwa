@@ -41,6 +41,7 @@ import AuthChoiceScreen from '../screens/AuthChoiceScreen';
 // ── Auth ────────────────────────────────────────────────────────────────────────
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 
 // ── Bottom Tabs (eagerly loaded — critical path) ────────────────────────────────
 import HomeScreen from '../screens/HomeScreen';
@@ -448,6 +449,7 @@ export default function AppNavigator() {
           {/* ── Auth ──────────────────────────────────── */}
           <Stack.Screen name="Login"    component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
 
           {/* ── Main App ──────────────────────────────── */}
           <Stack.Screen name="MainTabs">
