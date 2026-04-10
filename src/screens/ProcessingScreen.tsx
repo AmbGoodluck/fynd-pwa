@@ -4,7 +4,7 @@ import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sentry from '../services/sentry';
 import { searchPlacesByVibe } from '../services/googlePlacesService';
-import { getCachedSuggestedPlaces } from '../services/placeDetailsService';
+import { getCachedSuggestedPlaces, fetchRichPlaceData } from '../services/placeDetailsService';
 import { logEvent } from '../services/firebase';
 
 // LottieView is native-only — dynamically imported so the web bundle never touches it
@@ -76,14 +76,46 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         timeOfDay || undefined
       );
       
+      if (!places || places.length === 0) return [];
+
+      // Enrich the top results with Google Details + OpenAI descriptions, and cache them to Firestore.
+      // We process in small chunks of 4 to avoid OpenAI rate limits while keeping the loading time reasonable.
+      // The rest of the places are appended unenriched (they will be enriched on-demand if the user taps them).
+      const placesToEnrich = places.slice(0, 12);
+      const remainingPlaces = places.slice(12);
+      const enrichedPlaces = [];
+      const CHUNK_SIZE = 4;
+
+      for (let i = 0; i < placesToEnrich.length; i += CHUNK_SIZE) {
+        const chunk = placesToEnrich.slice(i, i + CHUNK_SIZE);
+        const chunkResults = await Promise.all(chunk.map(async (p) => {
+          try {
+            const rich = await fetchRichPlaceData(p.placeId, p.description);
+            return {
+              ...p,
+              description: rich.aiDescription || p.description,
+              photoUrls: rich.details?.photoUrls?.length ? rich.details.photoUrls : p.photoUrls,
+              photoUrl: rich.details?.photoUrls?.[0] || p.photoUrl,
+              rating: rich.details?.rating ?? p.rating,
+              address: rich.details?.formattedAddress ?? p.address,
+            };
+          } catch {
+            return p;
+          }
+        }));
+        enrichedPlaces.push(...chunkResults);
+      }
+
+      const finalPlaces = [...enrichedPlaces, ...remainingPlaces];
+
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_end',
         level: 'info',
-        data: { attempt: retryCount.current + 1, resultCount: places?.length || 0, platform: Platform.OS },
+        data: { attempt: retryCount.current + 1, resultCount: finalPlaces.length, platform: Platform.OS },
       });
       lastError.current = null;
-      return places;
+      return finalPlaces;
     } catch (err: any) {
       const msg = err?.message || String(err);
       lastError.current = msg;

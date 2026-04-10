@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
@@ -25,6 +25,8 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
 
   // Step 1: Send the OTP code to the user's email
   const handleSendCode = async () => {
+    Keyboard.dismiss();
+
     if (!email.trim()) {
       setError('Please enter your email address.');
       return;
@@ -39,7 +41,12 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
       setError('');
     } catch (e: any) {
       console.error('Reset error:', e.message);
-      setError('Could not send reset email. Please check the email address.');
+      const msg = e.message?.includes('sending recovery email') || e.status === 500
+        ? 'There was an issue sending the recovery email. Please try again later.'
+        : e.status === 429 
+          ? 'Too many attempts. Please wait a moment before trying again.' 
+          : 'Could not send reset email. Please check the email address.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -47,6 +54,8 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
 
   // Step 2: Verify the code and update the password
   const handleVerifyAndReset = async () => {
+    Keyboard.dismiss();
+    
     if (!code.trim() || !newPassword.trim()) {
       setError('Please enter the code and your new password.');
       return;

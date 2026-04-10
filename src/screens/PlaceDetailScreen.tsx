@@ -78,6 +78,7 @@ export default function PlaceDetailScreen(props: any) {
   const insets = useSafeAreaInsets();
   const params = route.params || {};
   const { isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
+  const placeId = params.placeId;
   const isSaved = isPlaceSaved(placeId);
 
   // ── State ──────────────────────────────────────────────────────────────────

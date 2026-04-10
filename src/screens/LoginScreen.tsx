@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
 import { getUserDoc } from '../services/database';
@@ -18,6 +18,8 @@ export default function LoginScreen({ navigation }: Props) {
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
+    Keyboard.dismiss();
+    
     if (!email.trim() || !password.trim()) {
       setError('Please enter your email and password.');
       return;
@@ -64,6 +66,7 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   const handleForgotPassword = async () => {
+    Keyboard.dismiss();
     navigation.navigate('ResetPassword', { defaultEmail: email.trim() });
   };
 
