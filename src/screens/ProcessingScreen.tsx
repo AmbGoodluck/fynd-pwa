@@ -141,7 +141,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
     setErrorMsg(null);
     setLoading(true);
     processingStartedAt.current = Date.now();
-    const minDelay = new Promise<void>(res => setTimeout(res, 900));
+    const minDelay = new Promise<void>(res => setTimeout(res, 3000));
     let places = await fetchPlaces();
 
     // Keep the intentional UX wait, but only retry when a real error occurred.
