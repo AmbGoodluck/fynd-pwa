@@ -32,41 +32,9 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
   const lastError = useRef<string | null>(null);
 
+  // Always call API directly, no cache, no enrichment, no retries
   const fetchPlaces = async (): Promise<any[]> => {
     try {
-      // Step 1: Try Firestore cache first (free, instant)
-      const cachedPlaces = await getCachedSuggestedPlaces(
-        destination || '',
-        vibeKeywords || vibes || [],
-        40,
-      );
-      
-      if (cachedPlaces && cachedPlaces.length >= 5) {
-        // Cache has enough results — use them, zero API cost
-        Sentry.addBreadcrumb({
-          category: 'perf.processing',
-          message: 'places_from_cache',
-          level: 'info',
-          data: { destination, cacheCount: cachedPlaces.length, platform: Platform.OS },
-        });
-        lastError.current = null;
-        return cachedPlaces;
-      }
-
-      // Step 2: Cache insufficient — fall back to Google Places API
-      Sentry.addBreadcrumb({
-        category: 'perf.processing',
-        message: 'places_call_start',
-        level: 'info',
-        data: { 
-          attempt: retryCount.current + 1, 
-          destination, 
-          platform: Platform.OS,
-          cacheCount: cachedPlaces?.length || 0,
-          reason: 'cache_insufficient',
-        },
-      });
-      
       const places = await searchPlacesByVibe(
         destination || '',
         vibeKeywords || [],
@@ -75,64 +43,10 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         typeof distanceMiles === 'number' ? distanceMiles * 1.60934 : undefined,
         timeOfDay || undefined
       );
-      
-      if (!places || places.length === 0) return [];
-
-      // Enrich ALL results with Google Details + OpenAI descriptions in parallel, and cache them to Firestore.
-      // We process in small chunks to avoid OpenAI rate limits.
-      const placesToEnrich = places;
-      const remainingPlaces: any[] = [];
-      const enrichedPlaces = [];
-      const CHUNK_SIZE = 3;
-
-      for (let i = 0; i < placesToEnrich.length; i += CHUNK_SIZE) {
-        const chunk = placesToEnrich.slice(i, i + CHUNK_SIZE);
-        const chunkResults = await Promise.all(chunk.map(async (p) => {
-          try {
-            const rich = await fetchRichPlaceData(p.placeId, p.description, {
-              name: p.name,
-              address: p.address,
-              city: p.city || destination || '',
-              types: p.types || [],
-              rating: p.rating
-            });
-            return {
-              ...p,
-              description: rich.aiDescription || p.description,
-              photoUrls: rich.details?.photoUrls?.length ? rich.details.photoUrls : p.photoUrls,
-              photoUrl: rich.details?.photoUrls?.[0] || p.photoUrl,
-              rating: rich.details?.rating ?? p.rating,
-              address: rich.details?.formattedAddress ?? p.address,
-            };
-          } catch {
-            return p;
-          }
-        }));
-        enrichedPlaces.push(...chunkResults);
-        
-        // Add a slight delay between chunks to allow token bucket to refill
-        if (i + CHUNK_SIZE < placesToEnrich.length) {
-          await new Promise(r => setTimeout(r, 600));
-        }
-      }
-
-      const finalPlaces = [...enrichedPlaces, ...remainingPlaces];
-
-      Sentry.addBreadcrumb({
-        category: 'perf.processing',
-        message: 'places_call_end',
-        level: 'info',
-        data: { attempt: retryCount.current + 1, resultCount: finalPlaces.length, platform: Platform.OS },
-      });
-      lastError.current = null;
-      return finalPlaces;
+      if (!places || places.length === 0) throw new Error('No places found.');
+      return places;
     } catch (err: any) {
-      const msg = err?.message || String(err);
-      lastError.current = msg;
-      Sentry.captureException(err, {
-        tags: { context: 'ProcessingScreen.fetchPlaces', platform: Platform.OS },
-        extra: { destination, vibeKeywords, latitude, longitude, attempt: retryCount.current + 1 },
-      });
+      setErrorMsg(err?.message || 'Failed to fetch places.');
       return [];
     }
   };
