@@ -46,8 +46,8 @@ export async function createSharedTrip(params: {
   trip_date: string;
   places: SharedTripPlace[];
 }): Promise<SharedTrip> {
-  if (params.places.length > 7) {
-    throw new Error('TRIP_LIMIT: Trips support up to 7 places.');
+  if (params.places.length > 20) {
+    throw new Error('TRIP_LIMIT: Trips support up to 20 places.');
   }
 
   const trip_id = uuid();

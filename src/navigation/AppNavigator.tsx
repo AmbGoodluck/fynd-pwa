@@ -288,16 +288,10 @@ export default function AppNavigator() {
         setInitialRoute('MainTabs');
         return;
       }
-      // Fallback to Firebase removed. Only Supabase Auth is supported.
       setInitialRoute('Logo');
     })();
     return () => { cancelled = true; };
   }, []);
-
-  // Firebase Auth session listener removed. Supabase Auth session is now handled in Zustand store (useAuthStore) and screens.
-  // If you need to react to auth state changes globally, use the Supabase onAuthStateChange listener in your Zustand store or here as needed.
-  // No-op effect to preserve structure:
-  React.useEffect(() => {}, []);
 
   // While resolving auth on web, show a blank white screen (instant, no flash).
   if (!initialRoute) {

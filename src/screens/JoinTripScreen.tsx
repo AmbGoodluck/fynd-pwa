@@ -30,13 +30,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
   const { sessionUserId, sessionUserName, addJoinedTrip, setPendingJoinTripId } = useSharedTripStore();
   const { user: authUser } = useAuthStore();
   // Use Firebase Auth identity when available so membership is tied to the account
-  const effectiveUserId = authUser?.id || sessionUserId;
-  const effectiveUserName = authUser?.fullName || authUser?.email?.split('@')[0] || sessionUserName;
-
-  const [trip, setTrip] = useState<SharedTrip | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [alreadyMember, setAlreadyMember] = useState(false);
+  const effectiveUserId = authUser?.id || sessionUserIdlse);
   const [notFound, setNotFound] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 

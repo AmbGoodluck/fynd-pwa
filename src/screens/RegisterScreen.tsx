@@ -22,6 +22,26 @@ export default function RegisterScreen({ navigation }: Props) {
   const [info, setInfo] = useState('');
   const [showResend, setShowResend] = useState(false);
 
+  const handleResendConfirmation = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+      });
+      if (resendError) throw resendError;
+      setInfo('Confirmation email resent. Please check your inbox.');
+    } catch (e: any) {
+      console.error('Resend error:', e.message);
+      setError('Failed to resend confirmation email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim() || !password.trim()) {
       setError('Please fill in all fields.'); setInfo(''); return;
@@ -37,31 +57,30 @@ export default function RegisterScreen({ navigation }: Props) {
     setInfo('');
     setShowResend(false);
     try {
-      // Step 1: Create Supabase auth user (no email confirmation)
+      // Step 1: Create Supabase auth user
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { data: { full_name: fullName.trim() }, emailRedirectTo: undefined },
+        options: { data: { full_name: fullName.trim() } },
       });
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('Sign-up failed — no user returned.');
 
-      // Step 2: Immediately log in the user
-      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      if (loginError) throw loginError;
-      if (!loginData.user) throw new Error('Login failed after registration.');
+      // If Supabase requires email confirmation, session will be null.
+      if (!data.session) {
+        setInfo('Registration successful! Please check your email to confirm your account.');
+        setShowResend(true);
+        return;
+      }
 
-      // Step 3: Create Firestore user doc
-      await createUserDoc(loginData.user.id, fullName.trim(), email.trim());
+      // Step 2: If session exists (email confirmation disabled), create Firestore doc and login
+      await createUserDoc(data.user.id, fullName.trim(), email.trim());
 
-      // Step 4: Hydrate state and log in
+      // Step 3: Hydrate state and log in
       clearGuest();
       login({
-        id: loginData.user.id,
-        email: loginData.user.email || email.trim(),
+        id: data.user.id,
+        email: data.user.email || email.trim(),
         fullName: fullName.trim(),
         isPremium: false,
         travelPreferences: [],

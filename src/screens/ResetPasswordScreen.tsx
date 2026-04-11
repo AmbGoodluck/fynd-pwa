@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Activi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
-import { getUserDoc } from '../services/database';
+import { getUserDoc, createUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 
@@ -85,7 +85,13 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
 
       // 3. Hydrate state and login (user is automatically signed in after successful recovery)
       const uid = updateData.user.id;
-      const userDoc = await getUserDoc(uid);
+      let userDoc = await getUserDoc(uid);
+
+      if (!userDoc) {
+        const fullName = updateData.user.user_metadata?.full_name || email.trim().split('@')[0];
+        await createUserDoc(uid, fullName, updateData.user.email || email.trim());
+        userDoc = { fullName, isPremium: false, travelPreferences: [] };
+      }
 
       clearGuest();
       login({

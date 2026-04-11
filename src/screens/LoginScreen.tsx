@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image, Keyboard } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../services/supabase';
-import { getUserDoc } from '../services/database';
+import { getUserDoc, createUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
 
@@ -16,6 +16,28 @@ export default function LoginScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [showResend, setShowResend] = useState(false);
+
+  const handleResendConfirmation = async () => {
+    if (!email.trim()) return;
+    setLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email.trim(),
+      });
+      if (resendError) throw resendError;
+      setInfo('Confirmation email resent. Please check your inbox.');
+    } catch (e: any) {
+      console.error('Resend error:', e.message);
+      setError('Failed to resend confirmation email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     Keyboard.dismiss();
@@ -26,6 +48,8 @@ export default function LoginScreen({ navigation }: Props) {
     }
     setLoading(true);
     setError('');
+    setInfo('');
+    setShowResend(false);
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
@@ -35,7 +59,13 @@ export default function LoginScreen({ navigation }: Props) {
       if (!data.user) throw new Error('Login failed — no user returned.');
 
       const uid = data.user.id;
-      const userDoc = await getUserDoc(uid);
+      let userDoc = await getUserDoc(uid);
+
+      if (!userDoc) {
+        const fullName = data.user.user_metadata?.full_name || email.trim().split('@')[0];
+        await createUserDoc(uid, fullName, data.user.email || email.trim());
+        userDoc = { fullName, isPremium: false, travelPreferences: [] };
+      }
 
       clearGuest();
       login({
@@ -60,6 +90,10 @@ export default function LoginScreen({ navigation }: Props) {
               ? 'Network error. Check your connection and try again.'
               : 'Login failed. Please try again.';
       setError(msg);
+      
+      if (e.message?.includes('Email not confirmed')) {
+        setShowResend(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -77,6 +111,7 @@ export default function LoginScreen({ navigation }: Props) {
       <Text style={styles.subtitle}>Let us make every travel count</Text>
 
       {error ? <View style={styles.errorBox}><Text style={styles.errorText}>{error}</Text></View> : null}
+      {info ? <View style={styles.infoBox}><Text style={styles.infoText}>{info}</Text></View> : null}
 
       <View style={styles.inputWrap}>
         <Ionicons name="mail-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
@@ -114,6 +149,12 @@ export default function LoginScreen({ navigation }: Props) {
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Log In</Text>}
       </TouchableOpacity>
 
+      {showResend && (
+        <TouchableOpacity style={styles.resendBtn} onPress={handleResendConfirmation} disabled={loading}>
+          <Text style={styles.resendBtnText}>Resend Confirmation Email</Text>
+        </TouchableOpacity>
+      )}
+
       <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.registerWrap}>
         <Text style={styles.registerText}>Don't have an account? <Text style={styles.registerLink}>Sign up</Text></Text>
       </TouchableOpacity>
@@ -129,6 +170,10 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 15, color: '#57636C', marginBottom: 28 },
   errorBox: { width: '100%', backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12 },
   errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center' },
+  infoBox: { width: '100%', backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, marginBottom: 12 },
+  infoText: { color: '#059669', fontSize: 13, textAlign: 'center' },
+  resendBtn: { marginBottom: 16 },
+  resendBtnText: { color: '#22C55E', fontWeight: '600', fontSize: 14, textAlign: 'center' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 14, height: 50, marginBottom: 12 },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: '#111827' },

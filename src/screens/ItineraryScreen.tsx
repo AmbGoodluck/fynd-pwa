@@ -210,22 +210,27 @@ export default function ItineraryScreen({ navigation, route }: Props) {
       const today = new Date().toLocaleDateString('en-US', {
         month: 'long', day: 'numeric', year: 'numeric',
       });
-      const places = stops.map((s) => ({
-        placeId: s.id,
-        name: s.name,
-        description: s.description || '',
-        photoUrl: s.image || '',
-        rating: parseFloat(s.rating) || 0,
-        distanceKm: s.distance ? parseFloat(s.distance) : 0,
-        walkMinutes: s.time ? parseInt(s.time) : 0,
-        coordinates: s.coordinate.latitude !== 0
-          ? { lat: s.coordinate.latitude, lng: s.coordinate.longitude }
-          : { lat: 0, lng: 0 },
-      }));
+      const places = stops.map((s) => {
+        const parsedRating = parseFloat(s.rating);
+        const parsedDist = s.distance ? parseFloat(s.distance) : 0;
+        const parsedTime = s.time ? parseInt(s.time) : 0;
+        return {
+          placeId: s.id || '',
+          name: s.name || 'Unknown Place',
+          description: s.description || '',
+          photoUrl: s.image || '',
+          rating: Number.isNaN(parsedRating) ? 0 : parsedRating,
+          distanceKm: Number.isNaN(parsedDist) ? 0 : parsedDist,
+          walkMinutes: Number.isNaN(parsedTime) ? 0 : parsedTime,
+          coordinates: s.coordinate?.latitude
+            ? { lat: s.coordinate.latitude, lng: s.coordinate.longitude }
+            : { lat: 0, lng: 0 },
+        };
+      });
 
       const trip = await createSharedTrip({
-        owner_id: ownerId,
-        owner_name: ownerName,
+        owner_id: ownerId || 'unknown_owner',
+        owner_name: ownerName || 'Unknown Owner',
         trip_name: destination,
         trip_date: today,
         places,
@@ -243,7 +248,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     } catch (e: any) {
       if (__DEV__) console.error('[Share] Error:', e?.code, e?.message, e);
       if (e?.message?.includes('TRIP_LIMIT')) {
-        setShareError('Trips support up to 7 places. Remove a stop and try again.');
+        setShareError('Trips support up to 20 places. Remove a stop and try again.');
       } else if (
         e?.message?.includes('PERMISSION_DENIED') ||
         e?.code === 'permission-denied' ||
