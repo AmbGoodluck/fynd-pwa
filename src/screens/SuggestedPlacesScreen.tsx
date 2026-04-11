@@ -22,7 +22,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion, PlaceResult } from '../services/googlePlacesService';
-import { upsertSearchedPlace, readPlaceCache } from '../services/placeDetailsService';
+// Removed all cache/database logic. Only API calls are used except on save.
 import { checkAndSeedCity } from '../services/citySeedService';
 import { FALLBACK_IMAGE } from '../constants';
 
@@ -229,8 +229,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
     };
 
     setSelectedForItinerary(prev => [...prev, newPlace]);
-    // Persist to Firestore so it enriches the places catalog
-    upsertSearchedPlace(suggestion.placeId, details, destination, currentUser?.id);
+    // Only save to database if user explicitly saves
     // Clear search
     setPlaceSearch('');
     setPlaceSearchResults([]);
