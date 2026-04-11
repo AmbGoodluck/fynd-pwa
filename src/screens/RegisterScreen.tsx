@@ -37,33 +37,49 @@ export default function RegisterScreen({ navigation }: Props) {
     setInfo('');
     setShowResend(false);
     try {
-      // Step 1: Create Supabase auth user
+      // Step 1: Create Supabase auth user (no email confirmation)
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { data: { full_name: fullName.trim() } },
+        options: { data: { full_name: fullName.trim() }, emailRedirectTo: undefined },
       });
       if (signUpError) throw signUpError;
       if (!data.user) throw new Error('Sign-up failed — no user returned.');
 
-      // Supabase will send a confirmation email if required
-      setInfo('Account created! Please check your email to confirm your account before logging in.');
-      setShowResend(true);
-      // ...existing code...
+      // Step 2: Immediately log in the user
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (loginError) throw loginError;
+      if (!loginData.user) throw new Error('Login failed after registration.');
+
+      // Step 3: Create Firestore user doc
+      await createUserDoc(loginData.user.id, fullName.trim(), email.trim());
+
+      // Step 4: Hydrate state and log in
+      clearGuest();
+      login({
+        id: loginData.user.id,
+        email: loginData.user.email || email.trim(),
+        fullName: fullName.trim(),
+        isPremium: false,
+        travelPreferences: [],
+      });
+      navigation.replace('MainTabs');
+      return;
     } catch (e: any) {
       console.error('Register error:', e.message);
       const isAlreadyRegistered = e.message?.includes('already registered') || e.message?.includes('already in use') || e.message?.includes('User already registered');
       const msg = isAlreadyRegistered
         ? 'This email is already registered. Try logging in.'
-        : e.message?.includes('sending confirmation') || e.message?.includes('confirmation email')
-          ? 'Account created! Check your email to confirm before logging in.'
-          : e.message?.includes('invalid email') || e.message?.includes('Invalid email')
-            ? 'Please enter a valid email address.'
-            : e.message?.includes('Password') || e.message?.includes('password')
-              ? 'Password must be at least 6 characters.'
-              : e.message?.includes('Network') || e.status === 0
-                ? 'Network error. Check your connection and try again.'
-                : 'Registration failed. Please try again.';
+        : e.message?.includes('invalid email') || e.message?.includes('Invalid email')
+          ? 'Please enter a valid email address.'
+          : e.message?.includes('Password') || e.message?.includes('password')
+            ? 'Password must be at least 6 characters.'
+            : e.message?.includes('Network') || e.status === 0
+              ? 'Network error. Check your connection and try again.'
+              : 'Registration failed. Please try again.';
       setError(msg);
       setShowResend(false);
     } finally {
@@ -71,24 +87,7 @@ export default function RegisterScreen({ navigation }: Props) {
     }
   };
 
-  // Utility: Resend confirmation email
-  const handleResendConfirmation = async () => {
-    setLoading(true);
-    setError('');
-    setInfo('');
-    try {
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email: email.trim(),
-      });
-      if (error) throw error;
-      setInfo('Confirmation email resent. Please check your inbox.');
-    } catch (e: any) {
-      setError('Could not resend confirmation email. Try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
