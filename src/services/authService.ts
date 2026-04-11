@@ -35,14 +35,6 @@ export async function signInWithGoogle() {
   const result = await signInWithCredential(auth, credential);
   const uid = result.user.uid;
 
-  // if user doc doesn't exist yet, create it
-  const userRef = doc(db, 'users', uid);
-  const snap = await getDoc(userRef);
-  if (!snap.exists()) {
-    await createUserDoc(uid, user.name || '', user.email || '');
-  }
-
-  // fetch again
-  const finalSnap = await getDoc(userRef);
-  return { uid, doc: finalSnap.data() };
+  // ...existing code...
+  return { uid };
 }

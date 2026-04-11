@@ -49,14 +49,7 @@ export default function RegisterScreen({ navigation }: Props) {
       // Supabase will send a confirmation email if required
       setInfo('Account created! Please check your email to confirm your account before logging in.');
       setShowResend(true);
-
-      // Optionally, create Firestore user doc (best-effort, not blocking)
-      try {
-        await createUserDoc(data.user.id, fullName.trim(), email.trim());
-      } catch (firestoreErr: any) {
-        console.warn('Register: Firestore createUserDoc failed (non-fatal):', firestoreErr?.message);
-      }
-
+      // ...existing code...
     } catch (e: any) {
       console.error('Register error:', e.message);
       const isAlreadyRegistered = e.message?.includes('already registered') || e.message?.includes('already in use') || e.message?.includes('User already registered');
