@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FALLBACK_IMAGE } from '../constants';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
-import { logEvent, auth } from '../services/firebase';
+import { logEvent } from '../services/firebase';
 import { generateItinerary } from '../services/openaiService';
 import { createSharedTrip, buildShareLink, recordTripShared } from '../services/sharedTripService';
 import { useSharedTripStore } from '../store/useSharedTripStore';

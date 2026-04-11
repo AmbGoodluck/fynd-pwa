@@ -40,5 +40,6 @@ export function logEvent(event: string, params?: Record<string, any>) {
   if (analytics) firebaseLogEvent(analytics, event, params);
 }
 
+export const db = getFirestore(app);
 export const storage = getStorage(app);
 export default app;

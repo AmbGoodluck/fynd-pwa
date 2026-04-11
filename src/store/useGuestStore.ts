@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import type { PlaceResult } from '../services/googlePlacesService';
 import { useAuthStore } from './useAuthStore';
-import { auth } from '../services/firebase';
+
 import {
   savePlace as savePlaceDb,
   deleteSavedPlace,
@@ -52,7 +52,7 @@ function placeResultToSaved(place: PlaceResult): SavedPlace {
 
 export const useGuestStore = create<GuestStore>()(
   persist(
-    (set: any, get: any) => ({
+    (set, get) => ({
       isGuest: false,
       hasSeenOnboarding: false,
 
@@ -67,7 +67,7 @@ export const useGuestStore = create<GuestStore>()(
       markGuestModeUsed: () => set({ hasUsedGuestMode: true }),
 
       incrementGuestItineraryCount: () =>
-        set((state) => ({ guestItineraryCount: state.guestItineraryCount + 1 })),
+        set((state: GuestStore) => ({ guestItineraryCount: state.guestItineraryCount + 1 })),
 
       savePlace: async (place) => {
         const { user, isAuthenticated } = useAuthStore.getState();
@@ -76,7 +76,7 @@ export const useGuestStore = create<GuestStore>()(
           Alert.alert('Sign in required', 'You must be logged in to save places.');
           return;
         }
-        const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
+        const existing = get().savedPlaces.find((p: SavedPlace) => p.placeId === place.placeId);
         if (existing) {
           console.log('[savePlace] Place already saved', place.placeId);
           return;
@@ -84,14 +84,14 @@ export const useGuestStore = create<GuestStore>()(
         let savedPlace = placeResultToSaved(place);
         savedPlace = Object.fromEntries(
           Object.entries(savedPlace).filter(([_, v]) => v !== undefined)
-        );
-        set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
+        ) as SavedPlace;
+        set((state: GuestStore) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
         console.log('[savePlace] Optimistically added', savedPlace);
         try {
           await savePlaceDb(user.id, savedPlace);
           console.log('[savePlace] Synced to Firestore', savedPlace);
         } catch (e) {
-          set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== savedPlace.placeId) }));
+          set((state: GuestStore) => ({ savedPlaces: state.savedPlaces.filter((p: SavedPlace) => p.placeId !== savedPlace.placeId) }));
           console.error('Failed to sync saved place to Firestore', e);
           Alert.alert('Save failed', "Couldn't save this place. Check your connection and try again.");
         }
@@ -100,8 +100,8 @@ export const useGuestStore = create<GuestStore>()(
       unsavePlace: async (placeId) => {
         const { user, isAuthenticated } = useAuthStore.getState();
         if (!isAuthenticated || !user) return;
-        const removed = get().savedPlaces.find(p => p.placeId === placeId);
-        set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== placeId) }));
+        const removed = get().savedPlaces.find((p: SavedPlace) => p.placeId === placeId);
+        set((state: GuestStore) => ({ savedPlaces: state.savedPlaces.filter((p: SavedPlace) => p.placeId !== placeId) }));
         try {
           const docId = await isPlaceSavedDb(user.id, placeId);
           if (docId) {
@@ -109,7 +109,7 @@ export const useGuestStore = create<GuestStore>()(
           }
         } catch (e) {
           if (removed) {
-            set((state) => ({ savedPlaces: [removed, ...state.savedPlaces] }));
+            set((state: GuestStore) => ({ savedPlaces: [removed, ...state.savedPlaces] }));
           }
           if (__DEV__) console.error('Failed to delete saved place from Firestore', e);
           Alert.alert('Remove failed', "Couldn't remove this place. Check your connection and try again.");
@@ -127,12 +127,12 @@ export const useGuestStore = create<GuestStore>()(
         }
       },
 
-      isPlaceSaved: (placeId) => get().savedPlaces.some(p => p.placeId === placeId),
+      isPlaceSaved: (placeId) => get().savedPlaces.some((p: SavedPlace) => p.placeId === placeId),
 
       clearSavedPlaces: () => set({ savedPlaces: [] }),
 
       // Signs out the current session but keeps onboarding flag intact
-      logout: () => set((state) => ({
+      logout: () => set((state: GuestStore) => ({
         isGuest: false,
         hasUsedGuestMode: false,
         guestItineraryCount: 0,
