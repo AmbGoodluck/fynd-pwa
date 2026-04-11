@@ -64,3 +64,7 @@ scripts/photos/
 scripts/seeded-places.json
 # service account key — NEVER commit this
 scripts/service-account.json
+
+# Ignore old web builds
+web-build/
+dist/
