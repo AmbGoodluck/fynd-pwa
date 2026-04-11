@@ -288,127 +288,16 @@ export default function AppNavigator() {
         setInitialRoute('MainTabs');
         return;
       }
-      // Fallback to Firebase if no Supabase session
-      if (Platform.OS === 'web') {
-        try {
-          await (auth as any).authStateReady();
-          if (cancelled) return;
-          const firebaseUser = (auth as any).currentUser;
-          if (firebaseUser) {
-            useGuestStore.getState().setGuest(false);
-            let fullName = firebaseUser.displayName || '';
-            let isPremium = false;
-            let travelPreferences: string[] = [];
-            try {
-              const doc = await getUserDoc(firebaseUser.uid);
-              if (doc) {
-                fullName = doc.fullName || fullName;
-                isPremium = doc.isPremium ?? false;
-                travelPreferences = doc.travelPreferences ?? [];
-              }
-            } catch { /* Firestore unavailable — use Firebase Auth info */ }
-            if (cancelled) return;
-            useAuthStore.getState().login({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || '',
-              fullName,
-              isPremium,
-              travelPreferences,
-            });
-            setInitialRoute('MainTabs');
-          } else {
-            setInitialRoute('Logo');
-          }
-        } catch {
-          if (!cancelled) setInitialRoute('Logo');
-        }
-      } else {
-        setInitialRoute('Logo');
-      }
+      // Fallback to Firebase removed. Only Supabase Auth is supported.
+      setInitialRoute('Logo');
     })();
     return () => { cancelled = true; };
   }, []);
 
-  React.useEffect(() => {
-    // Global listener: syncs Firebase session → Zustand stores.
-    // IMPORTANT: dep array is [] — setUser/login are Zustand actions and get
-    // new references on every store update. Including them would re-run this
-    // effect on every render, causing repeated unsub/resub and a login loop.
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        useGuestStore.getState().logout();
-        useAuthStore.getState().setUser(null);
-        // Clear persisted trip state on logout
-        useRecentTripStore.getState().clearRecentTrips();
-        useSharedTripStore.getState().setMyTrips([]);
-        useSharedTripStore.getState().setJoinedTrips([]);
-      } else {
-        // Clear guest flag whenever Firebase confirms a real user is signed in.
-        // isGuest is persisted via AsyncStorage — without this it can stay true
-        // after login, causing save gates to fire even for authenticated users.
-        useGuestStore.getState().setGuest(false);
-
-        const currentId = useAuthStore.getState().user?.id;
-        if (currentId !== user.uid) {
-          // Always login with at least Firebase Auth info so isAuthenticated
-          // is set even when Firestore is temporarily unavailable.
-          let fullName = user.displayName || '';
-          let isPremium = false;
-          let travelPreferences: string[] = [];
-          try {
-            const userDoc = await getUserDoc(user.uid);
-            if (userDoc) {
-              fullName = userDoc.fullName || fullName;
-              isPremium = userDoc.isPremium ?? false;
-              travelPreferences = userDoc.travelPreferences ?? [];
-            }
-          } catch {
-            // Firestore unavailable — continue with Firebase Auth info
-          }
-          useAuthStore.getState().login({
-            id: user.uid,
-            fullName,
-            email: user.email || '',
-            photoURL: user.photoURL,
-            isPremium,
-            travelPreferences,
-          });
-
-          // Hydrate all user data in parallel — non-blocking
-          useRecentTripStore.getState().setHydrating(true);
-          Promise.all([
-            getRecentItineraries(user.uid, 20),
-            getMyCreatedTrips(user.uid),
-            getJoinedTrips(user.uid),
-            useGuestStore.getState().hydrateSavedPlaces(),
-          ]).then(([itineraries, myTrips, joinedTrips]) => {
-            const recentTrips = itineraries.map(mapItineraryToRecentTrip);
-            useRecentTripStore.getState().setRecentTrips(recentTrips);
-            useRecentTripStore.getState().setFetchError(null);
-            useRecentTripStore.getState().setHydrating(false);
-            useSharedTripStore.getState().setMyTrips(myTrips);
-            useSharedTripStore.getState().setJoinedTrips(joinedTrips);
-          }).catch(() => {
-            // Network unavailable — cached state from Zustand persist is used
-            useRecentTripStore.getState().setHydrating(false);
-            useRecentTripStore.getState().setFetchError("Couldn't load your trips. Check your connection.");
-          });
-
-          // After login, redirect to any pending shared trip join
-          const pendingId = useSharedTripStore.getState().pendingJoinTripId;
-          if (pendingId) {
-            useSharedTripStore.getState().setPendingJoinTripId(null);
-            // Delay to let LoginScreen complete its navigation.replace('MainTabs') first
-            setTimeout(() => {
-              navRef.current?.navigate('JoinTrip', { trip_id: pendingId });
-            }, 600);
-          }
-        }
-      }
-    });
-    return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Firebase Auth session listener removed. Supabase Auth session is now handled in Zustand store (useAuthStore) and screens.
+  // If you need to react to auth state changes globally, use the Supabase onAuthStateChange listener in your Zustand store or here as needed.
+  // No-op effect to preserve structure:
+  React.useEffect(() => {}, []);
 
   // While resolving auth on web, show a blank white screen (instant, no flash).
   if (!initialRoute) {
