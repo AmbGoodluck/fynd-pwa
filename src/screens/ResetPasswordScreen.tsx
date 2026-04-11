@@ -85,11 +85,18 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
 
       // 3. Hydrate state and login (user is automatically signed in after successful recovery)
       const uid = updateData.user.id;
-      let userDoc = await getUserDoc(uid);
+      let userDoc = null;
 
-      if (!userDoc) {
+      try {
+        userDoc = await getUserDoc(uid);
+        if (!userDoc) {
+          const fullName = updateData.user.user_metadata?.full_name || email.trim().split('@')[0];
+          await createUserDoc(uid, fullName, updateData.user.email || email.trim());
+          userDoc = { fullName, isPremium: false, travelPreferences: [] };
+        }
+      } catch (dbErr: any) {
+        console.warn('Firestore user fetch/create failed, bypassing:', dbErr.message);
         const fullName = updateData.user.user_metadata?.full_name || email.trim().split('@')[0];
-        await createUserDoc(uid, fullName, updateData.user.email || email.trim());
         userDoc = { fullName, isPremium: false, travelPreferences: [] };
       }
 
@@ -101,8 +108,12 @@ export default function ResetPasswordScreen({ navigation, route }: Props) {
         isPremium: userDoc?.isPremium || false,
         travelPreferences: userDoc?.travelPreferences || [],
       });
-      await useGuestStore.getState().hydrateSavedPlaces();
-      
+      try {
+        await useGuestStore.getState().hydrateSavedPlaces();
+      } catch (err: any) {
+        console.warn('Hydrate saved places failed:', err.message);
+      }
+
       Alert.alert('Success', 'Your password has been reset successfully.', [
         { text: 'Continue', onPress: () => navigation.replace('MainTabs') }
       ]);

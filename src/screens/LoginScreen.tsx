@@ -59,11 +59,18 @@ export default function LoginScreen({ navigation }: Props) {
       if (!data.user) throw new Error('Login failed — no user returned.');
 
       const uid = data.user.id;
-      let userDoc = await getUserDoc(uid);
+      let userDoc = null;
 
-      if (!userDoc) {
+      try {
+        userDoc = await getUserDoc(uid);
+        if (!userDoc) {
+          const fullName = data.user.user_metadata?.full_name || email.trim().split('@')[0];
+          await createUserDoc(uid, fullName, data.user.email || email.trim());
+          userDoc = { fullName, isPremium: false, travelPreferences: [] };
+        }
+      } catch (dbErr: any) {
+        console.warn('Firestore user fetch/create failed, bypassing:', dbErr.message);
         const fullName = data.user.user_metadata?.full_name || email.trim().split('@')[0];
-        await createUserDoc(uid, fullName, data.user.email || email.trim());
         userDoc = { fullName, isPremium: false, travelPreferences: [] };
       }
 
@@ -75,7 +82,11 @@ export default function LoginScreen({ navigation }: Props) {
         isPremium: userDoc?.isPremium || false,
         travelPreferences: userDoc?.travelPreferences || [],
       });
-      await useGuestStore.getState().hydrateSavedPlaces();
+      try {
+        await useGuestStore.getState().hydrateSavedPlaces();
+      } catch (err: any) {
+        console.warn('Hydrate saved places failed:', err.message);
+      }
       navigation.replace('MainTabs');
     } catch (e: any) {
       console.error('Login error:', e.message);

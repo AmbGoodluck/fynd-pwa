@@ -74,7 +74,11 @@ export default function RegisterScreen({ navigation }: Props) {
       }
 
       // Step 2: If session exists (email confirmation disabled), create Firestore doc and login
-      await createUserDoc(data.user.id, fullName.trim(), email.trim());
+      try {
+        await createUserDoc(data.user.id, fullName.trim(), email.trim());
+      } catch (dbErr: any) {
+        console.warn('Firestore user create failed, bypassing:', dbErr.message);
+      }
 
       // Step 3: Hydrate state and log in
       clearGuest();
