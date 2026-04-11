@@ -1,8 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Image, Text, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebase';
 import { getUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
@@ -53,51 +51,8 @@ export default function LogoScreen({ navigation }: Props) {
     // Parallel auth check -- resolves with the destination screen name
     const authCheck = new Promise<string>(async (resolve) => {
       const hasSeenOnboarding = await getHasSeenOnboarding();
-
-      // authStateReady() (Firebase v10+) resolves once the SDK has finished
-      // reading the persisted session — auth.currentUser is definitively set
-      // after it, no race condition with onAuthStateChanged firing null first.
-      async function checkWithCurrentUser() {
-        const firebaseUser = (auth as any).currentUser;
-        if (firebaseUser) {
-          useGuestStore.getState().logout();
-          let fullName = firebaseUser.displayName || '';
-          let isPremium = false;
-          let travelPreferences: string[] = [];
-          try {
-            const userDoc = await getUserDoc(firebaseUser.uid);
-            if (userDoc) {
-              fullName = userDoc.fullName || fullName;
-              isPremium = userDoc.isPremium ?? false;
-              travelPreferences = userDoc.travelPreferences ?? [];
-            }
-          } catch {
-            // Firestore unavailable — continue with Firebase Auth info
-          }
-          login({
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            fullName,
-            isPremium,
-            travelPreferences,
-          });
-          useGuestStore.getState().hydrateSavedPlaces().catch(() => {});
-          resolve('MainTabs');
-        } else {
-          resolve(hasSeenOnboarding ? 'AuthChoice' : 'Onboarding1');
-        }
-      }
-
-      try {
-        await (auth as any).authStateReady();
-        await checkWithCurrentUser();
-      } catch {
-        // Fallback for environments where authStateReady isn't available
-        const unsub = onAuthStateChanged(auth, async () => {
-          unsub();
-          await checkWithCurrentUser();
-        });
-      }
+      // Removed Firebase Auth session check. Supabase Auth is now the only source of truth for authentication.
+      resolve(hasSeenOnboarding ? 'AuthChoice' : 'Onboarding1');
     });
 
     // Navigate only after both logo display time and auth check complete

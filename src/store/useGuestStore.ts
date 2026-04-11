@@ -71,31 +71,24 @@ export const useGuestStore = create<GuestStore>()(
 
       savePlace: async (place) => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        const firebaseUser = auth.currentUser;
-        console.log('[savePlace] called', { isAuthenticated, user, firebaseUser });
-        if (!isAuthenticated || !user || !firebaseUser) {
-          console.warn('[savePlace] Blocked: not authenticated or missing user', { isAuthenticated, user, firebaseUser });
+        if (!isAuthenticated || !user) {
+          console.warn('[savePlace] Blocked: not authenticated or missing user', { isAuthenticated, user });
           Alert.alert('Sign in required', 'You must be logged in to save places.');
           return;
         }
-
         const existing = get().savedPlaces.find(p => p.placeId === place.placeId);
         if (existing) {
           console.log('[savePlace] Place already saved', place.placeId);
           return;
         }
-
         let savedPlace = placeResultToSaved(place);
-        // Remove or set undefined fields to null (Firestore does not allow undefined)
         savedPlace = Object.fromEntries(
           Object.entries(savedPlace).filter(([_, v]) => v !== undefined)
         );
-        // Optimistic update
         set((state) => ({ savedPlaces: [savedPlace, ...state.savedPlaces] }));
         console.log('[savePlace] Optimistically added', savedPlace);
-
         try {
-          await savePlaceDb(firebaseUser.uid, savedPlace);
+          await savePlaceDb(user.id, savedPlace);
           console.log('[savePlace] Synced to Firestore', savedPlace);
         } catch (e) {
           set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== savedPlace.placeId) }));
@@ -106,22 +99,15 @@ export const useGuestStore = create<GuestStore>()(
 
       unsavePlace: async (placeId) => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        const firebaseUser = auth.currentUser;
-        if (!isAuthenticated || !user || !firebaseUser) return;
-
-        // Capture the place before removing so we can roll back on failure
+        if (!isAuthenticated || !user) return;
         const removed = get().savedPlaces.find(p => p.placeId === placeId);
-
-        // Optimistic remove
         set((state) => ({ savedPlaces: state.savedPlaces.filter(p => p.placeId !== placeId) }));
-
         try {
-          const docId = await isPlaceSavedDb(firebaseUser.uid, placeId);
+          const docId = await isPlaceSavedDb(user.id, placeId);
           if (docId) {
             await deleteSavedPlace(docId);
           }
         } catch (e) {
-          // Rollback: restore the place that was removed
           if (removed) {
             set((state) => ({ savedPlaces: [removed, ...state.savedPlaces] }));
           }
@@ -132,11 +118,9 @@ export const useGuestStore = create<GuestStore>()(
 
       hydrateSavedPlaces: async () => {
         const { user, isAuthenticated } = useAuthStore.getState();
-        const firebaseUser = auth.currentUser;
-        const uid = firebaseUser?.uid ?? user?.id;
-        if (!uid) return;
+        if (!isAuthenticated || !user) return;
         try {
-          const places = await getSavedPlaces(uid);
+          const places = await getSavedPlaces(user.id);
           if (places.length > 0) set({ savedPlaces: places });
         } catch (e) {
           if (__DEV__) console.error('Failed to hydrate saved places', e);

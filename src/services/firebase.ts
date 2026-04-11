@@ -1,5 +1,4 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { initializeAuth, getAuth, browserLocalPersistence } from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
@@ -31,20 +30,6 @@ if (missingKeys.length > 0) {
 }
 
 
-let auth: any;
-try {
-  if (Platform.OS === 'web') {
-    auth = initializeAuth(app, { persistence: browserLocalPersistence });
-  } else {
-    auth = getAuth(app); // Use default persistence for native
-  }
-} catch (e) {
-  auth = getAuth(app);
-}
-
-try { configureGoogle(); } catch (e) { /* ignore */ }
-
-// Analytics — only available in native builds, not Expo Go
 let analytics: Analytics | null = null;
 isSupported().then((supported) => {
   if (supported && Platform.OS !== 'web') analytics = getAnalytics(app);
@@ -54,21 +39,6 @@ isSupported().then((supported) => {
 export function logEvent(event: string, params?: Record<string, any>) {
   if (analytics) firebaseLogEvent(analytics, event, params);
 }
-
-export { auth };
-
-// Use memoryLocalCache on web — avoids IndexedDB write failures that cause
-// false "Could not generate share link" errors in some browsers/environments.
-// memoryLocalCache is simpler and always available; data is per-session only.
-let db: ReturnType<typeof getFirestore>;
-try {
-  db = Platform.OS === 'web'
-    ? initializeFirestore(app, { localCache: memoryLocalCache() })
-    : getFirestore(app);
-} catch {
-  db = getFirestore(app);
-}
-export { db };
 
 export const storage = getStorage(app);
 export default app;

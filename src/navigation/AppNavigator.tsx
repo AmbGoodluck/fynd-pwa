@@ -11,8 +11,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebase';
 import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
 import PWATopBar from '../components/PWATopBar';

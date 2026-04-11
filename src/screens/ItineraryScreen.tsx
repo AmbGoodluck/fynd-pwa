@@ -196,20 +196,14 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const handleShareTrip = async () => {
     if (stops.length === 0 || sharing) return;
 
-    // Shared trips require a real Firebase account so the trip can be retrieved
-    // across devices.  Guests have no auth.currentUser, so Firestore writes would
+    // Shared trips require a real authenticated user so the trip can be retrieved
+    // across devices.  Guests have no Supabase session, so Firestore writes would
     // be rejected by security rules — show a prompt instead of a permission error.
     if (isGuest || !authUser) {
       setShowGuestModal(true);
       return;
     }
-
-    // Verify the Firebase session is still active (Zustand can persist a user
-    // whose Firebase token has since expired).
-    if (!auth.currentUser) {
-      setShareError('Your session has expired. Please sign out and sign back in.');
-      return;
-    }
+    // Supabase Auth session is the only source of truth; no Firebase session check needed.
 
     setSharing(true);
     try {

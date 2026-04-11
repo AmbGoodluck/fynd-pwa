@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
-import { auth, db } from './firebase';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { db } from './firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { createUserDoc } from './database';
 import { GOOGLE_WEB_CLIENT_ID } from '../constants/config';
@@ -24,17 +23,6 @@ export function configureGoogle() {
 }
 
 export async function signInWithGoogle() {
-  const GoogleSignin = getGoogleSignin();
-  if (!GoogleSignin) throw new Error('Google Sign-In is not available on web');
-  // ensure play services (android) / config
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  // signIn returns a platform-specific response; typing is loose so cast to any
-  const res: any = await GoogleSignin.signIn();
-  const { idToken, user } = res;
-  const credential = GoogleAuthProvider.credential(idToken);
-  const result = await signInWithCredential(auth, credential);
-  const uid = result.user.uid;
-
-  // ...existing code...
-  return { uid };
+  // TODO: Implement Google sign-in with Supabase if needed
+  throw new Error('Google sign-in is not implemented with Supabase.');
 }

@@ -42,34 +42,10 @@ export default function DeleteAccountScreen({ navigation }: Props) {
   }, [showModal]);
 
   const handleDelete = async () => {
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) {
-      // No active Firebase session — just clear local state and navigate
-      await logout();
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      return;
-    }
-    try {
-      // Fix: auth user was never actually deleted — Firebase account persisted after "Account Deleted" screen
-      // Delete Firestore user and subscription docs; Firebase rules will block other collections
-      await Promise.all([
-        deleteDoc(doc(db, 'users', firebaseUser.uid)),
-        deleteDoc(doc(db, 'subscriptions', firebaseUser.uid)),
-      ]);
-      // Permanently remove the Firebase Auth account (requires recent sign-in)
-      await firebaseUser.delete();
-      setShowModal(true);
-    } catch (err: any) {
-      if (err?.code === 'auth/requires-recent-login') {
-        Alert.alert(
-          'Re-authentication Required',
-          'For security, please sign out and sign back in before deleting your account.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to delete account. Please try again.');
-      }
-    }
+    // TODO: Implement account deletion with Supabase Auth if needed
+    await logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    setShowModal(true);
   };
 
   return (
