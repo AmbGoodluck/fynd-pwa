@@ -28,7 +28,7 @@ import { saveItinerary } from '../services/database';
 import { Timestamp } from 'firebase/firestore';
 import { FALLBACK_IMAGE } from '../constants';
 import { openInExternalMaps, openRouteInMaps } from '../services/mapsIntent';
-import { buildTripHtml, buildIdleHtml, type Coord, type Stop } from '../templates/mapTemplates';
+import { buildTripHtml, buildIdleHtml, type Coord, type Stop } from './mapTemplates';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const { width: SW } = Dimensions.get('window');
