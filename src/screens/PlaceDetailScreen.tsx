@@ -19,13 +19,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Image, Linking, Platform, Animated, NativeSyntheticEvent,
-  NativeScrollEvent, Dimensions, useWindowDimensions, Share
+  NativeScrollEvent, Dimensions, useWindowDimensions, Share, Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import { FALLBACK_IMAGE } from '../constants';
 import { useGuestStore } from '../store/useGuestStore';
+import { useAuthStore } from '../store/useAuthStore';
 import { fetchRichPlaceData, type PlaceDetailsCache } from '../services/placeDetailsService';
 import { type PlaceDetails } from '../services/googlePlacesService';
 
@@ -77,7 +78,8 @@ export default function PlaceDetailScreen(props: any) {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const params = route.params || {};
-  const { isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
+  const { savePlace, unsavePlace, savedPlaces, isGuest } = useGuestStore();
+  const { isAuthenticated } = useAuthStore();
   const placeId = params.placeId;
   const name = params.name || 'Unknown Place';
   const photoUrl = params.photoUrl;
@@ -89,7 +91,7 @@ export default function PlaceDetailScreen(props: any) {
   const initialLat = params.lat;
   const initialLng = params.lng;
 
-  const isSaved = isPlaceSaved(placeId);
+  const isSaved = savedPlaces.some(p => p.placeId === placeId);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [photos, setPhotos] = useState<string[]>(
@@ -184,6 +186,10 @@ export default function PlaceDetailScreen(props: any) {
   };
 
   const handleSave = () => {
+    if (isGuest || !isAuthenticated) {
+      Alert.alert('Account Required', 'Sign in to save places.');
+      return;
+    }
     if (isSaved) {
       unsavePlace(placeId);
     } else {

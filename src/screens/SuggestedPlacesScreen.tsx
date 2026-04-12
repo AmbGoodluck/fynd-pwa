@@ -126,7 +126,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   const userLongitude: number | null = params.longitude ?? null;
 
   const { bottom: bottomInset } = useSafeAreaInsets();
-  const { isGuest, savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
+  const { isGuest, savePlace, unsavePlace, savedPlaces } = useGuestStore();
   const { isPremium } = usePremiumStore();
   const { isAuthenticated, user } = useAuthStore();
   const { incrementItineraryCount } = usePremiumStore();
@@ -261,7 +261,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
 
   const handleSave = (place: any) => {
     if (isGuest || !isAuthenticated) { setShowGate(true); return; }
-    if (isPlaceSaved(place.placeId)) {
+    if (savedPlaces.some(p => p.placeId === place.placeId)) {
       unsavePlace(place.placeId);
       return;
     }
@@ -523,7 +523,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
         visible={showPreview}
         place={previewPlace}
         isInItinerary={previewPlace ? !!selectedForItinerary.find(p => p.placeId === previewPlace.placeId) : false}
-        isSaved={previewPlace ? isPlaceSaved(previewPlace.placeId) : false}
+        isSaved={previewPlace ? savedPlaces.some(p => p.placeId === previewPlace.placeId) : false}
         onViewDetails={() => setShowPreview(false)}
         onClose={() => setShowPreview(false)}
         onAddToItinerary={() => {

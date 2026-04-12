@@ -79,7 +79,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   const { sessionUserId, sessionUserName, setActiveTrip, setActiveMembers, removeMemberLocally, removeJoinedTrip, removeMyTrip, addMyTrip } =
     useSharedTripStore();
-  const { savePlace, unsavePlace, isPlaceSaved } = useGuestStore();
+  const { savePlace, unsavePlace, savedPlaces } = useGuestStore();
   const { user: authUser, isAuthenticated } = useAuthStore();
   // Prefer Firebase Auth UID so owner check works correctly for authenticated users
   const effectiveUserId = authUser?.id || sessionUserId;
@@ -292,7 +292,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
 
   // ── Save / unsave a place from this shared trip ───────────────────────────
   const handleSavePlace = (p: SharedTripPlace) => {
-    if (isPlaceSaved(p.placeId)) {
+    if (savedPlaces.some(saved => saved.placeId === p.placeId)) {
       unsavePlace(p.placeId);
     } else {
       savePlace({
@@ -488,7 +488,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
               rating={p.rating}
               photoUrl={p.photoUrl}
               indexBadge={i + 1}
-              isSaved={isAuthenticated && isPlaceSaved(p.placeId)}
+              isSaved={isAuthenticated && savedPlaces.some(saved => saved.placeId === p.placeId)}
               onSave={isAuthenticated ? () => handleSavePlace(p) : () => Alert.alert('Sign in required', 'You must be logged in to save places.')}
               onNavigate={() => navigateToPlace(p)}
               onBook={isValidBookingUrl(p.bookingUrl) ? () => {

@@ -65,9 +65,9 @@ function PlaceRow({
   index: number;
   onPress: () => void;
 }) {
-  const { isGuest, isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
+  const { isGuest, savePlace, unsavePlace, savedPlaces } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
-  const isSaved = isPlaceSaved(place.place_id);
+  const isSaved = savedPlaces.some(p => p.placeId === place.place_id);
   const photoUrl = place.photo_urls?.[0] || FALLBACK_IMAGE;
 
   const description = place.ai_description
