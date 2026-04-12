@@ -3,7 +3,6 @@ import {
   Platform, StyleSheet, View, useWindowDimensions,
   Modal, Text, TouchableOpacity, TouchableWithoutFeedback,
 } from 'react-native';
-import Loader from '../components/Loader';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -11,15 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { getUserDoc } from '../services/database';
 import PWAInstallModal from '../components/PWAInstallModal';
-import PWATopBar from '../components/PWATopBar';
 import { usePWAInstall } from '../hooks/usePWAInstall';
-import { mapItineraryToRecentTrip } from '../services/userTripService';
-import { getMyCreatedTrips, getJoinedTrips } from '../services/sharedTripService';
-import { getRecentItineraries } from '../services/database';
-import { useRecentTripStore } from '../store/useRecentTripStore';
-import { useSharedTripStore } from '../store/useSharedTripStore';
 import OfflineBanner from '../components/OfflineBanner';
 import AddToHomeScreen from '../components/a2hs/AddToHomeScreen';
 import { supabase } from '../services/supabase';
@@ -276,13 +268,14 @@ export default function AppNavigator() {
       // Try Supabase session first
       const { data } = await supabase.auth.getSession();
       const session = data.session;
+      if (cancelled) return;
       if (session && session.user) {
         useGuestStore.getState().setGuest(false);
         useAuthStore.getState().login({
           id: session.user.id,
           email: session.user.email || '',
           fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
-          isPremium: false, // Optionally fetch from your profile table
+          isPremium: false,
           travelPreferences: [],
         });
         setInitialRoute('MainTabs');
@@ -291,6 +284,25 @@ export default function AppNavigator() {
       setInitialRoute('Logo');
     })();
     return () => { cancelled = true; };
+  }, []);
+
+  // Keep auth store in sync with Supabase session (token refresh, cross-tab sign-out)
+  React.useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        useAuthStore.getState().setUser(null);
+        useGuestStore.getState().logout();
+      } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        useAuthStore.getState().login({
+          id: session.user.id,
+          email: session.user.email || '',
+          fullName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || '',
+          isPremium: useAuthStore.getState().user?.isPremium ?? false,
+          travelPreferences: useAuthStore.getState().user?.travelPreferences ?? [],
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   // While resolving auth on web, show a blank white screen (instant, no flash).

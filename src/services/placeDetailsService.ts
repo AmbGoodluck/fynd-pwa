@@ -12,9 +12,6 @@ export async function getCachedSuggestedPlaces(
   vibes: string[],
   maxResults: number = 40,
 ): Promise<any[]> {
-  // TEMPORARILY DEACTIVATED: Always bypass cache and force direct API calls
-  return [];
-
   try {
     const snap = await getDocs(collection(db, 'place_details_cache'));
     if (snap.empty) return [];
@@ -23,13 +20,13 @@ export async function getCachedSuggestedPlaces(
     
     // Filter by city — check if the place's city or formatted_address contains the destination
     const cityLower = city.toLowerCase().split(',')[0].trim();
-    // If no city is provided, the cache cannot be used. Fall back to API.
-    if (!cityLower) return [];
-    const cityFiltered = allPlaces.filter(p => {
+    const cityFiltered = cityLower
+      ? allPlaces.filter(p => {
         const pCity = (p.city || '').toLowerCase();
         const pAddr = (p.formatted_address || '').toLowerCase();
         return pCity.includes(cityLower) || pAddr.includes(cityLower);
-    });
+        })
+      : allPlaces;
     
     if (cityFiltered.length === 0) return [];
     
@@ -60,17 +57,14 @@ export async function getCachedSuggestedPlaces(
       return { ...p, _score: score };
     });
     
-    // Only keep places that actually matched at least one vibe token (if vibes were provided)
-    const vibeMatched = vibeTokens.length > 0 ? scored.filter(p => p._score > 0) : scored;
-    
     // Sort: vibe match first, then rating
-    vibeMatched.sort((a, b) => {
+    scored.sort((a, b) => {
       if (b._score !== a._score) return b._score - a._score;
       return (b.rating || 0) - (a.rating || 0);
     });
     
     // Map to PlaceResult shape expected by SuggestedPlacesScreen
-    return vibeMatched.slice(0, maxResults).map(p => ({
+    return scored.slice(0, maxResults).map(p => ({
       placeId: p.place_id || p.id,
       name: p.place_name || '',
       address: p.formatted_address || '',
@@ -159,9 +153,6 @@ export interface RichPlaceData {
 
 /** Read from Firestore cache. Returns null if missing or stale. */
 export async function readPlaceCache(placeId: string): Promise<PlaceDetailsCache | null> {
-  // TEMPORARILY DEACTIVATED: Always bypass cache
-  return null;
-
   try {
     const ref = doc(db, 'place_details_cache', placeId);
     const snap = await getDoc(ref);
@@ -180,9 +171,6 @@ export async function writePlaceCache(
   details: PlaceDetails,
   ai: { description: string; knownFor: string[]; vibe: string },
 ): Promise<void> {
-  // TEMPORARILY DEACTIVATED: Do not write to cache
-  return;
-
   try {
     const payload: PlaceDetailsCache = {
       place_id: placeId,

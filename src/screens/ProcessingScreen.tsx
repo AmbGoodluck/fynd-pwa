@@ -32,9 +32,41 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
   const lastError = useRef<string | null>(null);
 
-  // Always call API directly, no cache, no enrichment, no retries
   const fetchPlaces = async (): Promise<any[]> => {
     try {
+      // Step 1: Try Firestore cache first (free, instant)
+      const cachedPlaces = await getCachedSuggestedPlaces(
+        destination || '',
+        vibeKeywords || vibes || [],
+        40,
+      );
+      
+      if (cachedPlaces && cachedPlaces.length >= 5) {
+        // Cache has enough results — use them, zero API cost
+        Sentry.addBreadcrumb({
+          category: 'perf.processing',
+          message: 'places_from_cache',
+          level: 'info',
+          data: { destination, cacheCount: cachedPlaces.length, platform: Platform.OS },
+        });
+        lastError.current = null;
+        return cachedPlaces;
+      }
+  
+      // Step 2: Cache insufficient — fall back to Google Places API
+      Sentry.addBreadcrumb({
+        category: 'perf.processing',
+        message: 'places_call_start',
+        level: 'info',
+        data: { 
+          attempt: retryCount.current + 1, 
+          destination, 
+          platform: Platform.OS,
+          cacheCount: cachedPlaces?.length || 0,
+          reason: 'cache_insufficient',
+        },
+      });
+      
       const places = await searchPlacesByVibe(
         destination || '',
         vibeKeywords || [],
@@ -43,10 +75,22 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         typeof distanceMiles === 'number' ? distanceMiles * 1.60934 : undefined,
         timeOfDay || undefined
       );
-      if (!places || places.length === 0) throw new Error('No places found.');
+      
+      Sentry.addBreadcrumb({
+        category: 'perf.processing',
+        message: 'places_call_end',
+        level: 'info',
+        data: { attempt: retryCount.current + 1, resultCount: places?.length || 0, platform: Platform.OS },
+      });
+      lastError.current = null;
       return places;
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to fetch places.');
+      const msg = err?.message || String(err);
+      lastError.current = msg;
+      Sentry.captureException(err, {
+        tags: { context: 'ProcessingScreen.fetchPlaces', platform: Platform.OS },
+        extra: { destination, vibeKeywords, latitude, longitude, attempt: retryCount.current + 1 },
+      });
       return [];
     }
   };

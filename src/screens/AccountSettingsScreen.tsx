@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuthStore } from '../store/useAuthStore';
+import { supabase } from '../services/supabase';
 
 type Props = { navigation: any };
 
@@ -23,9 +24,42 @@ export default function AccountSettingsScreen({ navigation }: Props) {
   const email = user?.email || '';
 
   const handleChangePassword = async () => {
-    // TODO: Implement password change with Supabase Auth if needed
-    Alert.alert('Not Supported', 'Password change is only available via Supabase account settings.');
-    setChangingPassword(false);
+    if (!oldPassword || !newPassword || !reenterPassword) {
+      Alert.alert('Error', 'Please fill in all password fields.');
+      return;
+    }
+    if (newPassword !== reenterPassword) {
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'New password must be at least 6 characters.');
+      return;
+    }
+    if (!email) {
+      Alert.alert('Error', 'No email found. Please log in again.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      // Re-authenticate with old password to verify it
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password: oldPassword });
+      if (signInError) throw new Error('Current password is incorrect.');
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) throw updateError;
+
+      Alert.alert('Success', 'Your password has been updated.');
+      setOldPassword('');
+      setNewPassword('');
+      setReenterPassword('');
+      setChangePasswordOpen(false);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to update password. Please try again.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   return (

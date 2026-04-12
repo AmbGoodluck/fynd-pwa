@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 
 if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
 import { submitFeedback } from '../services/feedbackService';
+import * as Sentry from '../services/sentry';
 import AppHeader from '../components/AppHeader';
 import FyndScrollContainer from '../components/FyndScrollContainer';
 
@@ -23,6 +24,13 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
   const [rating, setRating] = useState(0);
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [policyOpen, setPolicyOpen] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   const togglePolicy = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -34,21 +42,27 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
       type: 'quick',
       sentiment: quickSelected as any,
       comment: quickComment.trim() || undefined,
-    }).catch(() => {/* silent — UX not blocked */});
+    }).catch((err) => {
+      Sentry.captureException(err, { tags: { context: 'SupportFeedback.submitQuick' } });
+    });
     setSubmitted('feedback');
     setQuickSelected(null);
     setQuickComment('');
-    setTimeout(() => setSubmitted(null), 2500);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setSubmitted(null), 2500);
   };
 
   const handleSubmitRating = () => {
     submitFeedback({
       type: 'rating',
       rating,
-    }).catch(() => {/* silent — UX not blocked */});
+    }).catch((err) => {
+      Sentry.captureException(err, { tags: { context: 'SupportFeedback.submitRating' } });
+    });
     setSubmitted('rating');
     setRating(0);
-    setTimeout(() => setSubmitted(null), 2500);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setSubmitted(null), 2500);
   };
 
   return (

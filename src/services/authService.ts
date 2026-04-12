@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { db } from './firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { createUserDoc } from './database';
@@ -23,6 +23,10 @@ export function configureGoogle() {
 }
 
 export async function signInWithGoogle() {
-  // TODO: Implement Google sign-in with Supabase if needed
-  throw new Error('Google sign-in is not implemented with Supabase.');
+  if (Platform.OS === 'web') {
+    alert('Google sign-in is not implemented yet.');
+  } else {
+    Alert.alert('Not Implemented', 'Google sign-in is not implemented yet.');
+  }
+  return Promise.reject(new Error('Google sign-in is not implemented with Supabase.'));
 }

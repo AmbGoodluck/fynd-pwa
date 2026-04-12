@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { FALLBACK_IMAGE } from '../constants';
 import DraggableList from '../components/DraggableList';
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
+import * as Sentry from '../services/sentry';
 import { logEvent } from '../services/firebase';
 import { generateItinerary } from '../services/openaiService';
 import { createSharedTrip, buildShareLink, recordTripShared } from '../services/sharedTripService';
@@ -90,6 +91,13 @@ export default function ItineraryScreen({ navigation, route }: Props) {
   const [bookingUrl, setBookingUrl] = useState<string | null>(null);
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingPlaceId, setBookingPlaceId] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   // Sections 8 + 10: booking links cache
   const bookingLinks = useBookingLinksStore(s => s.links);
@@ -137,8 +145,9 @@ export default function ItineraryScreen({ navigation, route }: Props) {
           time: ai.estimatedMinutes ? `${ai.estimatedMinutes} min` : s.time,
         };
       }));
-    }).catch(() => {
+  }).catch((err) => {
       // AI enrichment is non-fatal — keep original descriptions
+    Sentry.captureException(err, { tags: { context: 'ItineraryScreen.generateItinerary' } });
     });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -310,7 +319,8 @@ export default function ItineraryScreen({ navigation, route }: Props) {
     if (ok) {
       setLinkCopied(true);
       showCopiedToast();
-      setTimeout(() => setLinkCopied(false), 2500);
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      toastTimeoutRef.current = setTimeout(() => setLinkCopied(false), 2500);
     } else {
       // copy failed silently — link is visible in the input, user can select manually
     }

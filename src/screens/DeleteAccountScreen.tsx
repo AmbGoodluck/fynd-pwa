@@ -30,8 +30,7 @@ export default function DeleteAccountScreen({ navigation }: Props) {
           useNativeDriver: true,
         }).start();
       });
-      const timer = setTimeout(async () => {
-        await logout();
+      const timer = setTimeout(() => {
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       }, 2500);
       return () => clearTimeout(timer);
@@ -42,9 +41,15 @@ export default function DeleteAccountScreen({ navigation }: Props) {
   }, [showModal]);
 
   const handleDelete = async () => {
-    // TODO: Implement account deletion with Supabase Auth if needed
+    if (!user) return;
+    const uid = user.id;
+    try {
+      await deleteDoc(doc(db, 'users', uid));
+      await deleteDoc(doc(db, 'subscriptions', uid));
+    } catch (e) {
+      console.warn('[DeleteAccount] Firestore cleanup failed:', e);
+    }
     await logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     setShowModal(true);
   };
 
