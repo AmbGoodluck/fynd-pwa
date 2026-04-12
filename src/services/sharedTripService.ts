@@ -1,20 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  serverTimestamp,
-  Timestamp,
-  increment,
-  arrayUnion,
-  arrayRemove,
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabase';
 import type { SharedTrip, TripMember, SharedTripPlace, MemberRole } from '../types/sharedTrip';
 import {
   trackTripCreated,
@@ -68,15 +52,9 @@ export async function createSharedTrip(params: {
     members: [params.owner_id],
   };
 
-  try {
-    await setDoc(doc(db, TRIPS_COL, trip_id), trip);
-  } catch (err: any) {
-    const code: string = err?.code ?? '';
-    const msg: string = (err?.message ?? '').toLowerCase();
-    if (code === 'permission-denied' || code.includes('permission') || msg.includes('permission') || msg.includes('insufficient')) {
-      throw new Error('PERMISSION_DENIED: Firestore rules are blocking shared_trips writes. Add rules for shared_trips and trip_members in the Firebase console.');
-    }
-    throw err;
+  const { error: tripError } = await supabase.from(TRIPS_COL).insert(trip);
+  if (tripError) {
+    throw new Error('Could not create trip: ' + tripError.message);
   }
 
   // Add owner as first member
@@ -88,11 +66,7 @@ export async function createSharedTrip(params: {
     role: 'owner',
     joined_at: now,
   };
-  try {
-    await setDoc(doc(db, MEMBERS_COL, ownerMember.member_id), ownerMember);
-  } catch {
-    // Non-fatal: owner member row missing is recoverable; trip creation already succeeded
-  }
+  await supabase.from(MEMBERS_COL).insert(ownerMember);
 
   trackTripCreated(params.owner_id, trip_id, {
     trip_name: params.trip_name,
@@ -104,16 +78,25 @@ export async function createSharedTrip(params: {
 
 // ── Fetch a trip by ID ────────────────────────────────────────────────────────
 export async function getSharedTrip(trip_id: string): Promise<SharedTrip | null> {
-  const snap = await getDoc(doc(db, TRIPS_COL, trip_id));
-  if (!snap.exists()) return null;
-  return snap.data() as SharedTrip;
+  const { data, error } = await supabase
+    .from(TRIPS_COL)
+    .select('*')
+    .eq('trip_id', trip_id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as SharedTrip;
 }
 
 // ── Fetch all members for a trip ──────────────────────────────────────────────
 export async function getTripMembers(trip_id: string): Promise<TripMember[]> {
-  const q = query(collection(db, MEMBERS_COL), where('trip_id', '==', trip_id));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data() as TripMember);
+  const { data, error } = await supabase
+    .from(MEMBERS_COL)
+    .select('*')
+    .eq('trip_id', trip_id);
+    
+  if (error) return [];
+  return data as TripMember[];
 }
 
 // ── Check if user is already a member ────────────────────────────────────────
@@ -121,14 +104,15 @@ export async function getMembership(
   trip_id: string,
   user_id: string
 ): Promise<TripMember | null> {
-  const q = query(
-    collection(db, MEMBERS_COL),
-    where('trip_id', '==', trip_id),
-    where('user_id', '==', user_id)
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return snap.docs[0].data() as TripMember;
+  const { data, error } = await supabase
+    .from(MEMBERS_COL)
+    .select('*')
+    .eq('trip_id', trip_id)
+    .eq('user_id', user_id)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as TripMember;
 }
 
 // ── Join a shared trip ────────────────────────────────────────────────────────
@@ -155,19 +139,15 @@ export async function joinSharedTrip(params: {
     joined_at: nowIso(),
   };
 
-  await setDoc(doc(db, MEMBERS_COL, deterministicId), member);
+  await supabase.from(MEMBERS_COL).insert(member);
 
-  // Best-effort: increment count and add to members[] array on the trip doc.
-  // This can fail if Firestore rules only allow the owner to update the trip doc.
-  // trip_members is the source of truth for membership, so this is non-fatal.
   try {
-    await updateDoc(doc(db, TRIPS_COL, params.trip_id), {
-      member_count: increment(1),
-      members: arrayUnion(params.user_id),
-    });
-  } catch {
-    // Non-fatal — user is still a member via the trip_members record above
-  }
+    const updatedMembers = Array.from(new Set([...(trip.members || []), params.user_id]));
+    await supabase.from(TRIPS_COL).update({
+      member_count: Math.max((trip.member_count || 0) + 1, updatedMembers.length),
+      members: updatedMembers,
+    }).eq('trip_id', params.trip_id);
+  } catch {}
 
   trackTripJoined(params.user_id, params.trip_id);
 
@@ -177,11 +157,16 @@ export async function joinSharedTrip(params: {
 // ── Remove a member from a trip (owner only) ──────────────────────────────────
 // user_id is required to keep the members[] array in the trip document in sync.
 export async function removeMember(member_id: string, trip_id: string, user_id: string): Promise<void> {
-  await deleteDoc(doc(db, MEMBERS_COL, member_id));
-  await updateDoc(doc(db, TRIPS_COL, trip_id), {
-    member_count: increment(-1),
-    members: arrayRemove(user_id),
-  });
+  await supabase.from(MEMBERS_COL).delete().eq('member_id', member_id);
+  
+  const trip = await getSharedTrip(trip_id);
+  if (trip) {
+    const updatedMembers = (trip.members || []).filter(id => id !== user_id);
+    await supabase.from(TRIPS_COL).update({
+      member_count: Math.max((trip.member_count || 1) - 1, updatedMembers.length),
+      members: updatedMembers,
+    }).eq('trip_id', trip_id);
+  }
 }
 
 // ── Leave a trip (member only) ────────────────────────────────────────────────
@@ -201,39 +186,49 @@ export async function deleteSharedTrip(trip_id: string, requesterId?: string): P
       throw new Error('PERMISSION_DENIED: Only the trip owner can delete this trip.');
     }
   }
-  const members = await getTripMembers(trip_id);
-  await Promise.all(members.map((m) => deleteDoc(doc(db, MEMBERS_COL, m.member_id))));
-  await deleteDoc(doc(db, TRIPS_COL, trip_id));
+  await supabase.from(MEMBERS_COL).delete().eq('trip_id', trip_id);
+  await supabase.from(TRIPS_COL).delete().eq('trip_id', trip_id);
 }
 
-// ── Add a member UID to the trip's members array (idempotent via arrayUnion) ──
+// ── Add a member UID to the trip's members array ──
 export async function addMemberToSharedTrip(tripId: string, memberId: string): Promise<void> {
-  await updateDoc(doc(db, TRIPS_COL, tripId), {
-    members: arrayUnion(memberId),
-  });
+  const trip = await getSharedTrip(tripId);
+  if (trip) {
+    const updatedMembers = Array.from(new Set([...(trip.members || []), memberId]));
+    await supabase.from(TRIPS_COL).update({
+      members: updatedMembers,
+    }).eq('trip_id', tripId);
+  }
 }
 
 // ── Get trips created by a user ───────────────────────────────────────────────
 export async function getMyCreatedTrips(owner_id: string): Promise<SharedTrip[]> {
-  const q = query(collection(db, TRIPS_COL), where('owner_id', '==', owner_id));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data() as SharedTrip);
+  const { data, error } = await supabase
+    .from(TRIPS_COL)
+    .select('*')
+    .eq('owner_id', owner_id);
+
+  if (error) return [];
+  return data as SharedTrip[];
 }
 
 // ── Get trips a user has joined (as member) ───────────────────────────────────
 export async function getJoinedTrips(user_id: string): Promise<SharedTrip[]> {
-  const q = query(
-    collection(db, MEMBERS_COL),
-    where('user_id', '==', user_id),
-    where('role', '==', 'member')
-  );
-  const snap = await getDocs(q);
-  const tripIds = snap.docs.map((d) => (d.data() as TripMember).trip_id);
+  const { data: memberData, error } = await supabase
+    .from(MEMBERS_COL)
+    .select('trip_id')
+    .eq('user_id', user_id)
+    .eq('role', 'member');
 
-  if (tripIds.length === 0) return [];
+  if (error || !memberData || memberData.length === 0) return [];
 
-  const trips = await Promise.all(tripIds.map((id) => getSharedTrip(id)));
-  return trips.filter(Boolean) as SharedTrip[];
+  const tripIds = memberData.map(m => m.trip_id);
+  const { data: tripData } = await supabase
+    .from(TRIPS_COL)
+    .select('*')
+    .in('trip_id', tripIds);
+
+  return (tripData || []) as SharedTrip[];
 }
 
 // ── Get all trips for a user (owned + joined, deduplicated) ──────────────────

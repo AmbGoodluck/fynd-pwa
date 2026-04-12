@@ -5,6 +5,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { supabase } from './supabase';
 
 // ================================
 // TYPES
@@ -310,58 +311,100 @@ export async function getTrip(tripId: string): Promise<TripDoc | null> {
 // ================================
 
 export async function saveItinerary(uid: string, tripId: string, data: Partial<ItineraryDoc>): Promise<string> {
-  const ref = await addDoc(collection(db, 'itineraries'), {
-    ...data,
-    userId: uid,
-    tripId,
-    createdAt: serverTimestamp(),
-    status: 'active',
-  });
+  const { data: inserted, error } = await supabase
+    .from('itineraries')
+    .insert({
+      ...data,
+      userId: uid,
+      tripId,
+      createdAt: new Date().toISOString(),
+      status: 'active',
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Supabase saveItinerary error:', error);
+    throw error;
+  }
   await incrementItineraryUsage(uid);
-  return ref.id;
+  return inserted.id;
 }
 
 export async function getItinerary(itineraryId: string): Promise<ItineraryDoc | null> {
-  const snap = await getDoc(doc(db, 'itineraries', itineraryId));
-  return snap.exists() ? { id: snap.id, ...snap.data() } as ItineraryDoc : null;
+  const { data, error } = await supabase
+    .from('itineraries')
+    .select('*')
+    .eq('id', itineraryId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data as ItineraryDoc | null;
 }
 
 export async function getRecentItineraries(uid: string, count = 5): Promise<ItineraryDoc[]> {
-  const q = query(
-    collection(db, 'itineraries'),
-    where('userId', '==', uid),
-    orderBy('createdAt', 'desc'),
-    limit(count)
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as ItineraryDoc);
+  const { data, error } = await supabase
+    .from('itineraries')
+    .select('*')
+    .eq('userId', uid)
+    .order('createdAt', { ascending: false })
+    .limit(count);
+
+  if (error) {
+    console.error('Supabase getRecentItineraries error:', error);
+    throw error;
+  }
+  return (data || []) as ItineraryDoc[];
 }
 
 export async function getSavedItineraries(uid: string): Promise<ItineraryDoc[]> {
-  const q = query(
-    collection(db, 'itineraries'),
-    where('userId', '==', uid),
-    orderBy('createdAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as ItineraryDoc);
+  const { data, error } = await supabase
+    .from('itineraries')
+    .select('*')
+    .eq('userId', uid)
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    console.error('Supabase getSavedItineraries error:', error);
+    throw error;
+  }
+  return (data || []) as ItineraryDoc[];
 }
 
 export async function updateItineraryStatus(itineraryId: string, status: 'active' | 'saved' | 'ignored') {
-  await updateDoc(doc(db, 'itineraries', itineraryId), { status });
+  const { error } = await supabase
+    .from('itineraries')
+    .update({ status })
+    .eq('id', itineraryId);
+  
+  if (error) {
+    console.error('Supabase updateItineraryStatus error:', error);
+    throw error;
+  }
 }
 
 export async function deleteItinerary(itineraryId: string) {
-  await deleteDoc(doc(db, 'itineraries', itineraryId));
+  const { error } = await supabase
+    .from('itineraries')
+    .delete()
+    .eq('id', itineraryId);
+    
+  if (error) {
+    console.error('Supabase deleteItinerary error:', error);
+    throw error;
+  }
 }
 
 export async function deleteTrip(tripId: string) {
   // Also delete associated itineraries if any (optional, but good for cleanup)
   await deleteDoc(doc(db, 'trips', tripId));
-  const q = query(collection(db, 'itineraries'), where('tripId', '==', tripId));
-  const snap = await getDocs(q);
-  const batch = snap.docs.map(d => deleteDoc(d.ref));
-  await Promise.all(batch);
+  const { error } = await supabase
+    .from('itineraries')
+    .delete()
+    .eq('tripId', tripId);
+  if (error) {
+    console.error('Supabase deleteTrip (itineraries) error:', error);
+  }
 }
 
 // ================================
@@ -369,39 +412,65 @@ export async function deleteTrip(tripId: string) {
 // ================================
 
 export async function savePlace(uid: string, placeData: Partial<SavedPlaceDoc>): Promise<string> {
-  const ref = await addDoc(collection(db, 'savedPlaces'), {
-    ...placeData,
-    userId: uid,
-    savedAt: serverTimestamp(),
-  });
+  const { data: inserted, error } = await supabase
+    .from('savedPlaces')
+    .insert({
+      ...placeData,
+      userId: uid,
+      savedAt: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Supabase savePlace error:', error);
+    throw error;
+  }
   await incrementSavedPlaces(uid);
-  return ref.id;
+  return inserted.id;
 }
 
 export async function getSavedPlaces(uid: string): Promise<SavedPlaceDoc[]> {
-  const q = query(
-    collection(db, 'savedPlaces'),
-    where('userId', '==', uid),
-    orderBy('savedAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }) as SavedPlaceDoc);
+  const { data, error } = await supabase
+    .from('savedPlaces')
+    .select('*')
+    .eq('userId', uid)
+    .order('savedAt', { ascending: false });
+
+  if (error) {
+    console.error('Supabase getSavedPlaces error:', error);
+    throw error;
+  }
+  return (data || []) as SavedPlaceDoc[];
 }
 
 export async function deleteSavedPlace(docId: string, uid: string) {
-  await deleteDoc(doc(db, 'savedPlaces', docId));
+  const { error } = await supabase
+    .from('savedPlaces')
+    .delete()
+    .eq('id', docId);
+
+  if (error) {
+    console.error('Supabase deleteSavedPlace error:', error);
+    throw error;
+  }
   await decrementSavedPlaces(uid);
 }
 
 export async function isPlaceSaved(uid: string, placeId: string): Promise<string | null> {
-  const q = query(
-    collection(db, 'savedPlaces'),
-    where('userId', '==', uid),
-    where('placeId', '==', placeId),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  return snap.empty ? null : snap.docs[0].id;
+  const { data, error } = await supabase
+    .from('savedPlaces')
+    .select('id')
+    .eq('userId', uid)
+    .eq('placeId', placeId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Supabase isPlaceSaved error:', error);
+    throw error;
+  }
+  return data ? String(data.id) : null;
 }
 
 // ================================

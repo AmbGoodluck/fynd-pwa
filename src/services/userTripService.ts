@@ -1,17 +1,5 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  Timestamp,
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabase';
+import { Timestamp } from 'firebase/firestore';
 import type { RecentTrip } from '../types/recentTrip';
 import type { Place } from '../store/useTripStore';
 import type { ItineraryDoc } from './database';
@@ -73,23 +61,22 @@ export async function saveUserTrip(
 ): Promise<RecentTrip> {
   const hash = placesHash(params.places);
 
-  // Query existing trips for this user + city
-  const q = query(
-    collection(db, USER_TRIPS_COL),
-    where('user_id', '==', params.user_id),
-    where('city', '==', params.city),
-  );
-  const snap = await getDocs(q);
+  const { data: match, error: fetchError } = await supabase
+    .from(USER_TRIPS_COL)
+    .select('*')
+    .eq('user_id', params.user_id)
+    .eq('city', params.city);
 
-  const match = snap.docs.find((d) => {
-    const data = d.data() as RecentTrip;
-    return placesHash(data.places) === hash;
-  });
-
-  if (match) {
-    const now = new Date().toISOString();
-    await updateDoc(match.ref, { last_accessed: now });
-    return { ...(match.data() as RecentTrip), last_accessed: now };
+  if (!fetchError && match && match.length > 0) {
+    const existing = match.find((d: any) => placesHash(d.places || []) === hash);
+    if (existing) {
+      const now = new Date().toISOString();
+      await supabase
+        .from(USER_TRIPS_COL)
+        .update({ last_accessed: now })
+        .eq('trip_id', existing.trip_id);
+      return { ...(existing as RecentTrip), last_accessed: now };
+    }
   }
 
   const now = new Date().toISOString();
@@ -100,7 +87,11 @@ export async function saveUserTrip(
     last_accessed: now,
   };
 
-  await setDoc(doc(db, USER_TRIPS_COL, trip.trip_id), trip);
+  const { error } = await supabase
+    .from(USER_TRIPS_COL)
+    .insert(trip);
+  
+  if (error) throw error;
   return trip;
 }
 
@@ -108,7 +99,11 @@ export async function saveUserTrip(
  * Delete a trip document from user_trips by its trip_id (document ID).
  */
 export async function deleteUserTrip(tripId: string): Promise<void> {
-  await deleteDoc(doc(db, USER_TRIPS_COL, tripId));
+  const { error } = await supabase
+    .from(USER_TRIPS_COL)
+    .delete()
+    .eq('trip_id', tripId);
+  if (error) throw error;
 }
 
 /**
@@ -116,12 +111,13 @@ export async function deleteUserTrip(tripId: string): Promise<void> {
  * Ordered by last_accessed descending.
  */
 export async function getUserTrips(userId: string): Promise<RecentTrip[]> {
-  const q = query(
-    collection(db, USER_TRIPS_COL),
-    where('user_id', '==', userId),
-    orderBy('last_accessed', 'desc'),
-    limit(20),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => d.data() as RecentTrip);
+  const { data, error } = await supabase
+    .from(USER_TRIPS_COL)
+    .select('*')
+    .eq('user_id', userId)
+    .order('last_accessed', { ascending: false })
+    .limit(20);
+
+  if (error) throw error;
+  return (data || []) as RecentTrip[];
 }

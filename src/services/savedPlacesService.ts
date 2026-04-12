@@ -1,16 +1,4 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { db } from './firebase';
+import { supabase } from './supabase';
 import type { SavedPlaceDoc, SavedPlace } from '../types/savedPlace';
 import { docToSavedPlace, savedPlaceToDoc } from '../types/savedPlace';
 
@@ -24,11 +12,17 @@ const COL = 'savedPlaces';
  */
 export async function savePlace(userId: string, place: Omit<SavedPlace, 'savedAt'>): Promise<string> {
   const data = savedPlaceToDoc(userId, place);
-  const ref = await addDoc(collection(db, COL), {
-    ...data,
-    savedAt: serverTimestamp(),
-  });
-  return ref.id;
+  const { data: inserted, error } = await supabase
+    .from(COL)
+    .insert({
+      ...data,
+      savedAt: new Date().toISOString(),
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return inserted.id;
 }
 
 // ── Read ──────────────────────────────────────────────────────────────────
@@ -37,27 +31,30 @@ export async function savePlace(userId: string, place: Omit<SavedPlace, 'savedAt
  * Fetch all saved places for a user, newest first.
  */
 export async function getSavedPlaces(userId: string): Promise<SavedPlace[]> {
-  const q = query(
-    collection(db, COL),
-    where('userId', '==', userId),
-    orderBy('savedAt', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => docToSavedPlace({ id: d.id, ...d.data() } as SavedPlaceDoc));
+  const { data, error } = await supabase
+    .from(COL)
+    .select('*')
+    .eq('userId', userId)
+    .order('savedAt', { ascending: false });
+
+  if (error) throw error;
+  return (data || []).map(d => docToSavedPlace(d as SavedPlaceDoc));
 }
 
 /**
  * Check if a specific place is saved. Returns the Firestore doc ID or null.
  */
 export async function isPlaceSaved(userId: string, placeId: string): Promise<string | null> {
-  const q = query(
-    collection(db, COL),
-    where('userId', '==', userId),
-    where('placeId', '==', placeId),
-    limit(1)
-  );
-  const snap = await getDocs(q);
-  return snap.empty ? null : snap.docs[0].id;
+  const { data, error } = await supabase
+    .from(COL)
+    .select('id')
+    .eq('userId', userId)
+    .eq('placeId', placeId)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? String(data.id) : null;
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────
@@ -66,5 +63,10 @@ export async function isPlaceSaved(userId: string, placeId: string): Promise<str
  * Delete a saved place by its Firestore document ID.
  */
 export async function deleteSavedPlace(docId: string): Promise<void> {
-  await deleteDoc(doc(db, COL, docId));
+  const { error } = await supabase
+    .from(COL)
+    .delete()
+    .eq('id', docId);
+
+  if (error) throw error;
 }

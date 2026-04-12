@@ -517,9 +517,8 @@ export interface PlaceDetails {
 export async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
   try {
     let url: string;
-    if (isWeb) {
-      // Relative URL hits the Cloudflare Pages Function (functions/api/places/details.ts)
-      url = `/api/places/details?place_id=${encodeURIComponent(placeId)}`;
+    if (isWeb && PROXY) {
+      url = `${PROXY}/api/places/details?place_id=${encodeURIComponent(placeId)}`;
     } else {
       const fields = [
         'name', 'formatted_address', 'geometry', 'opening_hours',

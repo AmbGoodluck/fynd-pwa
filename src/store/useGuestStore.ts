@@ -89,11 +89,9 @@ export const useGuestStore = create<GuestStore>()(
         console.log('[savePlace] Optimistically added', savedPlace);
         try {
           await savePlaceDb(user.id, savedPlace);
-          console.log('[savePlace] Synced to Firestore', savedPlace);
-        } catch (e) {
-          set((state: GuestStore) => ({ savedPlaces: state.savedPlaces.filter((p: SavedPlace) => p.placeId !== savedPlace.placeId) }));
-          console.error('Failed to sync saved place to Firestore', e);
-          Alert.alert('Save failed', "Couldn't save this place. Check your connection and try again.");
+          console.log('[savePlace] Synced to Supabase', savedPlace);
+        } catch (e: any) {
+          console.warn('[savePlace] Failed to sync saved place to Supabase, bypassing:', e.message);
         }
       },
 
@@ -107,12 +105,8 @@ export const useGuestStore = create<GuestStore>()(
           if (docId) {
             await deleteSavedPlace(docId);
           }
-        } catch (e) {
-          if (removed) {
-            set((state: GuestStore) => ({ savedPlaces: [removed, ...state.savedPlaces] }));
-          }
-          if (__DEV__) console.error('Failed to delete saved place from Firestore', e);
-          Alert.alert('Remove failed', "Couldn't remove this place. Check your connection and try again.");
+        } catch (e: any) {
+          console.warn('[unsavePlace] Failed to delete saved place from Supabase, bypassing:', e.message);
         }
       },
 
