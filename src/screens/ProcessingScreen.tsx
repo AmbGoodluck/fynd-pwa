@@ -41,8 +41,8 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         40,
       );
       
-      if (cachedPlaces && cachedPlaces.length >= 5) {
-        // Cache has enough results — use them, zero API cost
+      if (cachedPlaces && cachedPlaces.length >= 20) {
+        // Cache has an abundant amount of results — use them, zero API cost
         Sentry.addBreadcrumb({
           category: 'perf.processing',
           message: 'places_from_cache',
@@ -67,7 +67,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         },
       });
       
-      const places = await searchPlacesByVibe(
+      const apiPlaces = await searchPlacesByVibe(
         destination || '',
         vibeKeywords || [],
         latitude || 0,
@@ -76,14 +76,19 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         timeOfDay || undefined
       );
       
+      // Merge cached places with API places to ensure we don't lose the AI descriptions we already have
+      const existingIds = new Set((cachedPlaces || []).map((p: any) => p.placeId));
+      const newPlaces = apiPlaces.filter(p => !existingIds.has(p.placeId));
+      const combinedPlaces = [...(cachedPlaces || []), ...newPlaces];
+
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_end',
         level: 'info',
-        data: { attempt: retryCount.current + 1, resultCount: places?.length || 0, platform: Platform.OS },
+        data: { attempt: retryCount.current + 1, resultCount: combinedPlaces.length, platform: Platform.OS },
       });
       lastError.current = null;
-      return places;
+      return combinedPlaces;
     } catch (err: any) {
       const msg = err?.message || String(err);
       lastError.current = msg;
