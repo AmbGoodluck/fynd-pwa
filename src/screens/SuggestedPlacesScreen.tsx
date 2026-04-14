@@ -22,8 +22,6 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { usePremiumStore, GUEST_MAX_PLACES_PER_ITINERARY } from '../store/usePremiumStore';
 import { markA2HSEligible } from '../hooks/useAddToHomeScreen';
 import { searchEstablishments, fetchPlaceDetails, getPhotoUrl, type EstablishmentSuggestion, PlaceResult } from '../services/googlePlacesService';
-// Removed all cache/database logic. Only API calls are used except on save.
-import { checkAndSeedCity } from '../services/citySeedService';
 import { FALLBACK_IMAGE } from '../constants';
 
 // ── Haversine in-city check ─────────────────────────────────────────────────
@@ -151,7 +149,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
   // placeId → { inCity, distKm, details }
   const [resolvedPlaces, setResolvedPlaces] = useState<Record<string, { inCity: boolean; distKm: number; details: any | null; adding: boolean }>>({});
   const placeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { user: currentUser } = useAuthStore();
 
   const bookingLinks = useBookingLinksStore(s => s.links);
   const setBookingLink = useBookingLinksStore(s => s.setLink);
@@ -165,10 +162,6 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       level: 'info',
       data: { firstRenderMs: Date.now() - navStart, placeCount: places.length },
     });
-    // Fire-and-forget: seed the trip destination city in the background
-    if (destination && userLatitude && userLongitude && currentUser?.id) {
-      checkAndSeedCity(destination, userLatitude, userLongitude, currentUser.id).catch(() => {});
-    }
   }, []);
 
   // ── Debounced establishment search ──────────────────────────────────────────

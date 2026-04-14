@@ -4,30 +4,14 @@ import {
   ImageBackground, Platform, ActivityIndicator,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../services/firebase';
 import { F } from '../../theme/fonts';
 import { COLORS } from '../../theme/tokens';
 import { FALLBACK_IMAGE } from '../../constants';
 import { useGuestStore } from '../../store/useGuestStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useUserLocation } from '../../hooks/useUserLocation';
+import { getPlacesForLocation, reverseGeocodeFree, type FyndPlace } from '../../services/freePlacesService';
 import GuestGateModal from '../GuestGateModal';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface CachedPlace {
-  place_id: string;
-  place_name: string;
-  formatted_address: string;
-  city: string;
-  rating?: number;
-  photo_urls: string[];
-  types: string[];
-  ai_description: string;
-  lat: number;
-  lng: number;
-}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -52,7 +36,7 @@ const BOOSTED_TYPES = new Set([
   'natural_feature',
 ]);
 
-// ── Personalization maps ───────────────────────────────────────────────────────
+// ── Personalization maps ──────────────────────────────────────────────────────
 
 const PREFERENCE_TO_TYPES: Record<string, string[]> = {
   hidden_gems:   ['point_of_interest', 'establishment', 'art_gallery', 'museum'],
@@ -88,14 +72,14 @@ const PREFERENCE_TO_KEYWORDS: Record<string, string[]> = {
   family:        ['family', 'kids', 'children', 'playground', 'fun', 'arcade'],
 };
 
-function calculateRelevance(place: CachedPlace, preferences: string[]): number {
+function calculateRelevance(place: FyndPlace, preferences: string[]): number {
   if (preferences.length === 0) return 0;
   let score = 0;
   const placeTypes = (place.types || []).map(t => t.toLowerCase());
   const haystack = [
     ...placeTypes,
-    ((place as any).known_for || []).join(' ').toLowerCase(),
-    ((place as any).vibe || '').toLowerCase(),
+    (place.known_for || []).join(' ').toLowerCase(),
+    (place.vibe || '').toLowerCase(),
     (place.ai_description || '').toLowerCase(),
   ].join(' ');
 
@@ -112,8 +96,7 @@ function calculateRelevance(place: CachedPlace, preferences: string[]): number {
   return score;
 }
 
-function sortPlaces(places: CachedPlace[], preferences: string[] = []): CachedPlace[] {
-  // Personalized sort when user has preferences and at least one place matches
+function sortPlaces(places: FyndPlace[], preferences: string[] = []): FyndPlace[] {
   if (preferences.length > 0) {
     const scored = places.map(p => ({ place: p, relevance: calculateRelevance(p, preferences) }));
     const hasRelevant = scored.some(s => s.relevance > 0);
@@ -121,13 +104,12 @@ function sortPlaces(places: CachedPlace[], preferences: string[] = []): CachedPl
       return scored
         .sort((a, b) => {
           if (b.relevance !== a.relevance) return b.relevance - a.relevance;
-          return (b.place.rating ?? 0) - (a.place.rating ?? 0);
+          return a.place.name.localeCompare(b.place.name);
         })
         .map(s => s.place);
     }
   }
 
-  // Default sort: boosted types first, then rating, then photos
   return [...places].sort((a, b) => {
     const aTypes = a.types || [];
     const bTypes = b.types || [];
@@ -138,9 +120,7 @@ function sortPlaces(places: CachedPlace[], preferences: string[] = []): CachedPl
     const aScore = aBoosted + aDeprio;
     const bScore = bBoosted + bDeprio;
     if (bScore !== aScore) return bScore - aScore;
-    const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
-    if (ratingDiff !== 0) return ratingDiff;
-    return (b.photo_urls?.length ?? 0) - (a.photo_urls?.length ?? 0);
+    return a.name.localeCompare(b.name);
   });
 }
 
@@ -150,32 +130,29 @@ const BADGES = [
   { label: '✦ Popular',   bg: '#1A1A1A' },
 ] as const;
 
-// ── Gradient overlay ──────────────────────────────────────────────────────────
-
 const imgGradient: any =
   Platform.OS === 'web'
     ? { background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)' }
     : { backgroundColor: 'rgba(0,0,0,0.3)' };
 
-// ── Per-card component (needs hooks for save state) ───────────────────────────
+// ── Per-card component ────────────────────────────────────────────────────────
 
 function ThingsToDoCard({
   place,
   index,
   onPress,
 }: {
-  place: CachedPlace;
+  place: FyndPlace;
   index: number;
   onPress: () => void;
 }) {
   const { isGuest, isPlaceSaved, savePlace, unsavePlace } = useGuestStore();
   const { isAuthenticated } = useAuthStore();
 
-  const isSaved = isPlaceSaved(place.place_id);
+  const isSaved = isPlaceSaved(place.id);
   const photoUrl = place.photo_urls?.[0] || FALLBACK_IMAGE;
   const badge = index < BADGES.length ? BADGES[index] : null;
-  const rating = place.rating ? Number(place.rating).toFixed(1) : undefined;
-  const vibe = (place as any).vibe || '';
+  const vibe = place.vibe || '';
   const [showGate, setShowGate] = useState(false);
 
   const handleSave = () => {
@@ -184,13 +161,13 @@ function ThingsToDoCard({
       return;
     }
     if (isSaved) {
-      unsavePlace(place.place_id);
+      unsavePlace(place.id);
     } else {
       savePlace({
-        placeId: place.place_id,
-        name: place.place_name,
-        address: place.formatted_address,
-        rating: place.rating ?? 4.0,
+        placeId: place.id,
+        name: place.name,
+        address: place.address,
+        rating: undefined,
         description: place.ai_description || '',
         photoRef: '',
         photoUrl,
@@ -213,74 +190,57 @@ function ThingsToDoCard({
         onContinueAsGuest={() => setShowGate(false)}
       />
       <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.88}>
-      {/* Image */}
-      <ImageBackground
-        source={{ uri: photoUrl }}
-        style={styles.cardImage}
-        imageStyle={styles.cardImageStyle}
-      >
-        <View style={[styles.imgGradient, imgGradient]} />
-
-        {/* Trending badge — top left */}
-        {badge && (
-          <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-            <Text style={styles.badgeText}>{badge.label}</Text>
-          </View>
-        )}
-
-        {/* Save icon — top right */}
-        <TouchableOpacity
-          style={[styles.saveBtn, isSaved && styles.saveBtnActive]}
-          onPress={handleSave}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        {/* Image */}
+        <ImageBackground
+          source={{ uri: photoUrl }}
+          style={styles.cardImage}
+          imageStyle={styles.cardImageStyle}
         >
-          <Ionicons
-            name={isSaved ? 'heart' : 'heart-outline'}
-            size={14}
-            color={isSaved ? '#E24B4A' : '#9CA3AF'}
-          />
-        </TouchableOpacity>
-      </ImageBackground>
+          <View style={[styles.imgGradient, imgGradient]} />
 
-      {/* Body */}
-      <View style={styles.cardBody}>
-        <Text style={styles.cardName} numberOfLines={1}>{place.place_name}</Text>
-        <Text style={styles.cardDesc} numberOfLines={2}>
-          {place.ai_description
-            ? place.ai_description.split('.')[0] + '.'
-            : (place as any).editorial_summary
-              ? (place as any).editorial_summary.split('.')[0] + '.'
-              : ''}
-        </Text>
-
-        {/* Footer */}
-        <View style={styles.cardFooter}>
-          <View style={styles.footerLeft}>
-            {rating && rating !== "NaN" && rating !== "0.0" && (
-              <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 12 }}>★ {rating}</Text>
-            )}
-          </View>
-          {vibe ? (
-            <View style={{ backgroundColor: '#F3F4F6', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, marginLeft: 6 }}>
-              <Text style={{ color: '#6B7280', fontSize: 11 }}>{vibe}</Text>
+          {/* Trending badge — top left */}
+          {badge && (
+            <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+              <Text style={styles.badgeText}>{badge.label}</Text>
             </View>
-          ) : null}
+          )}
+
+          {/* Save icon — top right */}
+          <TouchableOpacity
+            style={[styles.saveBtn, isSaved && styles.saveBtnActive]}
+            onPress={handleSave}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Ionicons
+              name={isSaved ? 'heart' : 'heart-outline'}
+              size={14}
+              color={isSaved ? '#E24B4A' : '#9CA3AF'}
+            />
+          </TouchableOpacity>
+        </ImageBackground>
+
+        {/* Body */}
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>{place.name}</Text>
+          <Text style={styles.cardDesc} numberOfLines={2}>
+            {place.ai_description
+              ? place.ai_description.split('.')[0] + '.'
+              : place.types?.[0]?.replace(/_/g, ' ') || ''}
+          </Text>
+
+          {/* Footer */}
+          <View style={styles.cardFooter}>
+            <View style={styles.footerLeft} />
+            {vibe ? (
+              <View style={{ backgroundColor: '#F3F4F6', borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
+                <Text style={{ color: '#6B7280', fontSize: 11 }}>{vibe}</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
     </>
   );
-}
-
-// ── Haversine helper ──────────────────────────────────────────────────────────
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -288,9 +248,8 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
 type Props = { navigation: any };
 
 export default function ThingsToDoSection({ navigation }: Props) {
-  const [places, setPlaces] = useState<CachedPlace[]>([]);
-  const [locationFiltered, setLocationFiltered] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+  const [places, setPlaces] = useState<FyndPlace[]>([]);
+  const [loading, setLoading] = useState(true);
   const user = useAuthStore(s => s.user);
   const preferences = user?.travelPreferences || [];
   const { location } = useUserLocation();
@@ -299,43 +258,40 @@ export default function ThingsToDoSection({ navigation }: Props) {
     let cancelled = false;
 
     (async () => {
+      if (!location) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Fetch all cached places (client-side proximity filter below)
-        const snap = await getDocs(collection(db, 'place_details_cache'));
+        setLoading(true);
+        const cityName = await reverseGeocodeFree(location.latitude, location.longitude);
         if (cancelled) return;
 
-        const all = snap.docs
-          .map(d => ({ place_id: d.id, ...d.data() } as CachedPlace))
-          .filter(p => !p.types?.some(t => EXCLUDED_TYPES.has(t)));
+        const fetched = await getPlacesForLocation(
+          location.latitude,
+          location.longitude,
+          cityName,
+          {
+            vibeFilter: preferences,
+            excludeTypes: Array.from(EXCLUDED_TYPES),
+            limit: 15,
+          },
+        );
+        if (cancelled) return;
 
-        // If we have user location, filter to within 30km
-        let filtered = all;
-        if (location) {
-          const nearby = all.filter(p =>
-            p.lat && p.lng &&
-            haversineKm(location.latitude, location.longitude, p.lat, p.lng) <= 30
-          );
-          if (nearby.length >= 3) {
-            filtered = nearby;
-            setLocationFiltered(true);
-          }
-          // Fewer than 3 nearby → city likely not seeded yet
-          if (nearby.length < 3) {
-            setSeeding(true);
-          }
-        }
-
-        setPlaces(sortPlaces(filtered, preferences).slice(0, 15));
+        setPlaces(sortPlaces(fetched, preferences));
       } catch {
-        // Firestore unavailable — section stays hidden
+        // Overpass unavailable — section stays hidden
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
 
     return () => { cancelled = true; };
   }, [location]);
 
-  // Seeding in progress — show friendly message
-  if (seeding && places.length < 3) {
+  if (loading) {
     return (
       <View style={styles.wrapper}>
         <View style={styles.header}>
@@ -343,7 +299,7 @@ export default function ThingsToDoSection({ navigation }: Props) {
         </View>
         <View style={styles.seedingMsg}>
           <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 10 }} />
-          <Text style={styles.seedingText}>Discovering places near you... Check back in a few minutes!</Text>
+          <Text style={styles.seedingText}>Discovering places near you…</Text>
         </View>
       </View>
     );
@@ -351,11 +307,10 @@ export default function ThingsToDoSection({ navigation }: Props) {
 
   if (places.length === 0) return null;
 
-  const sectionTitle = preferences.length > 0 && locationFiltered ? 'For You' : preferences.length > 0 ? 'For You' : 'Things to Do';
+  const sectionTitle = preferences.length > 0 ? 'For You' : 'Things to Do';
 
   return (
     <View style={styles.wrapper}>
-      {/* Section header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{sectionTitle}</Text>
         <TouchableOpacity
@@ -366,7 +321,6 @@ export default function ThingsToDoSection({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Horizontal card scroll */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -374,21 +328,25 @@ export default function ThingsToDoSection({ navigation }: Props) {
       >
         {places.map((place, index) => (
           <ThingsToDoCard
-            key={place.place_id}
+            key={place.id}
             place={place}
             index={index}
             onPress={() =>
               navigation.navigate('PlaceDetail', {
-                placeId: place.place_id,
-                name: place.place_name,
+                placeId: place.id,
+                name: place.name,
                 photoUrl: place.photo_urls?.[0],
                 photoUrls: place.photo_urls,
                 description: place.ai_description,
-                rating: place.rating,
-                address: place.formatted_address,
+                rating: undefined,
+                address: place.address,
                 types: place.types,
+                city: place.city,
                 lat: place.lat,
                 lng: place.lng,
+                phone: place.phone,
+                website: place.website,
+                opening_hours_raw: place.opening_hours_raw,
               })
             }
           />
@@ -440,7 +398,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Card
   card: {
     width: CARD_W,
     borderRadius: 14,
@@ -496,8 +453,6 @@ const styles = StyleSheet.create({
   saveBtnActive: {
     backgroundColor: '#F0FDF4',
   },
-
-  // Body
   cardBody: {
     padding: 10,
   },
@@ -522,6 +477,5 @@ const styles = StyleSheet.create({
   footerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
   },
 });

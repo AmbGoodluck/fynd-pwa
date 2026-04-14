@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity, ActivityIndi
 import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sentry from '../services/sentry';
-import { searchPlacesByVibe } from '../services/googlePlacesService';
-import { getCachedSuggestedPlaces, fetchRichPlaceData } from '../services/placeDetailsService';
+import { getPlacesForLocation, fyndPlaceToPlaceResult } from '../services/freePlacesService';
 import { logEvent } from '../services/firebase';
 
 // LottieView is native-only — dynamically imported so the web bundle never touches it
@@ -34,61 +33,37 @@ export default function ProcessingScreen({ navigation, route }: Props) {
 
   const fetchPlaces = async (): Promise<any[]> => {
     try {
-      // Step 1: Try Firestore cache first (free, instant)
-      const cachedPlaces = await getCachedSuggestedPlaces(
-        destination || '',
-        vibeKeywords || vibes || [],
-        40,
-      );
-      
-      if (cachedPlaces && cachedPlaces.length >= 20) {
-        // Cache has an abundant amount of results — use them, zero API cost
-        Sentry.addBreadcrumb({
-          category: 'perf.processing',
-          message: 'places_from_cache',
-          level: 'info',
-          data: { destination, cacheCount: cachedPlaces.length, platform: Platform.OS },
-        });
-        lastError.current = null;
-        return cachedPlaces;
-      }
-  
-      // Step 2: Cache insufficient — fall back to Google Places API
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_start',
         level: 'info',
-        data: { 
-          attempt: retryCount.current + 1, 
-          destination, 
-          platform: Platform.OS,
-          cacheCount: cachedPlaces?.length || 0,
-          reason: 'cache_insufficient',
-        },
+        data: { attempt: retryCount.current + 1, destination, platform: Platform.OS },
       });
-      
-      const apiPlaces = await searchPlacesByVibe(
-        destination || '',
-        vibeKeywords || [],
+
+      const fyndPlaces = await getPlacesForLocation(
         latitude || 0,
         longitude || 0,
-        typeof distanceMiles === 'number' ? distanceMiles * 1.60934 : undefined,
-        timeOfDay || undefined
+        destination || '',
+        {
+          vibeFilter: vibeKeywords || vibes || [],
+          generateAI: true,
+          limit: 40,
+        },
       );
-      
-      // Merge cached places with API places to ensure we don't lose the AI descriptions we already have
-      const existingIds = new Set((cachedPlaces || []).map((p: any) => p.placeId));
-      const newPlaces = apiPlaces.filter(p => !existingIds.has(p.placeId));
-      const combinedPlaces = [...(cachedPlaces || []), ...newPlaces];
+
+      if (fyndPlaces.length === 0) {
+        lastError.current = 'No places found in this area';
+        return [];
+      }
 
       Sentry.addBreadcrumb({
         category: 'perf.processing',
         message: 'places_call_end',
         level: 'info',
-        data: { attempt: retryCount.current + 1, resultCount: combinedPlaces.length, platform: Platform.OS },
+        data: { attempt: retryCount.current + 1, resultCount: fyndPlaces.length, platform: Platform.OS },
       });
       lastError.current = null;
-      return combinedPlaces;
+      return fyndPlaces.map(fyndPlaceToPlaceResult);
     } catch (err: any) {
       const msg = err?.message || String(err);
       lastError.current = msg;

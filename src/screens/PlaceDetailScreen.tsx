@@ -27,8 +27,8 @@ import { F } from '../theme/fonts';
 import { FALLBACK_IMAGE } from '../constants';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
-import { fetchRichPlaceData, type PlaceDetailsCache } from '../services/placeDetailsService';
-import { type PlaceDetails } from '../services/googlePlacesService';
+import { fetchPlaceDetails, type PlaceDetails } from '../services/googlePlacesService';
+import { generatePlaceDescription } from '../services/openaiService';
 
 // ── Skeleton loader ───────────────────────────────────────────────────────────
 function SkeletonLine({ width = '100%', height = 14, style }: { width?: number | string; height?: number; style?: any }) {
@@ -116,21 +116,53 @@ export default function PlaceDetailScreen(props: any) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const result = await fetchRichPlaceData(placeId, initialDescription, {
-        name,
-        address: initialAddress,
-        city: params.city || '',
-        types: params.types || [],
-        rating: initialRating,
-      });
-      if (cancelled) return;
-      if (result.details) {
-        setDetails(result.details);
-        if (result.details.photoUrls.length > 0) setPhotos(result.details.photoUrls);
+      if (!placeId) { setDetailsLoading(false); return; }
+
+      if (placeId.startsWith('osm_')) {
+        // OSM place: data already in params. Generate AI description if missing.
+        if (!initialDescription) {
+          generatePlaceDescription(
+            name,
+            initialAddress,
+            params.city || '',
+            params.types || [],
+          ).then(res => {
+            if (!cancelled && res) {
+              setAiDescription(res.description);
+              setKnownFor(res.knownFor);
+              setVibe(res.vibe);
+            }
+          }).catch(() => {});
+        }
+        setDetailsLoading(false);
+        return;
       }
-      setAiDescription(result.aiDescription || initialDescription || '');
-      setKnownFor(result.knownFor);
-      setVibe(result.vibe);
+
+      // Google place: fetch full details + AI description in parallel
+      const [googleDetails, aiRes] = await Promise.all([
+        fetchPlaceDetails(placeId),
+        generatePlaceDescription(
+          name,
+          initialAddress,
+          params.city || '',
+          params.types || [],
+          initialRating,
+        ),
+      ]);
+
+      if (cancelled) return;
+
+      if (googleDetails) {
+        setDetails(googleDetails);
+        if (googleDetails.photoUrls.length > 0) setPhotos(googleDetails.photoUrls);
+      }
+      if (aiRes) {
+        setAiDescription(aiRes.description);
+        setKnownFor(aiRes.knownFor);
+        setVibe(aiRes.vibe);
+      } else {
+        setAiDescription(googleDetails?.editorialSummary || initialDescription || '');
+      }
       setDetailsLoading(false);
     })();
     return () => { cancelled = true; };

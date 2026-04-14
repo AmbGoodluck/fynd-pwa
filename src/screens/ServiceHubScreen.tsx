@@ -9,7 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
-import { searchNearby, PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
+import { searchNearbyFree, fyndPlaceToPlaceResult } from '../services/freePlacesService';
+import { PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
 import AppBar from '../components/AppBar';
@@ -118,14 +119,15 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
         return;
       }
       setUserLocation(loc);
-      const places = await searchNearby(loc.lat, loc.lng, category);
-      if (places.length === 0) {
+      const fyndPlaces = await searchNearbyFree(loc.lat, loc.lng, category);
+      if (fyndPlaces.length === 0) {
         setEmptyReason('not_available');
         setResults([]);
       } else {
-        const withDist = places
-          .map(p => ({ ...p, distanceKm: calcDistanceKm(loc.lat, loc.lng, p.coordinates.lat, p.coordinates.lng) }))
-          .sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
+        const mapped = fyndPlaces.map(fyndPlaceToPlaceResult);
+        const withDist = mapped
+          .map((p: PlaceResult) => ({ ...p, distanceKm: calcDistanceKm(loc.lat, loc.lng, p.coordinates.lat, p.coordinates.lng) }))
+          .sort((a: PlaceResult & { distanceKm: number }, b: PlaceResult & { distanceKm: number }) => (a.distanceKm || 0) - (b.distanceKm || 0));
         setResults(withDist);
       }
     } catch (e) {
