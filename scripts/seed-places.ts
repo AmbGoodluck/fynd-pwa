@@ -21,6 +21,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import OpenAI from 'openai';
 import { db } from './firebase-admin';
+import { fetchOSMPlaces, resolvePhoto, parseOSMHours, OSMPlace } from '../src/services/freePlacesService';
 
 // Load .env from project root (scripts/ is one level below)
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -76,10 +77,8 @@ interface SeedStats {
   newlyCached: number;
   skipped: number;
   errors: number;
-  googleTextSearchCalls: number;
-  googleDetailCalls: number;
-  photosDownloaded: number;
   openAiCalls: number;
+  osmCalls: number;
 }
 
 // ── CLI args ──────────────────────────────────────────────────────────────────
@@ -121,125 +120,6 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-/** Direct Google Places photo URL — matches getPhotoUrl() for native in googlePlacesService.ts */
-function buildPhotoUrl(ref: string, maxWidth = 800): string {
-  return `${GOOGLE_BASE}/photo?maxwidth=${maxWidth}&photo_reference=${encodeURIComponent(ref)}&key=${GOOGLE_API_KEY}`;
-}
-
-// ── Google Places: Text Search (with pagination) ──────────────────────────────
-
-async function textSearch(
-  query: string,
-  lat: number,
-  lng: number,
-  radiusMeters: number,
-  stats: SeedStats,
-): Promise<any[]> {
-  const results: any[] = [];
-  let nextPageToken: string | null = null;
-  let page = 0;
-
-  do {
-    let url: string;
-    if (nextPageToken) {
-      // Google requires ~2 s before a page token becomes valid
-      await sleep(2000);
-      url = `${GOOGLE_BASE}/textsearch/json?pagetoken=${encodeURIComponent(nextPageToken)}&key=${GOOGLE_API_KEY}`;
-    } else {
-      url =
-        `${GOOGLE_BASE}/textsearch/json` +
-        `?query=${encodeURIComponent(query)}` +
-        `&location=${lat},${lng}` +
-        `&radius=${radiusMeters}` +
-        `&key=${GOOGLE_API_KEY}`;
-    }
-
-    const res = await fetch(url);
-    stats.googleTextSearchCalls++;
-    const data = await res.json() as any;
-
-    if (data.status === 'OK' && Array.isArray(data.results)) {
-      results.push(...data.results);
-      nextPageToken = data.next_page_token ?? null;
-    } else {
-      if (data.status && data.status !== 'ZERO_RESULTS') {
-        process.stdout.write(` [API ${data.status}] `);
-      }
-      break;
-    }
-
-    page++;
-  } while (nextPageToken && page < 3); // max 60 results per query
-
-  return results;
-}
-
-// ── Google Places: Details ────────────────────────────────────────────────────
-// Replicates fetchPlaceDetails() from googlePlacesService.ts (native path).
-
-async function fetchDetails(placeId: string, stats: SeedStats): Promise<PlaceDetails | null> {
-  const fields = [
-    'name', 'formatted_address', 'geometry', 'opening_hours',
-    'formatted_phone_number', 'website', 'rating', 'price_level',
-    'photos', 'editorial_summary', 'types', 'business_status', 'url',
-    'address_components',
-  ].join(',');
-
-  const url =
-    `${GOOGLE_BASE}/details/json` +
-    `?place_id=${encodeURIComponent(placeId)}` +
-    `&fields=${encodeURIComponent(fields)}` +
-    `&key=${GOOGLE_API_KEY}`;
-
-  try {
-    const res = await fetch(url);
-    stats.googleDetailCalls++;
-    const data = await res.json() as any;
-
-    if (data.status !== 'OK' || !data.result) return null;
-
-    const r = data.result;
-    const refs: string[] = (r.photos || [])
-      .slice(0, 5)
-      .map((p: any) => p.photo_reference as string)
-      .filter(Boolean);
-    const urls: string[] = refs.map(ref => buildPhotoUrl(ref, 800));
-
-    // Extract city from address_components — same logic as app
-    const comps: any[] = r.address_components || [];
-    const localityComp = comps.find((c: any) => c.types.includes('locality'));
-    const regionComp = comps.find((c: any) => c.types.includes('administrative_area_level_1'));
-    const city =
-      localityComp?.long_name ||
-      regionComp?.long_name ||
-      r.formatted_address?.split(',')[0] ||
-      '';
-
-    return {
-      placeId,
-      name: r.name || '',
-      formattedAddress: r.formatted_address || '',
-      city,
-      phone: r.formatted_phone_number,
-      website: r.website,
-      rating: r.rating,
-      priceLevel: r.price_level,
-      openingHours: r.opening_hours
-        ? { openNow: r.opening_hours.open_now, weekdayText: r.opening_hours.weekday_text }
-        : undefined,
-      photoUrls: urls,
-      photoRefs: refs,
-      types: r.types || [],
-      lat: r.geometry?.location?.lat ?? 0,
-      lng: r.geometry?.location?.lng ?? 0,
-      editorialSummary: r.editorial_summary?.overview,
-      mapsUrl: r.url,
-    };
-  } catch {
-    return null;
-  }
 }
 
 // ── OpenAI: place description ─────────────────────────────────────────────────
@@ -358,41 +238,6 @@ async function upsertPlace(placeId: string, details: PlaceDetails, city: string)
   });
 }
 
-// ── Photo download ────────────────────────────────────────────────────────────
-
-async function downloadPhoto(url: string, destPath: string, stats: SeedStats): Promise<void> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return;
-    const buf = await res.arrayBuffer();
-    fs.writeFileSync(destPath, Buffer.from(buf));
-    stats.photosDownloaded++;
-  } catch {
-    // Non-fatal — photo is not required for the seed to succeed
-  }
-}
-
-// ── Category queries ──────────────────────────────────────────────────────────
-
-function buildQueries(city: string): string[] {
-  return [
-    `restaurants in ${city}`,
-    `cafes coffee shops in ${city}`,
-    `bars nightlife in ${city}`,
-    `parks scenic viewpoints in ${city}`,
-    `museums attractions in ${city}`,
-    `libraries study spots in ${city}`,
-    `gyms fitness in ${city}`,
-    `shopping in ${city}`,
-    `fast food in ${city}`,
-    `pizza in ${city}`,
-    `ice cream desserts in ${city}`,
-    `thrift stores in ${city}`,
-    `outdoor activities hiking in ${city}`,
-    `live music entertainment in ${city}`,
-  ];
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -416,63 +261,43 @@ async function main(): Promise<void> {
 
   const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-  if (!fs.existsSync(PHOTOS_DIR)) fs.mkdirSync(PHOTOS_DIR, { recursive: true });
-
   const stats: SeedStats = {
     totalFound: 0,
     totalUnique: 0,
     newlyCached: 0,
     skipped: 0,
     errors: 0,
-    googleTextSearchCalls: 0,
-    googleDetailCalls: 0,
-    photosDownloaded: 0,
     openAiCalls: 0,
+    osmCalls: 0,
   };
 
-  const queries = buildQueries(city);
+  const EXCLUDED_TYPES = new Set(['gas_station', 'convenience_store', 'atm', 'car_wash', 'car_repair', 'parking', 'storage', 'insurance_agency', 'real_estate_agency', 'funeral_home']);
 
   console.log('\nFynd Place Seeder');
   console.log('─'.repeat(60));
   console.log(`City    : ${city}`);
   console.log(`Center  : ${lat}, ${lng}`);
   console.log(`Radius  : ${radius} km`);
-  console.log(`Queries : ${queries.length}`);
   console.log('─'.repeat(60));
   console.log('Phase 1 — Collecting place IDs...\n');
 
-  // ── Phase 1: collect all place IDs across all category queries ──────────────
+  // ── Phase 1: fetch all places via OSM ──────────────
+  process.stdout.write(`  Fetching OSM places... `);
+  const osmPlaces = await fetchOSMPlaces(lat, lng, radius, city);
+  stats.osmCalls++;
+  stats.totalFound = osmPlaces.length;
 
-  const seen = new Set<string>();
-  const basicData = new Map<string, any>(); // placeId → raw Google result
+  const validPlaces = osmPlaces.filter(p => !p.types.some(t => EXCLUDED_TYPES.has(t)));
+  
+  // Sort alphabetically
+  validPlaces.sort((a, b) => a.name.localeCompare(b.name));
+  
+  // Limit to 80
+  const placesToSeed = validPlaces.slice(0, 80);
+  
+  console.log(`${osmPlaces.length} results, ${validPlaces.length} valid`);
 
-  for (let qi = 0; qi < queries.length; qi++) {
-    const query = queries[qi];
-    process.stdout.write(`  [${qi + 1}/${queries.length}] ${query}... `);
-
-    const results = await textSearch(query, lat, lng, radiusMeters, stats);
-    stats.totalFound += results.length;
-
-    let newInQuery = 0;
-    for (const r of results) {
-      if (!r.place_id) continue;
-      // Enforce radius — text search uses location as a bias, not a strict filter
-      if (r.geometry?.location) {
-        const dist = haversineKm(lat, lng, r.geometry.location.lat, r.geometry.location.lng);
-        if (dist > radius) continue;
-      }
-      if (!seen.has(r.place_id)) {
-        seen.add(r.place_id);
-        basicData.set(r.place_id, r);
-        newInQuery++;
-      }
-    }
-
-    console.log(`${results.length} results, ${newInQuery} new unique`);
-    await sleep(200); // 200 ms between search calls
-  }
-
-  stats.totalUnique = seen.size;
+  stats.totalUnique = placesToSeed.length;
 
   console.log(`\nFound ${stats.totalUnique} unique places within ${radius} km`);
   console.log('─'.repeat(60));
@@ -480,21 +305,32 @@ async function main(): Promise<void> {
 
   // ── Phase 2: process each unique place ─────────────────────────────────────
 
-  const placeIds = Array.from(seen);
   const seededPlaces: object[] = [];
   let processed = 0;
 
-  for (const placeId of placeIds) {
+  for (const osmPlace of placesToSeed) {
     processed++;
-    const basic = basicData.get(placeId);
-    const shortName = (basic?.name || placeId).substring(0, 42);
+    const placeId = `osm_${osmPlace.osm_id}`;
+    const shortName = osmPlace.name.substring(0, 42);
 
-    process.stdout.write(`  [${processed}/${placeIds.length}] ${shortName}... `);
+    process.stdout.write(`  [${processed}/${placesToSeed.length}] ${shortName}... `);
 
     // Check Firestore cache — skip if fresh
     try {
       const snap = await db.collection('place_details_cache').doc(placeId).get();
       if (snap.exists) {
+        const cached = snap.data() as any;
+        if (typeof cached?.cached_at === 'number' && Date.now() - cached.cached_at < CACHE_TTL_MS) {
+          stats.skipped++;
+          console.log('✓ already cached');
+          seededPlaces.push({ placeId, name: osmPlace.name, status: 'skipped' });
+          continue;
+        }
+      }
+      
+      // Check by name to avoid duplicates with Google
+      const nameSnap = await db.collection('place_details_cache').where('place_name', '==', osmPlace.name).get();
+      if (!nameSnap.empty) {
         const cached = snap.data() as any;
         if (typeof cached?.cached_at === 'number' && Date.now() - cached.cached_at < CACHE_TTL_MS) {
           stats.skipped++;
@@ -507,15 +343,26 @@ async function main(): Promise<void> {
       // Cache read failed — proceed with full fetch
     }
 
-    // Fetch full Google Places details (200 ms delay between calls)
-    await sleep(200);
-    const details = await fetchDetails(placeId, stats);
-    if (!details) {
-      stats.errors++;
-      console.log('✗ details fetch failed');
-      seededPlaces.push({ placeId, name: basic?.name, status: 'error' });
-      continue;
-    }
+    const photoUrls = await resolvePhoto(osmPlace.name, osmPlace.lat, osmPlace.lng, osmPlace.types);
+
+    const details: PlaceDetails = {
+      placeId,
+      name: osmPlace.name,
+      formattedAddress: osmPlace.address,
+      city: osmPlace.city,
+      phone: osmPlace.phone,
+      website: osmPlace.website,
+      rating: undefined,
+      priceLevel: undefined,
+      openingHours: parseOSMHours(osmPlace.opening_hours),
+      photoUrls,
+      photoRefs: [],
+      types: osmPlace.types,
+      lat: osmPlace.lat,
+      lng: osmPlace.lng,
+      editorialSummary: undefined,
+      mapsUrl: `https://www.openstreetmap.org/node/${osmPlace.osm_id}`,
+    };
 
     // Generate AI description (300 ms delay between OpenAI calls)
     await sleep(300);
@@ -531,12 +378,6 @@ async function main(): Promise<void> {
       console.log(`✗ Firestore write failed: ${err?.message}`);
       seededPlaces.push({ placeId, name: details.name, status: 'error', error: err?.message });
       continue;
-    }
-
-    // Download primary photo to scripts/photos/{placeId}.jpg
-    if (details.photoRefs[0]) {
-      const photoPath = path.join(PHOTOS_DIR, `${placeId}.jpg`);
-      await downloadPhoto(buildPhotoUrl(details.photoRefs[0], 800), photoPath, stats);
     }
 
     seededPlaces.push({

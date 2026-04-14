@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { searchNearby, PlaceResult, getPhotoUrl } from '../services/googlePlacesService';

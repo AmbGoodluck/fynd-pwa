@@ -247,6 +247,18 @@ export async function fetchRichPlaceData(
     };
   }
 
+  if (placeId.startsWith('osm_')) {
+    if (basicInfo) {
+      return {
+        details: null,
+        aiDescription: fallbackEditorialSummary || '',
+        knownFor: [],
+        vibe: '',
+      };
+    }
+    return { details: null, aiDescription: '', knownFor: [], vibe: '' };
+  }
+
   // 2. Fetch from Google Places API and OpenAI in parallel (if basicInfo is provided)
   const fetchDetailsPromise = fetchPlaceDetails(placeId);
   let aiPromise = Promise.resolve(null as any);

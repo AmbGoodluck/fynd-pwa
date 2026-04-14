@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 type Props = { navigation: any };
 
@@ -66,8 +66,3 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: '#F2F2F7', marginLeft: 60 },
   lastUpdated: { fontSize: 12, color: '#8E8E93', textAlign: 'center', marginTop: 24 },
 });
-
-
-
-
-

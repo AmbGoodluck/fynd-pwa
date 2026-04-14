@@ -21,6 +21,7 @@ import { db } from './firebase';
 import { fetchPlaceDetails } from './googlePlacesService';
 import { generatePlaceDescription } from './openaiService';
 import { readPlaceCache, writePlaceCache, upsertSearchedPlace } from './placeDetailsService';
+import { fetchOSMPlaces, resolvePhoto, parseOSMHours, OSMPlace } from './freePlacesService';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -76,15 +77,6 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** Build a text-search URL — mirrors googlePlacesService.ts textSearchUrl logic */
-function buildTextSearchUrl(queryStr: string): string {
-  if (Platform.OS === 'web' && WEB_PROXY) {
-    return `${WEB_PROXY}/api/places/textsearch?query=${encodeURIComponent(queryStr)}`;
-  }
-  const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
-  return `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(queryStr)}&key=${API_KEY}`;
-}
-
 // ── Check if city is already seeded ──────────────────────────────────────────
 
 async function findExistingCityDoc(lat: number, lng: number): Promise<{ id: string; data: SeededCity } | null> {
@@ -103,50 +95,40 @@ async function findExistingCityDoc(lat: number, lng: number): Promise<{ id: stri
   }
 }
 
-// ── Fetch places for one category ─────────────────────────────────────────────
-
-async function fetchCategoryPlaces(
-  category: string,
-  cityName: string,
-  centerLat: number,
-  centerLng: number,
-): Promise<Array<{ placeId: string; name: string; rating: number; lat: number; lng: number }>> {
-  try {
-    const url = buildTextSearchUrl(`${category} in ${cityName}`);
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (data.status !== 'OK' || !Array.isArray(data.results)) return [];
-
-    return data.results
-      .filter((p: any) => {
-        if (!p.place_id || !p.geometry?.location) return false;
-        const dist = haversineKm(centerLat, centerLng, p.geometry.location.lat, p.geometry.location.lng);
-        return dist <= SEED_RADIUS_KM;
-      })
-      .map((p: any) => ({
-        placeId: p.place_id,
-        name: p.name,
-        rating: p.rating || 0,
-        lat: p.geometry.location.lat,
-        lng: p.geometry.location.lng,
-      }));
-  } catch {
-    return [];
-  }
-}
-
 // ── Process a single place ────────────────────────────────────────────────────
 
-async function seedPlace(placeId: string, cityName: string, userId: string): Promise<boolean> {
+async function seedPlace(osmPlace: OSMPlace, cityName: string, userId: string): Promise<boolean> {
   try {
+    const placeId = `osm_${osmPlace.osm_id}`;
     // Skip if already in cache
     const cached = await readPlaceCache(placeId);
     if (cached) return false; // already done
+    
+    // Check by name to avoid duplicate with Google
+    const nameQuery = query(collection(db, 'place_details_cache'), where('place_name', '==', osmPlace.name));
+    const nameSnap = await getDocs(nameQuery);
+    if (!nameSnap.empty) return false;
 
-    // Fetch details from Google
-    const details = await fetchPlaceDetails(placeId);
-    if (!details) return false;
+    const photoUrls = await resolvePhoto(osmPlace.name, osmPlace.lat, osmPlace.lng, osmPlace.types);
+
+    const details = {
+      placeId,
+      name: osmPlace.name,
+      formattedAddress: osmPlace.address,
+      city: osmPlace.city,
+      phone: osmPlace.phone,
+      website: osmPlace.website,
+      rating: undefined,
+      priceLevel: undefined,
+      openingHours: parseOSMHours(osmPlace.opening_hours),
+      photoUrls,
+      photoRefs: [],
+      types: osmPlace.types,
+      lat: osmPlace.lat,
+      lng: osmPlace.lng,
+      editorialSummary: undefined,
+      mapsUrl: `https://www.openstreetmap.org/node/${osmPlace.osm_id}`,
+    };
 
     // Generate AI description
     const aiRes = await generatePlaceDescription(
@@ -249,28 +231,18 @@ async function runSeedingInBackground(
   const seen = new Set<string>();
 
   // Collect all place IDs across all categories first
-  const allPlaces: Array<{ placeId: string; rating: number }> = [];
+  const allPlaces: OSMPlace[] = [];
+  const EXCLUDED_TYPES = new Set(['gas_station', 'convenience_store', 'atm', 'car_wash', 'car_repair', 'parking', 'storage', 'insurance_agency', 'real_estate_agency', 'funeral_home']);
 
   try {
-    for (const category of SEED_CATEGORIES) {
-      try {
-        const results = await fetchCategoryPlaces(category, cityName, lat, lng);
-        for (const p of results) {
-          if (!seen.has(p.placeId)) {
-            seen.add(p.placeId);
-            allPlaces.push({ placeId: p.placeId, rating: p.rating });
-          }
-        }
-        categoriesCompleted.push(category);
-        await updateDoc(cityDocRef, { categories_completed: categoriesCompleted });
-      } catch {
-        // One category failing doesn't stop the others
-      }
-      await delay(DELAY_BETWEEN_CATEGORIES_MS);
-    }
+    const osmPlaces = await fetchOSMPlaces(lat, lng, SEED_RADIUS_KM, cityName);
+    const validPlaces = osmPlaces.filter(p => !p.types.some(t => EXCLUDED_TYPES.has(t)));
+    allPlaces.push(...validPlaces);
+    
+    await updateDoc(cityDocRef, { categories_completed: SEED_CATEGORIES });
 
-    // Sort by rating desc, cap at MAX_PLACES
-    allPlaces.sort((a, b) => b.rating - a.rating);
+    // Sort alphabetically, cap at MAX_PLACES
+    allPlaces.sort((a, b) => a.name.localeCompare(b.name));
     const toSeed = allPlaces.slice(0, MAX_PLACES);
 
     console.log(`[CitySeeder] ${cityName}: found ${allPlaces.length} unique places, seeding top ${toSeed.length}`);
@@ -279,7 +251,7 @@ async function runSeedingInBackground(
     for (let i = 0; i < toSeed.length; i += BATCH_SIZE) {
       const batch = toSeed.slice(i, i + BATCH_SIZE);
       const results = await Promise.all(
-        batch.map(p => seedPlace(p.placeId, cityName, userId))
+        batch.map(p => seedPlace(p, cityName, userId))
       );
       totalSeeded += results.filter(Boolean).length;
       await delay(DELAY_BETWEEN_PLACES_MS * BATCH_SIZE);

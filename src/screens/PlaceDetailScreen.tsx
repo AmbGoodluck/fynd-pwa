@@ -22,7 +22,7 @@ import {
   NativeScrollEvent, Dimensions, useWindowDimensions, Share, Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
 import { FALLBACK_IMAGE } from '../constants';
 import { useGuestStore } from '../store/useGuestStore';
@@ -106,7 +106,11 @@ export default function PlaceDetailScreen(props: any) {
   const [hoursExpanded, setHoursExpanded] = useState(false);
 
   const openingHours = details?.openingHours;
-  const todayHours = openingHours?.weekdayText?.[getTodayGoogleIndex()];
+  const isRawOSMHours = openingHours?.weekdayText?.length === 1 && !/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/.test(openingHours.weekdayText[0]);
+
+  const todayHours = isRawOSMHours
+    ? openingHours.weekdayText[0]
+    : openingHours?.weekdayText?.[getTodayGoogleIndex()];
 
   // ── Load rich data ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -385,29 +389,31 @@ export default function PlaceDetailScreen(props: any) {
               {openingHours && (
                 <TouchableOpacity
                   style={styles.hoursHeader}
-                  onPress={() => setHoursExpanded(v => !v)}
-                  activeOpacity={0.7}
+                  onPress={() => !isRawOSMHours && setHoursExpanded(v => !v)}
+                  activeOpacity={isRawOSMHours ? 1 : 0.7}
                 >
                   <View style={[styles.statusDot, { backgroundColor: openingHours.openNow ? '#10B981' : '#EF4444' }]} />
                   <Text style={[styles.statusText, { color: openingHours.openNow ? '#10B981' : '#EF4444' }]}>
                     {openingHours.openNow ? 'Open now' : 'Closed'}
                   </Text>
                   {todayHours ? (
-                    <Text style={styles.todayHours} numberOfLines={1}>
+                    <Text style={[styles.todayHours, isRawOSMHours && { flex: 0, marginLeft: 4 }]} numberOfLines={1}>
                       {' · '}{todayHours.split(': ')[1] || todayHours}
                     </Text>
                   ) : null}
-                  <Ionicons
-                    name={hoursExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={14}
-                    color="#9CA3AF"
-                    style={{ marginLeft: 'auto' }}
-                  />
+                  {!isRawOSMHours && (
+                    <Ionicons
+                      name={hoursExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={14}
+                      color="#9CA3AF"
+                      style={{ marginLeft: 'auto' }}
+                    />
+                  )}
                 </TouchableOpacity>
               )}
 
               {/* Expanded hours list */}
-              {hoursExpanded && openingHours?.weekdayText && (
+              {hoursExpanded && openingHours?.weekdayText && !isRawOSMHours && (
                 <View style={styles.hoursExpanded}>
                   {openingHours.weekdayText.map((line, i) => (
                     <Text key={i} style={styles.hoursLine}>{line}</Text>

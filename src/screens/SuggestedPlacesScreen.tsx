@@ -5,7 +5,7 @@ import {
   Keyboard, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
 

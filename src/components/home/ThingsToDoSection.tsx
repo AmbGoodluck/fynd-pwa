@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, Platform, ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { F } from '../../theme/fonts';
@@ -256,7 +256,7 @@ function ThingsToDoCard({
         {/* Footer */}
         <View style={styles.cardFooter}>
           <View style={styles.footerLeft}>
-            {rating && (
+            {rating && rating !== "NaN" && rating !== "0.0" && (
               <Text style={{ color: '#F59E0B', fontWeight: 'bold', fontSize: 12 }}>★ {rating}</Text>
             )}
           </View>

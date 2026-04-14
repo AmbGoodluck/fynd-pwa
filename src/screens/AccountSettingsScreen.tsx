@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { useAuthStore } from '../store/useAuthStore';
 import { supabase } from '../services/supabase';
@@ -183,6 +183,3 @@ const styles = StyleSheet.create({
   changeBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 40, alignItems: 'center', justifyContent: 'center', marginHorizontal: 40, marginVertical: 10 },
   changeBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });
-
-
-
