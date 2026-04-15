@@ -109,7 +109,7 @@ export default function PlaceDetailScreen(props: any) {
   const isRawOSMHours = openingHours?.weekdayText?.length === 1 && !/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday):/.test(openingHours.weekdayText[0]);
 
   const todayHours = isRawOSMHours
-    ? openingHours.weekdayText[0]
+    ? openingHours?.weekdayText?.[0]
     : openingHours?.weekdayText?.[getTodayGoogleIndex()];
 
   // ── Load rich data ─────────────────────────────────────────────────────────

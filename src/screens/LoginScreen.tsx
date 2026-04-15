@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image, Keyboard } from 'react-native';
+import { COLORS } from '../theme/tokens';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { supabase } from '../services/supabase';
 import { getUserDoc, createUserDoc } from '../services/database';
@@ -174,25 +175,25 @@ export default function LoginScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   content: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 80, paddingBottom: 40 },
   logo: { width: 80, height: 80, resizeMode: 'contain', marginBottom: 16 },
-  title: { fontSize: 24, fontWeight: '700', color: '#111827', marginBottom: 6 },
-  subtitle: { fontSize: 15, color: '#57636C', marginBottom: 28 },
-  errorBox: { width: '100%', backgroundColor: '#FEF2F2', borderRadius: 12, padding: 12, marginBottom: 12 },
-  errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center' },
-  infoBox: { width: '100%', backgroundColor: '#ECFDF5', borderRadius: 12, padding: 12, marginBottom: 12 },
-  infoText: { color: '#059669', fontSize: 13, textAlign: 'center' },
+  title: { fontSize: 24, fontWeight: '700', color: COLORS.text.primary, marginBottom: 6 },
+  subtitle: { fontSize: 15, color: COLORS.text.secondary, marginBottom: 28 },
+  errorBox: { width: '100%', backgroundColor: COLORS.accent.dangerLight, borderRadius: 12, padding: 12, marginBottom: 12 },
+  errorText: { color: COLORS.accent.danger, fontSize: 13, textAlign: 'center' },
+  infoBox: { width: '100%', backgroundColor: COLORS.accent.sageLight, borderRadius: 12, padding: 12, marginBottom: 12 },
+  infoText: { color: COLORS.accent.sage, fontSize: 13, textAlign: 'center' },
   resendBtn: { marginBottom: 16 },
-  resendBtnText: { color: '#22C55E', fontWeight: '600', fontSize: 14, textAlign: 'center' },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 14, height: 50, marginBottom: 12 },
+  resendBtnText: { color: COLORS.accent.primary, fontWeight: '600', fontSize: 14, textAlign: 'center' },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: COLORS.surface, borderRadius: 14, paddingHorizontal: 14, height: 50, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border.light },
   inputIcon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: '#111827' },
+  input: { flex: 1, fontSize: 15, color: COLORS.text.primary },
   forgotWrap: { alignSelf: 'flex-end', marginBottom: 20 },
-  forgotText: { fontSize: 13, color: '#22C55E', fontWeight: '500' },
-  loginBtn: { width: '100%', backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  forgotText: { fontSize: 13, color: COLORS.accent.primary, fontWeight: '500' },
+  loginBtn: { width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  loginBtnText: { color: COLORS.text.inverse, fontSize: 16, fontWeight: '700' },
   registerWrap: { marginTop: 8 },
-  registerText: { fontSize: 14, color: '#57636C' },
-  registerLink: { color: '#22C55E', fontWeight: '600' },
+  registerText: { fontSize: 14, color: COLORS.text.secondary },
+  registerLink: { color: COLORS.accent.primary, fontWeight: '600' },
 });

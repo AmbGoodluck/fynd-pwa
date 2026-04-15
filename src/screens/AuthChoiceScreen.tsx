@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useGuestStore } from '../store/useGuestStore';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 
 
 type Props = { navigation: any };
@@ -189,25 +190,25 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   featureIcon: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: COLORS.accent.sageLight,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
   },
   featureText: { fontSize: 16, color: 'rgba(255,255,255,0.95)', flex: 1, lineHeight: 24, fontFamily: F.medium },
   buttons: { paddingBottom: 16, alignItems: 'center', gap: 14 },
   primaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 20,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 20,
     height: 60, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.4,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.4,
     shadowRadius: 15, shadowOffset: { width: 0, height: 6 }, elevation: 8,
   },
-  primaryBtnText: { color: '#fff', fontSize: 18, fontFamily: F.bold },
+  primaryBtnText: { color: COLORS.text.inverse, fontSize: 18, fontFamily: F.bold },
   outlineBtn: {
     width: '100%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.4)',
     borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  outlineBtnText: { color: '#fff', fontSize: 18, fontFamily: F.bold },
+  outlineBtnText: { color: COLORS.text.inverse, fontSize: 18, fontFamily: F.bold },
   ghostBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingVertical: 10,
@@ -230,30 +231,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB', marginBottom: 24,
   },
   modalIconWrap: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: '#F0FDF4',
+    width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.accent.sageLight,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 24, fontFamily: F.bold, color: '#111827',
+    fontSize: 24, fontFamily: F.bold, color: COLORS.text.primary,
     marginBottom: 12, textAlign: 'center', letterSpacing: -0.5,
   },
   modalBody: {
-    fontSize: 15, color: '#6B7280', textAlign: 'center',
+    fontSize: 15, color: COLORS.text.secondary, textAlign: 'center',
     lineHeight: 24, marginBottom: 20, paddingHorizontal: 4, fontFamily: F.medium,
   },
-  modalPermissions: { width: '100%', marginBottom: 24, padding: 16, backgroundColor: '#F9FAFB', borderRadius: 20 },
-  permissionHeader: { fontSize: 14, fontFamily: F.bold, color: '#111827', marginBottom: 10 },
+  modalPermissions: { width: '100%', marginBottom: 24, padding: 16, backgroundColor: COLORS.surface, borderRadius: 20 },
+  permissionHeader: { fontSize: 14, fontFamily: F.bold, color: COLORS.text.primary, marginBottom: 10 },
   permissionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  permissionText: { fontSize: 14, color: '#374151', fontFamily: F.medium },
+  permissionText: { fontSize: 14, color: COLORS.text.primary, fontFamily: F.medium },
   modalPrimaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 18,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 18,
     height: 56, alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
-  modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
+  modalPrimaryBtnText: { color: COLORS.text.inverse, fontSize: 16, fontFamily: F.bold },
   modalOutlineBtn: {
-    width: '100%', borderWidth: 2, borderColor: '#22C55E',
+    width: '100%', borderWidth: 2, borderColor: COLORS.accent.primary,
     borderRadius: 18, height: 56, alignItems: 'center', justifyContent: 'center',
   },
-  modalOutlineBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.bold },
+  modalOutlineBtnText: { color: COLORS.accent.primary, fontSize: 16, fontFamily: F.bold },
 
 });

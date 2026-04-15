@@ -461,45 +461,170 @@ async function addAIDescriptions(places: FyndPlace[], cityName: string): Promise
   return [...enriched, ...rest];
 }
 
+// ── Haversine ─────────────────────────────────────────────────────────────────
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ── Vibe → OSM type synonyms ──────────────────────────────────────────────────
+// Maps plain-English vibe tokens (from CreateTripScreen keywords) to the
+// Google-style type names stored in FyndPlace.types. This lets the scorer
+// give a type-level hit even before AI descriptions are generated.
+
+const VIBE_SYNONYMS: Record<string, string[]> = {
+  // Nature / outdoors
+  outdoor:        ['park', 'natural_feature', 'campground', 'tourist_attraction'],
+  outdoors:       ['park', 'natural_feature', 'campground'],
+  nature:         ['park', 'natural_feature', 'campground'],
+  garden:         ['park', 'natural_feature'],
+  trail:          ['park', 'natural_feature'],
+  hiking:         ['park', 'natural_feature', 'campground'],
+  hike:           ['park', 'natural_feature', 'campground'],
+  scenic:         ['natural_feature', 'tourist_attraction', 'park'],
+  viewpoint:      ['natural_feature', 'tourist_attraction'],
+  campground:     ['campground'],
+  adventure:      ['park', 'campground', 'tourist_attraction', 'natural_feature', 'bowling_alley'],
+  // Arts / culture
+  culture:        ['museum', 'art_gallery', 'tourist_attraction', 'performing_arts_theater'],
+  cultural:       ['museum', 'art_gallery', 'tourist_attraction'],
+  art:            ['art_gallery', 'museum'],
+  gallery:        ['art_gallery'],
+  museum:         ['museum', 'tourist_attraction'],
+  historical:     ['museum', 'tourist_attraction'],
+  historic:       ['museum', 'tourist_attraction'],
+  heritage:       ['museum', 'tourist_attraction'],
+  landmark:       ['tourist_attraction'],
+  monument:       ['tourist_attraction'],
+  // Photography
+  photography:    ['natural_feature', 'tourist_attraction', 'park', 'art_gallery'],
+  // Music / entertainment
+  music:          ['night_club', 'bar', 'performing_arts_theater'],
+  concert:        ['night_club', 'performing_arts_theater'],
+  venue:          ['night_club', 'performing_arts_theater', 'bar'],
+  festival:       ['tourist_attraction', 'park'],
+  entertainment:  ['movie_theater', 'night_club', 'performing_arts_theater', 'bowling_alley'],
+  // Nightlife
+  nightlife:      ['bar', 'night_club'],
+  nightclub:      ['night_club'],
+  lounge:         ['bar', 'night_club'],
+  pub:            ['bar'],
+  // Food / dining
+  dining:         ['restaurant', 'food'],
+  restaurant:     ['restaurant', 'food'],
+  food:           ['restaurant', 'cafe', 'bakery', 'food'],
+  cafe:           ['cafe'],
+  coffee:         ['cafe'],
+  bakery:         ['bakery'],
+  // Shopping
+  shopping:       ['store', 'shopping_mall', 'clothing_store'],
+  boutique:       ['store', 'clothing_store'],
+  market:         ['store', 'shopping_mall'],
+  mall:           ['shopping_mall'],
+  // Wellness / sports
+  wellness:       ['gym'],
+  yoga:           ['gym'],
+  spa:            ['gym'],
+  sports:         ['gym', 'stadium'],
+  stadium:        ['stadium'],
+  recreation:     ['park', 'gym', 'bowling_alley'],
+  // Accommodation
+  hotel:          ['lodging'],
+  lodging:        ['lodging'],
+};
+
+// Expand raw vibe keyword string tokens into a de-duped set that includes
+// both the original tokens AND their mapped OSM type synonyms.
+function expandVibeTokens(vibeFilter: string[]): string[] {
+  const rawTokens = vibeFilter
+    .flatMap(v => v.toLowerCase().split(/[^a-z0-9]+/g))
+    .filter(t => t.length >= 3);
+
+  const expanded = new Set<string>(rawTokens);
+  for (const token of rawTokens) {
+    const mapped = VIBE_SYNONYMS[token];
+    if (mapped) {
+      for (const t of mapped) expanded.add(t.replace(/_/g, ' ')); // "night_club" → "night club" for text match
+      for (const t of mapped) expanded.add(t); // keep raw for type comparison
+    }
+  }
+  return Array.from(expanded);
+}
+
+// Score a place against the expanded token list.
+// Type match (exact) = 3 pts, type match (substring) = 2 pts, text match = 1 pt.
+function scorePlace(place: FyndPlace, tokens: string[]): number {
+  const placeTypes = (place.types || []).map(t => t.toLowerCase());
+  const textHaystack = [
+    place.ai_description || '',
+    (place.known_for || []).join(' '),
+    place.vibe || '',
+    place.cuisine || '',
+    place.name,
+  ].join(' ').toLowerCase();
+
+  let score = 0;
+  for (const token of tokens) {
+    if (placeTypes.includes(token)) {
+      score += 3; // exact type match — strongest signal
+    } else if (placeTypes.some(t => t.includes(token) || token.includes(t))) {
+      score += 2; // partial type match
+    } else if (textHaystack.includes(token)) {
+      score += 1; // text / AI description match
+    }
+  }
+  return score;
+}
+
 // ── Filter & Sort ─────────────────────────────────────────────────────────────
+
+const MIN_VIBE_RESULTS = 8; // fall back to all places if fewer than this many matches
 
 function filterAndSort(
   places: FyndPlace[],
   vibeFilter: string[],
   excludeTypes: string[],
   limit: number,
+  originLat?: number,
+  originLng?: number,
+  maxDistanceKm?: number,
 ): FyndPlace[] {
+  // 1. Remove utility/non-exploration types
   let filtered = places.filter(p => !p.types.some(t => excludeTypes.includes(t)));
 
+  // 2. Distance cutoff — filter to user's requested radius
+  if (originLat !== undefined && originLng !== undefined && maxDistanceKm) {
+    const nearby = filtered.filter(p => haversineKm(originLat, originLng, p.lat, p.lng) <= maxDistanceKm);
+    // If the radius is very tight and returns almost nothing, relax it gracefully
+    if (nearby.length >= 3) {
+      filtered = nearby;
+    }
+  }
+
+  // 3. Vibe scoring — requires matching at least one token to appear in results
   if (vibeFilter.length > 0) {
-    const vibeTokens = vibeFilter
-      .flatMap(v => v.toLowerCase().split(/[^a-z0-9]+/g))
-      .filter(t => t.length >= 3);
+    const tokens = expandVibeTokens(vibeFilter);
 
-    if (vibeTokens.length > 0) {
-      const scored = filtered.map(p => {
-        const haystack = [
-          ...p.types,
-          p.ai_description || '',
-          (p.known_for || []).join(' '),
-          p.vibe || '',
-          p.cuisine || '',
-          p.name,
-        ].join(' ').toLowerCase();
-
-        let score = 0;
-        for (const token of vibeTokens) {
-          if (haystack.includes(token)) score++;
-        }
-        return { place: p, score };
-      });
+    if (tokens.length > 0) {
+      const scored = filtered.map(p => ({ place: p, score: scorePlace(p, tokens) }));
 
       scored.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.place.name.localeCompare(b.place.name);
       });
 
-      filtered = scored.map(s => s.place);
+      // Only return places with at least one token match.
+      // If not enough match (new city, no AI yet), fall back to full sorted list.
+      const matching = scored.filter(s => s.score > 0);
+      filtered = matching.length >= MIN_VIBE_RESULTS
+        ? matching.map(s => s.place)
+        : scored.map(s => s.place);
     }
   }
 
@@ -528,6 +653,10 @@ export async function getPlacesForLocation(
     limit = 60,
   } = options || {};
 
+  // Cache is always populated at full radius (30km) so any smaller radius
+  // request can be served from the same cache entry via post-filter.
+  const FETCH_RADIUS_KM = 30;
+
   // 1. Check local cache
   const cached = await getCachedCity(lat, lng);
   if (cached && cached.places.length > 0) {
@@ -537,11 +666,11 @@ export async function getPlacesForLocation(
         await updateCachedCityPlaces(lat, lng, enriched);
       }).catch(console.error);
     }
-    return filterAndSort(cached.places, vibeFilter, excludeTypes, limit);
+    return filterAndSort(cached.places, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
   }
 
-  // 2. Fetch from OSM (free)
-  const osmPlaces = await fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+  // 2. Fetch from OSM at full radius (always 30km for cache completeness)
+  const osmPlaces = await fetchPlacesFromOSM(lat, lng, FETCH_RADIUS_KM, cityName);
 
   if (osmPlaces.length === 0) {
     return [];
@@ -565,8 +694,8 @@ export async function getPlacesForLocation(
     }).catch(console.error);
   }
 
-  // 5. Return places immediately
-  return filterAndSort(osmPlaces, vibeFilter, excludeTypes, limit);
+  // 5. Return filtered + sorted results (applying distance cutoff for requested radius)
+  return filterAndSort(osmPlaces, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
 }
 
 // ── PlaceResult Mapper ────────────────────────────────────────────────────────

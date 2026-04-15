@@ -1,6 +1,7 @@
 export const F = {
-  regular:  'Inter_400Regular',
-  medium:   'Inter_500Medium',
-  semibold: 'Inter_600SemiBold',
-  bold:     'Inter_700Bold',
+  regular:   'Nunito_400Regular',
+  medium:    'Nunito_500Medium',
+  semibold:  'Nunito_600SemiBold',
+  bold:      'Nunito_700Bold',
+  extrabold: 'Nunito_800ExtraBold',
 };

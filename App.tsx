@@ -33,6 +33,7 @@ registerServiceWorker();
 //   App.tsx gates rendering on useFonts completing, so Font.isLoaded('ionicons')
 //   is already true when any icon first mounts.
 const fontSources = {
+  // Inter — kept for backward compat with screens not yet migrated to Nunito
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Inter_400Regular: require('@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf'),
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -41,6 +42,17 @@ const fontSources = {
   Inter_600SemiBold: require('@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf'),
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   Inter_700Bold: require('@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf'),
+  // Nunito — new design system font
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Nunito_400Regular: require('@expo-google-fonts/nunito/400Regular/Nunito_400Regular.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Nunito_500Medium: require('@expo-google-fonts/nunito/500Medium/Nunito_500Medium.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Nunito_600SemiBold: require('@expo-google-fonts/nunito/600SemiBold/Nunito_600SemiBold.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Nunito_700Bold: require('@expo-google-fonts/nunito/700Bold/Nunito_700Bold.ttf'),
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Nunito_800ExtraBold: require('@expo-google-fonts/nunito/800ExtraBold/Nunito_800ExtraBold.ttf'),
   // 'ionicons' lowercase — must match createIconSet fontName exactly
   ionicons: { uri: '/fonts/Ionicons.ttf' },
 };

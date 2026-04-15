@@ -43,7 +43,7 @@ export default function PWATopBar({ onSharedTripsPress, onProfilePress, onNotifi
           accessibilityLabel="Shared Trips"
           accessibilityRole="button"
         >
-          <Ionicons name="people-outline" size={22} color="#374151" />
+          <Ionicons name="people-outline" size={22} color="#3D3540" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -53,7 +53,7 @@ export default function PWATopBar({ onSharedTripsPress, onProfilePress, onNotifi
           accessibilityLabel="Profile"
           accessibilityRole="button"
         >
-          <Ionicons name="person-circle-outline" size={24} color="#374151" />
+          <Ionicons name="person-circle-outline" size={24} color="#3D3540" />
         </TouchableOpacity>
       </View>
     </View>
@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     // 48px bar height + safe area top
     height: 52,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFAF8',
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: 'rgba(26, 16, 25, 0.05)',
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 4,

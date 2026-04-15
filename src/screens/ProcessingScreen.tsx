@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Alert, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { F } from '../theme/fonts';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sentry from '../services/sentry';
@@ -24,7 +24,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
   const { destination, vibeKeywords, vibes, explorationHours, distanceMiles, timeOfDay, latitude, longitude } = route?.params || {};
   const [msgIndex, setMsgIndex] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const retryCount = useRef(0);
   const cancelledRef = useRef(false);
   const processingStartedAt = useRef(Date.now());
@@ -47,6 +47,9 @@ export default function ProcessingScreen({ navigation, route }: Props) {
         {
           vibeFilter: vibeKeywords || vibes || [],
           generateAI: true,
+          radiusKm: typeof distanceMiles === 'number' && distanceMiles > 0
+            ? distanceMiles * 1.60934
+            : 30,
           limit: 40,
         },
       );
