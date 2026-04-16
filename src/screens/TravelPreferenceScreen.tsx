@@ -13,20 +13,30 @@ import SuccessToast from '../components/SuccessToast';
 import GuestGateModal from '../components/GuestGateModal';
 
 const VIBES = [
-  { id: 'hidden_gems',  label: 'Hidden Gems',       image: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400' },
-  { id: 'photography',  label: 'Photography',        image: 'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=400' },
-  { id: 'work_friendly',label: 'Work-friendly',      image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400' },
-  { id: 'arts_culture', label: 'Arts & Culture',     image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400' },
-  { id: 'outdoor_park', label: 'Outdoor/Park',       image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400' },
-  { id: 'food_drinks',  label: 'Food & Drinks',      image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400' },
-  { id: 'nightlife',    label: 'Nightlife',          image: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=400' },
-  { id: 'shopping',     label: 'Shopping',           image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400' },
-  { id: 'wellness',     label: 'Wellness & Spa',     image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
-  { id: 'adventure',    label: 'Adventure',          image: 'https://images.unsplash.com/photo-1533130061792-64b345e4a833?w=400' },
-  { id: 'beaches',      label: 'Beaches',            image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400' },
-  { id: 'history',      label: 'History & Heritage', image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400' },
-  { id: 'music',        label: 'Music & Events',     image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400' },
-  { id: 'family',       label: 'Family Friendly',    image: 'https://images.unsplash.com/photo-1476703993599-0035a21b17a9?w=400' },
+  { id: 'food_drinks',      label: 'Food & Drinks',        image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400' },
+  { id: 'coffee_study',     label: 'Coffee & Study Spots', image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400' },
+  { id: 'nightlife',        label: 'Nightlife & Bars',     image: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=400' },
+  { id: 'outdoor_park',     label: 'Parks & Outdoors',     image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400' },
+  { id: 'hiking_trails',    label: 'Hiking & Trails',      image: 'https://images.unsplash.com/photo-1533130061792-64b345e4a833?w=400' },
+  { id: 'fitness_gym',      label: 'Fitness & Gyms',       image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400' },
+  { id: 'thrift_vintage',   label: 'Thrift & Vintage',     image: 'https://images.unsplash.com/photo-1490114538077-0a7f8cb49891?w=400' },
+  { id: 'shopping',         label: 'Shopping',             image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=400' },
+  { id: 'arts_culture',     label: 'Arts & Culture',       image: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400' },
+  { id: 'live_music',       label: 'Live Music & Events',  image: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400' },
+  { id: 'photography',      label: 'Photo Spots',          image: 'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=400' },
+  { id: 'budget_friendly',  label: 'Budget Friendly',      image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400' },
+  { id: 'late_night',       label: 'Late Night Eats',      image: 'https://images.unsplash.com/photo-1543353071-873f17a7a088?w=400' },
+  { id: 'brunch_breakfast', label: 'Brunch & Breakfast',   image: 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=400' },
+  { id: 'desserts_bakery',  label: 'Desserts & Bakeries',  image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400' },
+  { id: 'hidden_gems',      label: 'Hidden Gems',          image: 'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=400' },
+  { id: 'scenic_views',     label: 'Scenic Views',         image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400' },
+  { id: 'history',          label: 'History & Heritage',   image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400' },
+  { id: 'wellness',         label: 'Wellness & Relaxation',image: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=400' },
+  { id: 'family_friendly',  label: 'Family Friendly',      image: 'https://images.unsplash.com/photo-1476703993599-0035a21b17a9?w=400' },
+  { id: 'free_activities',  label: 'Free Activities',      image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400' },
+  { id: 'coworking',        label: 'Coworking Spaces',     image: 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=400' },
+  { id: 'pet_friendly',     label: 'Pet Friendly Places',  image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400' },
+  { id: 'date_spots',       label: 'Date Spots',           image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400' },
 ];
 
 type Props = { navigation: any };
@@ -110,7 +120,7 @@ export default function TravelPreferenceScreen({ navigation }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ActivityIndicator size="large" color="#22C55E" style={{ flex: 1 }} />
+        <ActivityIndicator size="large" color="#E8503A" style={{ flex: 1 }} />
       </SafeAreaView>
     );
   }
@@ -199,22 +209,22 @@ const styles = StyleSheet.create({
   topBarTitle:        { fontSize: 18, fontWeight: '600', color: '#111827' },
   header:             { paddingHorizontal: 20, paddingBottom: 10 },
   subtitle:           { fontSize: 14, color: '#57636C', lineHeight: 20 },
-  selectedPill:       { marginTop: 8, alignSelf: 'flex-start', backgroundColor: '#F0FDF4', borderRadius: 20, borderWidth: 1, borderColor: '#22C55E', paddingHorizontal: 14, paddingVertical: 4 },
-  selectedPillText:   { fontSize: 13, color: '#22C55E', fontWeight: '600' },
+  selectedPill:       { marginTop: 8, alignSelf: 'flex-start', backgroundColor: '#FFF0EE', borderRadius: 20, borderWidth: 1, borderColor: '#E8503A', paddingHorizontal: 14, paddingVertical: 4 },
+  selectedPillText:   { fontSize: 13, color: '#E8503A', fontWeight: '600' },
   grid:               { paddingHorizontal: 14, paddingBottom: 16 },
   vibeCard:           { flex: 1, margin: 6, height: 120, borderRadius: 16, overflow: 'hidden', position: 'relative' },
   vibeImage:          { width: '100%', height: '100%', resizeMode: 'cover' },
   vibeOverlay:        { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 16 },
-  vibeOverlaySelected:{ backgroundColor: 'rgba(34,197,94,0.35)' },
+  vibeOverlaySelected:{ backgroundColor: 'rgba(232,80,58,0.35)' },
   vibeBorder:         { ...StyleSheet.absoluteFillObject, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
-  vibeBorderSelected: { borderColor: '#22C55E' },
-  checkBadge:         { position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  vibeBorderSelected: { borderColor: '#E8503A' },
+  checkBadge:         { position: 'absolute', top: 8, right: 8, width: 24, height: 24, borderRadius: 12, backgroundColor: '#E8503A', alignItems: 'center', justifyContent: 'center' },
   vibeLabel:          { position: 'absolute', bottom: 10, left: 10, fontSize: 14, fontWeight: '600', color: '#fff' },
   bottomBar:          { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F2F2F7', flexShrink: 0 },
-  saveBtn:            { backgroundColor: '#22C55E', borderRadius: 16, height: 50, alignItems: 'center', justifyContent: 'center' },
+  saveBtn:            { backgroundColor: '#E8503A', borderRadius: 16, height: 50, alignItems: 'center', justifyContent: 'center' },
   saveBtnText:        { color: '#fff', fontSize: 16, fontWeight: '600' },
   toast:              { position: 'absolute', bottom: 90, left: 20, right: 20, alignItems: 'center' },
   toastInner:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#111827', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12, gap: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
-  toastIcon:          { width: 28, height: 28, borderRadius: 14, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center' },
+  toastIcon:          { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E8503A', alignItems: 'center', justifyContent: 'center' },
   toastText:          { color: '#fff', fontSize: 15, fontWeight: '500' },
 });

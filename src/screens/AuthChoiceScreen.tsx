@@ -68,7 +68,7 @@ export default function AuthChoiceScreen({ navigation }: Props) {
           ].map((f, i) => (
             <View key={i} style={styles.featureRow}>
               <View style={styles.featureIcon}>
-                <Ionicons name={f.icon as any} size={18} color="#22C55E" />
+                <Ionicons name={f.icon as any} size={18} color={COLORS.accent.primary} />
               </View>
               <Text style={styles.featureText}>{f.text}</Text>
             </View>
@@ -109,7 +109,7 @@ export default function AuthChoiceScreen({ navigation }: Props) {
               <View style={styles.modalSheet}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalIconWrap}>
-                  <Ionicons name="person-outline" size={32} color="#22C55E" />
+                  <Ionicons name="person-outline" size={32} color={COLORS.accent.primary} />
                 </View>
                 <Text style={styles.modalTitle}>Guest Access</Text>
                 <Text style={styles.modalBody}>
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   featureIcon: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: COLORS.accent.sageLight,
+    backgroundColor: 'rgba(232,80,58,0.15)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
   },
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB', marginBottom: 24,
   },
   modalIconWrap: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.accent.sageLight,
+    width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20,
   },
   modalTitle: {

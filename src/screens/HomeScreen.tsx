@@ -1,62 +1,132 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, Modal, TouchableWithoutFeedback, Platform,
-  ActivityIndicator,
+  ImageBackground, Image, Modal, TouchableWithoutFeedback, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
-import { useRecentTripStore } from '../store/useRecentTripStore';
+import { useUserLocation } from '../hooks/useUserLocation';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { F } from '../theme/fonts';
 import { COLORS } from '../theme/tokens';
 import PWATopBar from '../components/PWATopBar';
-import AppBar from '../components/AppBar';
-import { FALLBACK_IMAGE } from '../constants';
-import { formatRelativeDate } from '../utils/date';
-import { deleteItinerary } from '../services/database';
-import CampusBanner from '../components/home/CampusBanner';
-import ThingsToDoSection from '../components/home/ThingsToDoSection';
+import {
+  getPlacesForLocation,
+  reverseGeocodeFree,
+  FyndPlace,
+} from '../services/freePlacesService';
 
-const SERVICE_QUICK = [
-  { id: 'Medical',           label: 'Medical',    icon: 'medkit-outline',  color: '#EF4444' },
-  { id: 'Currency Exchange', label: 'Currency',   icon: 'cash-outline',    color: '#2A0BBF' },
-  { id: 'Transport',         label: 'Transport',  icon: 'car-outline',     color: '#047433' },
-  { id: 'Police',            label: 'Police',     icon: 'shield-outline',  color: '#1D3557' },
-  { id: 'seeAll',            label: 'See All',    icon: 'compass-outline', color: '#10B981' },
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const QUICK_FILTERS = [
+  { id: 'all',     label: 'For You' },
+  { id: 'food',    label: 'Food' },
+  { id: 'coffee',  label: 'Coffee' },
+  { id: 'outdoor', label: 'Outdoors' },
+  { id: 'night',   label: 'Night' },
+  { id: 'study',   label: 'Study' },
 ];
+
+const FILTER_TYPE_MAP: Record<string, string[]> = {
+  food:    ['restaurant', 'fast_food', 'food_court'],
+  coffee:  ['cafe'],
+  outdoor: ['park', 'garden', 'playground'],
+  night:   ['bar', 'pub', 'nightclub'],
+  study:   ['library', 'cafe'],
+};
+
+const SERVICE_HUB_QUICK = [
+  { id: 'Medical',          label: 'Medical',   icon: 'medkit-outline',   color: '#EF4444', bg: '#FEF2F2' },
+  { id: 'Currency Exchange',label: 'Currency',  icon: 'cash-outline',     color: '#7C3AED', bg: '#F5F3FF' },
+  { id: 'Transport',        label: 'Transit',   icon: 'bus-outline',      color: '#0EA5E9', bg: '#F0F9FF' },
+  { id: 'Police',           label: 'Safety',    icon: 'shield-outline',   color: '#2D8E62', bg: '#EAF6F0' },
+  { id: 'Emergency',        label: 'Emergency', icon: 'alert-circle-outline', color: '#F59E0B', bg: '#FFFBEB' },
+] as const;
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 type Props = { navigation: any };
 
 export default function HomeScreen({ navigation }: Props) {
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { isGuest } = useGuestStore();
-  const { recentTrips, isHydrating, fetchError, removeTrip } = useRecentTripStore();
-  const [showServiceHubGuestModal, setShowServiceHubGuestModal] = useState(false);
+  const { location, loading: locationLoading } = useUserLocation();
   const tabBarHeight = useTabBarHeight();
 
-  const handleDeleteTrip = (trip_id: string) => {
-    removeTrip(trip_id);
-    deleteItinerary(trip_id).catch(() => {});
-  };
+  const [cityName, setCityName] = useState('');
+  const [places, setPlaces] = useState<FyndPlace[]>([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [showServiceGate, setShowServiceGate] = useState(false);
+
+  // Resolve city name when location becomes available
+  useEffect(() => {
+    if (!location) return;
+    reverseGeocodeFree(location.latitude, location.longitude)
+      .then(name => setCityName(name))
+      .catch(() => {});
+  }, [location]);
+
+  // Fetch nearby places once location + cityName are ready
+  useEffect(() => {
+    if (!location) return;
+    setPlacesLoading(true);
+    getPlacesForLocation(
+      location.latitude,
+      location.longitude,
+      cityName || 'Nearby',
+      { limit: 20, generateAI: false },
+    )
+      .then(results => setPlaces(results))
+      .catch(() => {})
+      .finally(() => setPlacesLoading(false));
+  }, [location, cityName]);
+
+  // Apply quick-filter
+  const filteredPlaces =
+    activeFilter === 'all'
+      ? places
+      : places.filter(p => {
+          const types = FILTER_TYPE_MAP[activeFilter] ?? [];
+          return p.types.some(t => types.includes(t));
+        });
+
+  const heroPlace = filteredPlaces[0] ?? null;
+  const moreForYou = filteredPlaces.slice(1, 8);
+
+  const isLoading = locationLoading || placesLoading;
+
+  const userInitial =
+    user?.fullName?.charAt(0)?.toUpperCase() || (isGuest ? 'G' : '?');
 
   const handleServicePress = (id: string) => {
     if (isGuest || !isAuthenticated) {
-      setShowServiceHubGuestModal(true);
+      setShowServiceGate(true);
       return;
     }
-    if (id === 'seeAll') {
-      navigation.navigate('ServiceHub');
-    } else {
-      navigation.navigate('ServiceHub', { initialCategory: id });
-    }
+    navigation.navigate('ServiceHub', { initialCategory: id });
   };
+
+  const navToPlace = (place: FyndPlace) =>
+    navigation.navigate('PlaceDetail', {
+      placeId:     place.id,
+      name:        place.name,
+      address:     place.address,
+      photoUrl:    place.photo_urls[0] ?? '',
+      description: place.ai_description ?? '',
+      lat:         place.lat,
+      lng:         place.lng,
+      types:       place.types,
+    });
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.container} edges={Platform.OS === 'web' ? [] : ['top']}>
-      {/* ── Web: PWATopBar ──────────────────────────────────────────── */}
+
+      {/* Web: PWATopBar */}
       {Platform.OS === 'web' && (
         <PWATopBar
           onSharedTripsPress={() => navigation.navigate('SharedTrips')}
@@ -64,187 +134,259 @@ export default function HomeScreen({ navigation }: Props) {
           onNotificationsPress={() => navigation.navigate('Notifications')}
         />
       )}
-      {/* ── Native: AppBar ──────────────────────────────────────────── */}
+
+      {/* Native: Custom AppBar */}
       {Platform.OS !== 'web' && (
-        <AppBar
-          variant="root"
-          onProfilePress={() => navigation.navigate('Profile')}
-        />
+        <View style={styles.appBar}>
+          <View style={styles.appBarLeft}>
+            <View style={styles.appBarPinWrap}>
+              <Ionicons name="location-sharp" size={18} color={COLORS.accent.primary} />
+            </View>
+            <Text style={styles.appBarBrand}>fynd.</Text>
+          </View>
+          <View style={styles.appBarRight}>
+            <TouchableOpacity
+              style={styles.bellWrap}
+              onPress={() => navigation.navigate('Notifications')}
+            >
+              <Ionicons name="notifications-outline" size={22} color={COLORS.text.primary} />
+              <View style={styles.bellBadge}>
+                <Text style={styles.bellBadgeText}>2</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => navigation.navigate('Profile')}
+            >
+              <Text style={styles.avatarText}>{userInitial}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-
-        {/* 1. Campus banner */}
-        <CampusBanner />
-
-
-        {/* 3. Things to Do — real Firestore places */}
-        <ThingsToDoSection navigation={navigation} />
-
-        {/* 4. ServiceHub quick icons */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionLeft}>
-            <Ionicons name="compass-outline" size={20} color={COLORS.text.primary} />
-            <Text style={styles.sectionTitle}>ServiceHub</Text>
-          </View>
-          {!isGuest && isAuthenticated && (
-            <TouchableOpacity onPress={() => navigation.navigate('ServiceHub')} style={styles.seeAllBtn}>
-              <Text style={styles.seeAllText}>See All</Text>
-              <Ionicons name="chevron-forward" size={15} color="#10B981" />
-            </TouchableOpacity>
-          )}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 24 }]}
+      >
+        {/* ── Location bar ──────────────────────────────────────────── */}
+        <View style={styles.locationBar}>
+          <Ionicons name="navigate-circle-outline" size={16} color={COLORS.accent.primary} />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {locationLoading
+              ? 'Finding your location…'
+              : cityName || 'Tap to set location'}
+          </Text>
         </View>
 
+        {/* ── Search bar ────────────────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          activeOpacity={0.8}
+          onPress={() => {/* future: navigate to Search screen */}}
+        >
+          <Ionicons name="search-outline" size={18} color="#9E95A8" style={styles.searchIcon} />
+          <Text style={styles.searchPlaceholder}>Search places, vibes, cuisines…</Text>
+        </TouchableOpacity>
+
+        {/* ── Quick filters ─────────────────────────────────────────── */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.serviceRow}
-          contentContainerStyle={{ paddingRight: 20 }}
+          contentContainerStyle={styles.filtersRow}
         >
-          {SERVICE_QUICK.map(item => (
+          {QUICK_FILTERS.map(f => (
             <TouchableOpacity
-              key={item.id}
-              style={styles.serviceCard}
-              onPress={() => handleServicePress(item.id)}
+              key={f.id}
+              style={[styles.filterChip, activeFilter === f.id && styles.filterChipActive]}
+              onPress={() => setActiveFilter(f.id)}
+              activeOpacity={0.75}
             >
-              <View style={[styles.serviceIconWrap, { backgroundColor: item.color + '15' }]}>
-                <Ionicons name={item.icon as any} size={32} color={item.color} />
-              </View>
-              <Text style={styles.serviceLabel}>{item.label}</Text>
+              <Text
+                style={[
+                  styles.filterChipText,
+                  activeFilter === f.id && styles.filterChipTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
-        {/* 5. Recent Itineraries — hidden when list is empty and not loading */}
-        {(isHydrating || fetchError || recentTrips.length > 0) && <View style={styles.sectionHeader}>
-          <View style={styles.sectionLeft}>
-            <Ionicons name="calendar-outline" size={18} color={COLORS.text.primary} />
-            <Text style={styles.sectionTitle}>Recent Itineraries</Text>
-          </View>
-          {recentTrips.length > 0 && (
-            <TouchableOpacity onPress={() => navigation.navigate('Saved')} style={styles.seeAllBtn}>
-              <Text style={styles.seeAllText}>See All</Text>
-              <Ionicons name="chevron-forward" size={15} color="#10B981" />
-            </TouchableOpacity>
-          )}
-        </View>}
+        {/* ── Today's Pick ──────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Today's Pick</Text>
+        </View>
 
-        {isHydrating && recentTrips.length === 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.itineraryRow}
-            contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
-            scrollEnabled={false}
-          >
-            {[0, 1, 2].map(i => (
-              <View key={i} style={[styles.itineraryCard, styles.skeletonCard]}>
-                <ActivityIndicator size="small" color="#E5E7EB" style={{ opacity: 0 }} />
-              </View>
-            ))}
-          </ScrollView>
-        ) : fetchError ? (
-          <View style={styles.fetchErrorCard}>
-            <Ionicons name="cloud-offline-outline" size={32} color="#9CA3AF" />
-            <Text style={styles.fetchErrorText}>Couldn't load your trips</Text>
-            <TouchableOpacity
-              style={styles.fetchRetryBtn}
-              onPress={() => {
-                if (Platform.OS === 'web') (window as any).location.reload();
-              }}
-            >
-              <Text style={styles.fetchRetryBtnText}>Retry</Text>
-            </TouchableOpacity>
+        {isLoading ? (
+          <View style={[styles.heroCard, styles.skeleton]} />
+        ) : !location ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="location-outline" size={36} color="#C8C2CE" />
+            <Text style={styles.emptyTitle}>Location not available</Text>
+            <Text style={styles.emptySub}>
+              Allow location access to discover places near you.
+            </Text>
           </View>
-        ) : recentTrips.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.itineraryRow}
-            contentContainerStyle={{ paddingLeft: 20, paddingRight: 8 }}
+        ) : heroPlace ? (
+          <TouchableOpacity
+            style={styles.heroCard}
+            activeOpacity={0.9}
+            onPress={() => navToPlace(heroPlace)}
           >
-            {recentTrips.slice(0, 6).map(trip => {
-              const coverImage = trip.places[0]?.image || FALLBACK_IMAGE;
-              const cityLabel = trip.city || 'My Trip';
-              const dateLabel = formatRelativeDate(trip.last_accessed || trip.created_at);
-              return (
-                <View key={trip.trip_id} style={styles.itineraryCard}>
-                  <TouchableOpacity
-                    style={{ flex: 1 }}
-                    activeOpacity={0.85}
-                    onPress={() => navigation.navigate('Itinerary', {
-                      places: trip.places.map(p => ({
-                        placeId: p.id,
-                        name: p.name,
-                        address: p.address,
-                        rating: p.rating ?? 0,
-                        description: p.description ?? '',
-                        photoRef: '',
-                        photoUrl: p.image,
-                        coordinates: { lat: p.coordinate.latitude, lng: p.coordinate.longitude },
-                      })),
-                      destination: cityLabel,
-                      tripId: trip.trip_id,
-                    })}
-                  >
-                    <ImageBackground
-                      source={{ uri: coverImage }}
-                      style={styles.itineraryCardBg}
-                      imageStyle={styles.itineraryCardImg}
-                    >
-                      <View style={styles.itineraryCardOverlay}>
-                        <Text style={styles.itineraryCardCity} numberOfLines={1}>{cityLabel}</Text>
-                        <Text style={styles.itineraryCardDate}>{dateLabel}</Text>
-                      </View>
-                    </ImageBackground>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.itineraryDeleteBtn}
-                    onPress={() => handleDeleteTrip(trip.trip_id)}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Ionicons name="close" size={12} color="#fff" />
-                  </TouchableOpacity>
+            <ImageBackground
+              source={{ uri: heroPlace.photo_urls[0] ?? '' }}
+              style={styles.heroImage}
+              imageStyle={styles.heroImageStyle}
+            >
+              <View style={styles.heroOverlay}>
+                <View style={styles.heroTopRow}>
+                  <View style={styles.heroBadge}>
+                    <Text style={styles.heroBadgeText}>Picked for you</Text>
+                  </View>
                 </View>
-              );
-            })}
-          </ScrollView>
+                <View style={styles.heroBottom}>
+                  {(heroPlace.vibe ?? heroPlace.types[0]) ? (
+                    <View style={styles.heroVibePill}>
+                      <Text style={styles.heroVibePillText}>
+                        {heroPlace.vibe ?? heroPlace.types[0]}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.heroName} numberOfLines={1}>{heroPlace.name}</Text>
+                  {heroPlace.ai_description ? (
+                    <Text style={styles.heroDesc} numberOfLines={2}>
+                      {heroPlace.ai_description}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            </ImageBackground>
+          </TouchableOpacity>
         ) : (
           <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="map-outline" size={44} color="#10B981" />
-            </View>
-            <Text style={styles.emptyTitle}>Your next story starts here</Text>
-            <Text style={styles.emptySubtitle}>
-              Plan a custom itinerary and explore the world like a local.
-            </Text>
-            <TouchableOpacity
-              style={styles.startBtn}
-              onPress={() => navigation.navigate('Create Trip')}
-            >
-              <Ionicons name="sparkles" size={16} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.startBtnText}>Start Planning</Text>
-            </TouchableOpacity>
+            <Ionicons name="map-outline" size={36} color="#C8C2CE" />
+            <Text style={styles.emptyTitle}>No places found nearby</Text>
+            <Text style={styles.emptySub}>Try a different filter or expand your area.</Text>
           </View>
         )}
 
-        <View style={{ height: tabBarHeight + 20 }} />
+        {/* ── More for you ──────────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>More for you</Text>
+          {!isLoading && moreForYou.length > 0 && (
+            <TouchableOpacity style={styles.seeAllBtn}>
+              <Text style={styles.seeAllText}>See all</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.accent.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {isLoading ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.moreRow}
+            scrollEnabled={false}
+          >
+            {[0, 1, 2].map(i => (
+              <View key={i} style={[styles.moreCard, styles.skeleton]} />
+            ))}
+          </ScrollView>
+        ) : moreForYou.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.moreRow}
+          >
+            {moreForYou.map(place => (
+              <TouchableOpacity
+                key={place.id}
+                style={styles.moreCard}
+                activeOpacity={0.85}
+                onPress={() => navToPlace(place)}
+              >
+                <Image
+                  source={{ uri: place.photo_urls[0] ?? '' }}
+                  style={styles.moreCardImage}
+                />
+                <View style={styles.moreCardBody}>
+                  <Text style={styles.moreCardName} numberOfLines={1}>{place.name}</Text>
+                  <Text style={styles.moreCardSub} numberOfLines={1}>
+                    {place.types[0] ?? 'Place'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : null}
+
+        {/* ── Went Here Prompt ──────────────────────────────────────── */}
+        <TouchableOpacity
+          style={styles.wentHereCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('SupportFeedback')}
+        >
+          <View style={styles.wentHereLeft}>
+            <View style={styles.wentHereIconWrap}>
+              <Ionicons name="star-outline" size={20} color={COLORS.accent.primary} />
+            </View>
+            <View>
+              <Text style={styles.wentHereTitle}>Been somewhere good?</Text>
+              <Text style={styles.wentHereSub}>Tell us about it</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.accent.primary} />
+        </TouchableOpacity>
+
+        {/* ── ServiceHub Quick ──────────────────────────────────────── */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionLeft}>
+            <Ionicons name="compass-outline" size={18} color={COLORS.text.primary} />
+            <Text style={styles.sectionTitle}>ServiceHub</Text>
+          </View>
+          {isAuthenticated && !isGuest && (
+            <TouchableOpacity
+              style={styles.seeAllBtn}
+              onPress={() => navigation.navigate('ServiceHub')}
+            >
+              <Text style={styles.seeAllText}>See all</Text>
+              <Ionicons name="chevron-forward" size={14} color={COLORS.accent.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.serviceRow}>
+          {SERVICE_HUB_QUICK.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.serviceCard}
+              onPress={() => handleServicePress(item.id)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.serviceIconWrap, { backgroundColor: item.bg }]}>
+                <Ionicons name={item.icon as any} size={24} color={item.color} />
+              </View>
+              <Text style={styles.serviceLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
 
-      {/* ServiceHub Guest Modal */}
+      {/* ── ServiceHub Guest Gate Modal ───────────────────────────── */}
       <Modal
-        visible={showServiceHubGuestModal}
+        visible={showServiceGate}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowServiceHubGuestModal(false)}
+        onRequestClose={() => setShowServiceGate(false)}
       >
-        <TouchableWithoutFeedback onPress={() => setShowServiceHubGuestModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowServiceGate(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
               <View style={styles.modalSheet}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalIconWrap}>
-                  <Ionicons name="compass-outline" size={32} color="#10B981" />
+                  <Ionicons name="compass-outline" size={32} color={COLORS.accent.primary} />
                 </View>
                 <Text style={styles.modalTitle}>Account Required</Text>
                 <Text style={styles.modalBody}>
@@ -252,19 +394,19 @@ export default function HomeScreen({ navigation }: Props) {
                 </Text>
                 <TouchableOpacity
                   style={styles.modalPrimaryBtn}
-                  onPress={() => { setShowServiceHubGuestModal(false); navigation.navigate('Login'); }}
+                  onPress={() => { setShowServiceGate(false); navigation.navigate('Login'); }}
                 >
                   <Text style={styles.modalPrimaryBtnText}>Sign In</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.modalOutlineBtn}
-                  onPress={() => { setShowServiceHubGuestModal(false); navigation.navigate('Register'); }}
+                  onPress={() => { setShowServiceGate(false); navigation.navigate('Register'); }}
                 >
                   <Text style={styles.modalOutlineBtnText}>Create Account</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.modalGhostBtn}
-                  onPress={() => setShowServiceHubGuestModal(false)}
+                  onPress={() => setShowServiceGate(false)}
                 >
                   <Text style={styles.modalGhostBtnText}>Cancel</Text>
                 </TouchableOpacity>
@@ -277,130 +419,197 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: '#FFFAF8' },
   scroll:    { paddingBottom: 24 },
 
-  // Section header
+  // ── AppBar (native) ──────────────────────────────────────────────────────
+  appBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 12, backgroundColor: '#FFFAF8',
+  },
+  appBarLeft:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  appBarPinWrap: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: COLORS.accent.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  appBarBrand: { fontSize: 22, fontFamily: F.extrabold, color: '#1A1019' },
+  appBarRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bellWrap:    { position: 'relative', padding: 4 },
+  bellBadge: {
+    position: 'absolute', top: 0, right: 0,
+    minWidth: 16, height: 16, borderRadius: 8,
+    backgroundColor: COLORS.accent.primary,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+  },
+  bellBadgeText: { fontSize: 9, color: '#fff', fontFamily: F.bold },
+  avatar: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: COLORS.accent.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: COLORS.accent.primary,
+  },
+  avatarText: { fontSize: 14, fontFamily: F.bold, color: COLORS.accent.primaryDark },
+
+  // ── Location bar ──────────────────────────────────────────────────────────
+  locationBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 20, marginBottom: 12,
+  },
+  locationText: { fontSize: 13, fontFamily: F.semibold, color: COLORS.text.secondary, flex: 1 },
+
+  // ── Search bar ────────────────────────────────────────────────────────────
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 20, marginBottom: 16,
+    backgroundColor: '#FFFFFF', borderRadius: 16,
+    paddingHorizontal: 14, height: 48,
+    borderWidth: 1, borderColor: 'rgba(26,16,25,0.07)',
+    shadowColor: '#1A1019', shadowOpacity: 0.04,
+    shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+  },
+  searchIcon:        { marginRight: 8 },
+  searchPlaceholder: { fontSize: 14, fontFamily: F.regular, color: '#9E95A8', flex: 1 },
+
+  // ── Quick filters ─────────────────────────────────────────────────────────
+  filtersRow: { paddingHorizontal: 20, paddingBottom: 4, gap: 8 },
+  filterChip: {
+    paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 9999, backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, borderColor: 'rgba(26,16,25,0.08)',
+  },
+  filterChipActive:     { backgroundColor: COLORS.accent.primaryLight, borderColor: COLORS.accent.primary },
+  filterChipText:       { fontSize: 13, fontFamily: F.semibold, color: '#6E6577' },
+  filterChipTextActive: { color: COLORS.accent.primaryDark },
+
+  // ── Section header ────────────────────────────────────────────────────────
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, marginBottom: 16, marginTop: 24,
+    paddingHorizontal: 20, marginTop: 24, marginBottom: 12,
   },
-  sectionLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sectionTitle: { fontSize: 17, fontFamily: F.semibold, color: COLORS.text.primary },
-  seeAllBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F0FDF4', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
-  },
-  seeAllText: { fontSize: 13, color: '#10B981', fontFamily: F.bold },
+  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 17, fontFamily: F.bold, color: '#1A1019' },
+  seeAllBtn:    { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  seeAllText:   { fontSize: 13, fontFamily: F.semibold, color: COLORS.accent.primary },
 
-  // ServiceHub row
-  serviceRow: { paddingLeft: 20, marginBottom: 8 },
-  serviceCard: {
-    width: 90, height: 110, borderRadius: 24,
-    borderWidth: 1.5, borderColor: '#F2F2F7',
-    alignItems: 'center', justifyContent: 'center',
-    marginRight: 16, backgroundColor: '#fff', gap: 8,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 }, elevation: 2,
-  },
-  serviceIconWrap: {
-    width: 56, height: 56, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  serviceLabel: { fontSize: 12, textAlign: 'center', color: '#4B5563', fontFamily: F.semibold },
+  // ── Skeleton ──────────────────────────────────────────────────────────────
+  skeleton: { backgroundColor: '#EDE8ED' },
 
-  // Recent itineraries
-  itineraryRow: { marginBottom: 24 },
-  skeletonCard: { backgroundColor: '#E5E7EB' },
-  itineraryCard: {
-    width: 140, height: 140, borderRadius: 20,
-    marginRight: 12, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+  // ── Hero card ─────────────────────────────────────────────────────────────
+  heroCard: {
+    marginHorizontal: 20, height: 200, borderRadius: 24, overflow: 'hidden',
+    backgroundColor: '#D0CBD0',
+    shadowColor: '#1A1019', shadowOpacity: 0.12,
+    shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 5,
   },
-  itineraryCardBg:      { flex: 1 },
-  itineraryCardImg:     { borderRadius: 20 },
-  itineraryCardOverlay: {
+  heroImage:      { flex: 1 },
+  heroImageStyle: { borderRadius: 24 },
+  heroOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.38)',
-    borderRadius: 20, justifyContent: 'flex-end', padding: 12,
+    padding: 16, justifyContent: 'space-between',
   },
-  itineraryCardCity: { fontSize: 14, fontFamily: F.bold, color: '#fff', letterSpacing: -0.2 },
-  itineraryCardDate: { fontSize: 11, fontFamily: F.medium, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  itineraryDeleteBtn: {
-    position: 'absolute', top: 8, right: 8,
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+  heroTopRow: { flexDirection: 'row' },
+  heroBadge: {
+    backgroundColor: COLORS.accent.primary, borderRadius: 9999,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  heroBadgeText:  { fontSize: 11, fontFamily: F.bold, color: '#fff' },
+  heroBottom:     { gap: 4 },
+  heroVibePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 9999,
+    paddingHorizontal: 8, paddingVertical: 3,
+  },
+  heroVibePillText: { fontSize: 11, fontFamily: F.semibold, color: 'rgba(255,255,255,0.9)' },
+  heroName:         { fontSize: 20, fontFamily: F.extrabold, color: '#fff' },
+  heroDesc:         { fontSize: 12, fontFamily: F.regular, color: 'rgba(255,255,255,0.8)', lineHeight: 18 },
+
+  // ── Empty / no-location card ──────────────────────────────────────────────
+  emptyCard: {
+    marginHorizontal: 20, paddingVertical: 36, borderRadius: 24,
+    backgroundColor: '#FFFFFF', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: 'rgba(26,16,25,0.06)',
+  },
+  emptyTitle: { fontSize: 16, fontFamily: F.bold, color: '#1A1019' },
+  emptySub: {
+    fontSize: 13, fontFamily: F.regular, color: '#6E6577',
+    textAlign: 'center', paddingHorizontal: 32, lineHeight: 20,
+  },
+
+  // ── More for you ──────────────────────────────────────────────────────────
+  moreRow:       { paddingLeft: 20, paddingRight: 8, gap: 12 },
+  moreCard: {
+    width: 160, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#1A1019', shadowOpacity: 0.06,
+    shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+  },
+  moreCardImage: { width: '100%', height: 110, resizeMode: 'cover' },
+  moreCardBody:  { padding: 10, gap: 3 },
+  moreCardName:  { fontSize: 13, fontFamily: F.bold, color: '#1A1019' },
+  moreCardSub:   { fontSize: 11, fontFamily: F.regular, color: '#9E95A8', textTransform: 'capitalize' },
+
+  // ── Went Here Prompt ──────────────────────────────────────────────────────
+  wentHereCard: {
+    marginHorizontal: 20, marginTop: 20,
+    backgroundColor: COLORS.accent.primaryLight,
+    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: 'rgba(232,80,58,0.15)',
+  },
+  wentHereLeft:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  wentHereIconWrap: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+  },
+  wentHereTitle: { fontSize: 14, fontFamily: F.bold, color: '#1A1019' },
+  wentHereSub:   { fontSize: 12, fontFamily: F.regular, color: COLORS.accent.primary, marginTop: 2 },
+
+  // ── ServiceHub quick row ──────────────────────────────────────────────────
+  serviceRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingHorizontal: 20, marginBottom: 8,
+  },
+  serviceCard:    { alignItems: 'center', gap: 6, flex: 1 },
+  serviceIconWrap: {
+    width: 52, height: 52, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
+  serviceLabel: { fontSize: 11, fontFamily: F.semibold, color: '#3D3540', textAlign: 'center' },
 
-  // Empty state
-  emptyCard: {
-    alignItems: 'center', paddingVertical: 40,
-    marginHorizontal: 20, borderRadius: 28,
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F2F2F7',
-    marginBottom: 24,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15,
-    shadowOffset: { width: 0, height: 5 }, elevation: 2,
-  },
-  emptyIconWrap: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#F0FDF4', alignItems: 'center',
-    justifyContent: 'center', marginBottom: 20,
-  },
-  emptyTitle:    { fontSize: 18, fontFamily: F.bold, color: COLORS.text.primary, marginBottom: 8 },
-  emptySubtitle: {
-    fontSize: 14, color: COLORS.text.secondary, textAlign: 'center',
-    paddingHorizontal: 32, marginBottom: 24, lineHeight: 22, fontFamily: F.regular,
-  },
-  startBtn: {
-    backgroundColor: '#10B981', borderRadius: 20,
-    paddingHorizontal: 32, paddingVertical: 14,
-    flexDirection: 'row', alignItems: 'center',
-  },
-  startBtnText: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
-
-  // Error card
-  fetchErrorCard: {
-    alignItems: 'center', paddingVertical: 28,
-    marginHorizontal: 20, borderRadius: 20,
-    backgroundColor: '#fff', borderWidth: 1, borderColor: '#F2F2F7',
-    marginBottom: 24, gap: 8,
-  },
-  fetchErrorText: { fontSize: 14, fontFamily: F.medium, color: COLORS.text.secondary },
-  fetchRetryBtn: {
-    marginTop: 4, backgroundColor: '#F0FDF4', borderRadius: 14,
-    paddingHorizontal: 20, paddingVertical: 8,
-    borderWidth: 1, borderColor: '#10B981',
-  },
-  fetchRetryBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#10B981' },
-
-  // Modal
+  // ── Modal ─────────────────────────────────────────────────────────────────
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
   },
-  modalHandle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: '#E5E5EA', marginBottom: 20,
-  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E5EA', marginBottom: 20 },
   modalIconWrap: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0FDF4',
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  modalTitle: { fontSize: 22, fontFamily: F.bold, color: COLORS.text.primary, marginBottom: 10, textAlign: 'center' },
-  modalBody: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 4 },
+  modalTitle: {
+    fontSize: 22, fontFamily: F.bold, color: COLORS.text.primary,
+    marginBottom: 10, textAlign: 'center',
+  },
+  modalBody: {
+    fontSize: 14, color: '#57636C', textAlign: 'center',
+    lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
+  },
   modalPrimaryBtn: {
-    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
   modalOutlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#10B981',
+    width: '100%', borderWidth: 1.5, borderColor: COLORS.accent.primary,
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalOutlineBtnText: { color: '#10B981', fontSize: 16, fontFamily: F.semibold },
-  modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
+  modalOutlineBtnText: { color: COLORS.accent.primary, fontSize: 16, fontFamily: F.semibold },
+  modalGhostBtn:     { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
 });
