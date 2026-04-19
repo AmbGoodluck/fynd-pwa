@@ -170,7 +170,7 @@ export default function HomeScreen({ navigation }: Props) {
       >
         {/* ── Location bar ──────────────────────────────────────────── */}
         <View style={styles.locationBar}>
-          <Ionicons name="navigate-circle-outline" size={16} color={COLORS.accent.primary} />
+          <Ionicons name="location-sharp" size={16} color={COLORS.accent.primary} />
           <Text style={styles.locationText} numberOfLines={1}>
             {locationLoading
               ? 'Finding your location…'
@@ -255,7 +255,7 @@ export default function HomeScreen({ navigation }: Props) {
                   ) : null}
                   <Text style={styles.heroName} numberOfLines={1}>{heroPlace.name}</Text>
                   {heroPlace.ai_description ? (
-                    <Text style={styles.heroDesc} numberOfLines={2}>
+                    <Text style={styles.heroDesc} numberOfLines={1}>
                       {heroPlace.ai_description}
                     </Text>
                   ) : null}
@@ -478,12 +478,12 @@ const styles = StyleSheet.create({
   filtersRow: { paddingHorizontal: 20, paddingBottom: 4, gap: 8 },
   filterChip: {
     paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 9999, backgroundColor: '#FFFFFF',
-    borderWidth: 1.5, borderColor: 'rgba(26,16,25,0.08)',
+    borderRadius: 9999, backgroundColor: 'transparent',
+    borderWidth: 1.5, borderColor: COLORS.border.default,
   },
-  filterChipActive:     { backgroundColor: COLORS.accent.primaryLight, borderColor: COLORS.accent.primary },
-  filterChipText:       { fontSize: 13, fontFamily: F.semibold, color: '#6E6577' },
-  filterChipTextActive: { color: COLORS.accent.primaryDark },
+  filterChipActive:     { backgroundColor: COLORS.accent.primary, borderColor: COLORS.accent.primary },
+  filterChipText:       { fontSize: 13, fontFamily: F.semibold, color: COLORS.text.tertiary },
+  filterChipTextActive: { color: '#FFFFFF' },
 
   // ── Section header ────────────────────────────────────────────────────────
   sectionHeader: {
