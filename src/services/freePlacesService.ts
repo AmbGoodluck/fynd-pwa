@@ -582,6 +582,23 @@ function scorePlace(place: FyndPlace, tokens: string[]): number {
   return score;
 }
 
+// ── Chain Detection ───────────────────────────────────────────────────────────
+
+const CHAIN_KEYWORDS = [
+  'mcdonald', 'burger king', 'wendy', 'taco bell', 'subway', 'domino',
+  'pizza hut', 'papa john', 'little caesars', 'sonic', 'arby', 'hardee',
+  'chick-fil-a', 'popeyes', 'kfc', 'dunkin', 'starbucks', 'red lobster',
+  'olive garden', 'applebee', "chili's", 'ihop', 'denny', 'waffle house',
+  'cracker barrel', 'dollar general', 'dollar tree', 'walmart', 'target',
+  'walgreens', 'cvs', 'save-a-lot', 'aldi', 'kroger', 'shell', 'bp',
+  'speedway', 'circle k', 'marathon', 'valero',
+];
+
+function isChain(name: string): boolean {
+  const lower = name.toLowerCase();
+  return CHAIN_KEYWORDS.some(c => lower.includes(c));
+}
+
 // ── Filter & Sort ─────────────────────────────────────────────────────────────
 
 const MIN_VIBE_RESULTS = 8; // fall back to all places if fewer than this many matches
@@ -627,6 +644,13 @@ function filterAndSort(
         : scored.map(s => s.place);
     }
   }
+
+  // 4. Push chains to the end, preserving relative order within each tier
+  filtered.sort((a, b) => {
+    const aChain = isChain(a.name) ? 1 : 0;
+    const bChain = isChain(b.name) ? 1 : 0;
+    return aChain - bChain;
+  });
 
   return filtered.slice(0, limit);
 }

@@ -254,11 +254,16 @@ export default function HomeScreen({ navigation }: Props) {
                     </View>
                   ) : null}
                   <Text style={styles.heroName} numberOfLines={1}>{heroPlace.name}</Text>
-                  {heroPlace.ai_description ? (
-                    <Text style={styles.heroDesc} numberOfLines={1}>
-                      {heroPlace.ai_description}
-                    </Text>
-                  ) : null}
+                  {(() => {
+                    const desc = heroPlace.ai_description
+                      ? heroPlace.ai_description.split('.')[0] + '.'
+                      : heroPlace.cuisine
+                        ? heroPlace.cuisine.charAt(0).toUpperCase() + heroPlace.cuisine.slice(1)
+                        : heroPlace.types[0]?.replace(/_/g, ' ') || '';
+                    return desc ? (
+                      <Text style={styles.heroDesc} numberOfLines={1}>{desc}</Text>
+                    ) : null;
+                  })()}
                 </View>
               </View>
             </ImageBackground>
@@ -306,14 +311,25 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.85}
                 onPress={() => navToPlace(place)}
               >
-                <Image
-                  source={{ uri: place.photo_urls[0] ?? '' }}
-                  style={styles.moreCardImage}
-                />
+                <View style={styles.moreCardImageWrap}>
+                  <Image
+                    source={{ uri: place.photo_urls[0] ?? '' }}
+                    style={styles.moreCardImage}
+                  />
+                  {place.vibe && (
+                    <View style={styles.cardVibePill}>
+                      <Text style={styles.cardVibeText}>{place.vibe}</Text>
+                    </View>
+                  )}
+                </View>
                 <View style={styles.moreCardBody}>
                   <Text style={styles.moreCardName} numberOfLines={1}>{place.name}</Text>
                   <Text style={styles.moreCardSub} numberOfLines={1}>
-                    {place.types[0] ?? 'Place'}
+                    {place.ai_description
+                      ? place.ai_description.split('.')[0] + '.'
+                      : place.cuisine
+                        ? place.cuisine.charAt(0).toUpperCase() + place.cuisine.slice(1)
+                        : place.types[0]?.replace(/_/g, ' ') || 'Place'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -547,7 +563,14 @@ const styles = StyleSheet.create({
     shadowColor: '#1A1019', shadowOpacity: 0.06,
     shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2,
   },
+  moreCardImageWrap: { position: 'relative' },
   moreCardImage: { width: '100%', height: 110, resizeMode: 'cover' },
+  cardVibePill: {
+    position: 'absolute', bottom: 8, left: 8,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100,
+  },
+  cardVibeText:  { fontSize: 9, fontFamily: F.bold, color: '#fff' },
   moreCardBody:  { padding: 10, gap: 3 },
   moreCardName:  { fontSize: 13, fontFamily: F.bold, color: '#1A1019' },
   moreCardSub:   { fontSize: 11, fontFamily: F.regular, color: '#9E95A8', textTransform: 'capitalize' },
