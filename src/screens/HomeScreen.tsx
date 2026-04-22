@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, Image, Modal, TouchableWithoutFeedback, Platform,
+  ImageBackground, Image, Modal, TouchableWithoutFeedback, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -17,6 +17,8 @@ import {
   reverseGeocodeFree,
   FyndPlace,
 } from '../services/freePlacesService';
+import { db } from '../services/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,20 @@ export default function HomeScreen({ navigation }: Props) {
   const [placesLoading, setPlacesLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [showServiceGate, setShowServiceGate] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Notification badge listener
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+    const q = query(
+      collection(db, 'notifications'),
+      where('user_id', '==', userId),
+      where('read', '==', false),
+    );
+    const unsub = onSnapshot(q, snap => setUnreadCount(snap.size), () => {});
+    return unsub;
+  }, [user?.id]);
 
   // Resolve city name when location becomes available
   useEffect(() => {
@@ -77,7 +93,7 @@ export default function HomeScreen({ navigation }: Props) {
       location.latitude,
       location.longitude,
       cityName || 'Nearby',
-      { limit: 20, generateAI: false },
+      { limit: 20, generateAI: true },
     )
       .then(results => setPlaces(results))
       .catch(() => {})
@@ -115,10 +131,14 @@ export default function HomeScreen({ navigation }: Props) {
       name:        place.name,
       address:     place.address,
       photoUrl:    place.photo_urls[0] ?? '',
+      photoUrls:   place.photo_urls,
       description: place.ai_description ?? '',
       lat:         place.lat,
       lng:         place.lng,
       types:       place.types,
+      phone:       place.phone ?? '',
+      website:     place.website ?? '',
+      place,
     });
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -150,9 +170,11 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('Notifications')}
             >
               <Ionicons name="notifications-outline" size={22} color={COLORS.text.primary} />
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>2</Text>
-              </View>
+              {unreadCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.avatar}
@@ -259,7 +281,7 @@ export default function HomeScreen({ navigation }: Props) {
                       ? heroPlace.ai_description.split('.')[0] + '.'
                       : heroPlace.cuisine
                         ? heroPlace.cuisine.charAt(0).toUpperCase() + heroPlace.cuisine.slice(1)
-                        : heroPlace.types[0]?.replace(/_/g, ' ') || '';
+                        : '';
                     return desc ? (
                       <Text style={styles.heroDesc} numberOfLines={1}>{desc}</Text>
                     ) : null;
@@ -327,9 +349,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={styles.moreCardSub} numberOfLines={1}>
                     {place.ai_description
                       ? place.ai_description.split('.')[0] + '.'
-                      : place.cuisine
-                        ? place.cuisine.charAt(0).toUpperCase() + place.cuisine.slice(1)
-                        : place.types[0]?.replace(/_/g, ' ') || 'Place'}
+                      : place.cuisine || place.types[0]?.replace(/_/g, ' ') || 'Place'}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -341,7 +361,7 @@ export default function HomeScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.wentHereCard}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate('SupportFeedback')}
+          onPress={() => Alert.alert('Coming soon!', 'Log a visit directly from any place page — tap "I went here" on the place detail.')}
         >
           <View style={styles.wentHereLeft}>
             <View style={styles.wentHereIconWrap}>

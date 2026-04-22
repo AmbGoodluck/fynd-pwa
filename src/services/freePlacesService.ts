@@ -673,7 +673,7 @@ export async function getPlacesForLocation(
     radiusKm = 30,
     generateAI = true,
     vibeFilter = [],
-    excludeTypes = ['atm', 'convenience_store', 'gas_station', 'supermarket', 'fast_food', 'meal_takeaway', 'fuel', 'car_wash', 'car_repair', 'parking', 'bank'],
+    excludeTypes = ['atm', 'convenience_store', 'gas_station', 'supermarket', 'fast_food', 'meal_takeaway', 'fuel', 'car_wash', 'car_repair', 'parking', 'bank', 'pharmacy'],
     limit = 60,
   } = options || {};
 

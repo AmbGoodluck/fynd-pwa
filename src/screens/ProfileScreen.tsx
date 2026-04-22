@@ -10,6 +10,7 @@ import { useTempItineraryStore } from '../store/useTempItineraryStore';
 import { useRecentTripStore } from '../store/useRecentTripStore';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { useAddToHomeScreen } from '../hooks/useAddToHomeScreen';
 
 type Props = { navigation: any };
@@ -80,7 +81,7 @@ export default function ProfileScreen({ navigation }: Props) {
             <TouchableOpacity key={item.id} style={styles.menuItem} onPress={() => item.screen && navigation.navigate(item.screen)}>
               <View style={styles.menuLeft}>
                 <View style={styles.iconWrap}>
-                  <Ionicons name={item.icon as any} size={20} color="#22C55E" />
+                  <Ionicons name={item.icon as any} size={20} color={COLORS.accent.primary} />
                 </View>
                 <Text style={styles.menuLabel}>{item.label}</Text>
               </View>
@@ -107,7 +108,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   <Ionicons
                     name={isStandalone ? 'checkmark-circle-outline' : 'download-outline'}
                     size={20}
-                    color="#22C55E"
+                    color={COLORS.accent.primary}
                   />
                 </View>
                 <Text style={[styles.menuLabel, isStandalone && { color: '#9CA3AF' }]}>
@@ -134,15 +135,15 @@ export default function ProfileScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { paddingBottom: 120 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
   avatarSection: { alignItems: 'center', paddingBottom: 32, paddingTop: 8, gap: 8 },
   avatarCircle: {
     width: 90, height: 90, borderRadius: 45,
-    backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 8, shadowColor: '#22C55E', shadowOpacity: 0.25,
+    backgroundColor: COLORS.accent.primary, alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8, shadowColor: COLORS.accent.primary, shadowOpacity: 0.25,
     shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 5,
   },
   avatarText: { color: '#fff', fontFamily: F.bold, fontSize: 36 },
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
   email: { fontSize: 14, color: '#6B7280', fontFamily: F.medium },
   premiumBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#22C55E', borderRadius: 14,
+    backgroundColor: COLORS.accent.primary, borderRadius: 14,
     paddingHorizontal: 16, paddingVertical: 6,
   },
   premiumBadgeText: { color: '#fff', fontSize: 13, fontFamily: F.bold, letterSpacing: 0.3 },
@@ -168,11 +169,11 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 
   },
   menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: COLORS.accent.primaryLight, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { fontSize: 16, color: '#111827', fontFamily: F.semibold },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  activeBadge: { backgroundColor: '#F0FDF4', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
-  activeBadgeText: { fontSize: 12, color: '#22C55E', fontFamily: F.bold },
+  activeBadge: { backgroundColor: COLORS.accent.primaryLight, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  activeBadgeText: { fontSize: 12, color: COLORS.accent.primary, fontFamily: F.bold },
   logoutSection: { paddingHorizontal: 16, marginTop: 32 },
   logoutBtn: { 
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 

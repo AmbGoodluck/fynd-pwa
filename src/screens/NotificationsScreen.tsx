@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import AppHeader from '../components/AppHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import NotificationItem from '../components/notifications/NotificationItem';
@@ -117,7 +118,7 @@ export default function NotificationsScreen({ navigation }: Props) {
           </View>
           <Text style={styles.emptyTitle}>No notifications yet</Text>
           <Text style={styles.emptyBody}>
-            When there's activity on your shared trips, you'll see it here.
+            Your daily picks and place updates will show up here.
           </Text>
         </View>
       ) : (
@@ -134,7 +135,7 @@ export default function NotificationsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
+  safe: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
   markAllText: {
     fontSize: 13,
     fontFamily: F.medium,
-    color: '#22C55E',
+    color: COLORS.accent.primary,
   },
 
   empty: {
