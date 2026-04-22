@@ -38,16 +38,6 @@ export default function PWATopBar({ onSharedTripsPress, onProfilePress, onNotifi
 
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={onSharedTripsPress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="Shared Trips"
-          accessibilityRole="button"
-        >
-          <Ionicons name="people-outline" size={22} color="#3D3540" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.iconBtn}
           onPress={onProfilePress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="Profile"
