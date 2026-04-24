@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100,
   },
   cardVibeText:  { fontSize: 9, fontFamily: F.bold, color: '#fff' },
-  moreCardBody:  { padding: 10, gap: 3 },
+  moreCardBody:  { paddingHorizontal: 12, paddingVertical: 10, gap: 3 },
   moreCardName:  { fontSize: 13, fontFamily: F.bold, color: '#1A1019' },
   moreCardSub:   { fontSize: 11, fontFamily: F.regular, color: '#9E95A8', textTransform: 'capitalize' },
 

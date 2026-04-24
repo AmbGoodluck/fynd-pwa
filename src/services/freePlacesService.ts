@@ -592,6 +592,9 @@ const CHAIN_KEYWORDS = [
   'cracker barrel', 'dollar general', 'dollar tree', 'walmart', 'target',
   'walgreens', 'cvs', 'save-a-lot', 'aldi', 'kroger', 'shell', 'bp',
   'speedway', 'circle k', 'marathon', 'valero',
+  'outback', 'golden corral', 'panera', 'chipotle', 'five guys', "zaxby's",
+  'cook out', 'firehouse subs', "jersey mike's", "jimmy john's",
+  'panda express', "raising cane's", 'wingstop', 'tropical smoothie', 'smoothie king',
 ];
 
 function isChain(name: string): boolean {
