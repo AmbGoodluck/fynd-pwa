@@ -62,51 +62,32 @@ function getTodayGoogleIndex(): number {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
+
 export default function PlaceDetailScreen(props: any) {
-    // Fix 2: Generate AI description if missing and place has a name
-    useEffect(() => {
-      if (!aiDescription && name) {
-        generatePlaceDescription(
-          name,
-          initialAddress || '',
-          params.city || '',
-          params.types || [],
-          undefined,
-          undefined
-        ).then(result => {
-          if (result) {
-            setAiDescription(result.description);
-            setKnownFor(result.knownFor || []);
-            setVibe(result.vibe || '');
-          }
-        }).catch(() => {});
-      }
-    }, [aiDescription, name, initialAddress, params.city, params.types]);
-  const { navigation, route } = props;
+  // Defensive: navigation and route
+  const { navigation, route } = props || {};
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const params = route.params || {};
+  const params = route?.params || {};
+
+  // Defensive: required params
+  const placeId = params.placeId || params.id || '';
+  const name = params.name || 'Unknown Place';
+  const photoUrl = params.photoUrl || '';
+  const initialPhotoUrls = params.photoUrls || [];
+  const initialDescription = params.description || '';
+  const initialRating = params.rating;
+  const initialAddress = params.address || '';
+  const category = params.category || '';
+  const initialLat = params.lat;
+  const initialLng = params.lng;
+  const initialPhone = params.phone || params.place?.phone;
+  const initialWebsite = params.website || params.place?.website;
+  const routePlace = params.place;
 
   const { savePlace, unsavePlace, savedPlaces, isGuest } = useGuestStore();
   const { user, isAuthenticated } = useAuthStore();
-
-  // FyndPlace passed directly from Home (has vibe, known_for, etc.)
-  const routePlace = params.place;
-
-  const placeId          = params.placeId;
-  const name             = params.name || 'Unknown Place';
-  const photoUrl         = params.photoUrl;
-  const initialPhotoUrls = params.photoUrls || [];
-  const initialDescription = params.description || '';
-  const initialRating    = params.rating;
-  const initialAddress   = params.address || '';
-  const category         = params.category || '';
-  const initialLat       = params.lat;
-  const initialLng       = params.lng;
-  const initialPhone     = params.phone || routePlace?.phone;
-  const initialWebsite   = params.website || routePlace?.website;
-
-  const isSaved = savedPlaces.some(p => p.placeId === placeId);
+  const isSaved = placeId && savedPlaces.some(p => p.placeId === placeId);
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [photos, setPhotos] = useState<string[]>(
@@ -135,6 +116,41 @@ export default function PlaceDetailScreen(props: any) {
     ? openingHours?.weekdayText?.[0]
     : openingHours?.weekdayText?.[getTodayGoogleIndex()];
 
+  // Defensive: error boundary for rendering
+  const [fatalError, setFatalError] = useState<string | null>(null);
+
+  // Defensive: catch missing placeId
+  useEffect(() => {
+    if (!placeId) {
+      setFatalError('Missing place information. Please try again from the previous screen.');
+    }
+  }, [placeId]);
+
+  // Defensive: wrap effect in try/catch
+  useEffect(() => {
+    if (fatalError) return;
+    try {
+      if (!aiDescription && name) {
+        generatePlaceDescription(
+          name,
+          initialAddress || '',
+          params.city || '',
+          params.types || [],
+          undefined,
+          undefined
+        ).then(result => {
+          if (result) {
+            setAiDescription(result.description);
+            setKnownFor(result.knownFor || []);
+            setVibe(result.vibe || '');
+          }
+        }).catch(() => {});
+      }
+    } catch (e: any) {
+      setFatalError('An error occurred loading this place.');
+    }
+  }, [aiDescription, name, initialAddress, params.city, params.types, fatalError]);
+
   // ── Check if already visited ───────────────────────────────────────────────
   useEffect(() => {
     if (user?.id && placeId) {
@@ -144,54 +160,60 @@ export default function PlaceDetailScreen(props: any) {
 
   // ── Load rich data ─────────────────────────────────────────────────────────
   useEffect(() => {
+    if (fatalError) return;
     let cancelled = false;
     (async () => {
       if (!placeId) { setDetailsLoading(false); return; }
 
-      if (placeId.startsWith('osm_')) {
-        // OSM place: data from params + FyndPlace object
-        // Only generate AI if we truly have nothing
-        const needsAI = !aiDescription && !routePlace?.vibe;
-        if (needsAI) {
+      try {
+        if (placeId.startsWith('osm_')) {
+          // OSM place: data from params + FyndPlace object
+          // Only generate AI if we truly have nothing
+          const needsAI = !aiDescription && !routePlace?.vibe;
+          if (needsAI) {
+            generatePlaceDescription(
+              name, initialAddress, params.city || '', params.types || [],
+            ).then(res => {
+              if (!cancelled && res) {
+                setAiDescription(res.description);
+                setKnownFor(res.knownFor);
+                setVibe(res.vibe);
+              }
+            }).catch(() => {});
+          }
+          setDetailsLoading(false);
+          return;
+        }
+
+        // Google place: fetch full details + AI description in parallel
+        const [googleDetails, aiRes] = await Promise.all([
+          fetchPlaceDetails(placeId),
           generatePlaceDescription(
-            name, initialAddress, params.city || '', params.types || [],
-          ).then(res => {
-            if (!cancelled && res) {
-              setAiDescription(res.description);
-              setKnownFor(res.knownFor);
-              setVibe(res.vibe);
-            }
-          }).catch(() => {});
+            name, initialAddress, params.city || '', params.types || [], initialRating,
+          ),
+        ]);
+
+        if (cancelled) return;
+
+        if (googleDetails) {
+          setDetails(googleDetails);
+          if (googleDetails.photoUrls.length > 0) setPhotos(googleDetails.photoUrls);
+        }
+        if (aiRes) {
+          setAiDescription(aiRes.description);
+          setKnownFor(aiRes.knownFor);
+          setVibe(aiRes.vibe);
+        } else {
+          setAiDescription(googleDetails?.editorialSummary || initialDescription || '');
         }
         setDetailsLoading(false);
-        return;
+      } catch (e: any) {
+        setFatalError('An error occurred loading this place.');
+        setDetailsLoading(false);
       }
-
-      // Google place: fetch full details + AI description in parallel
-      const [googleDetails, aiRes] = await Promise.all([
-        fetchPlaceDetails(placeId),
-        generatePlaceDescription(
-          name, initialAddress, params.city || '', params.types || [], initialRating,
-        ),
-      ]);
-
-      if (cancelled) return;
-
-      if (googleDetails) {
-        setDetails(googleDetails);
-        if (googleDetails.photoUrls.length > 0) setPhotos(googleDetails.photoUrls);
-      }
-      if (aiRes) {
-        setAiDescription(aiRes.description);
-        setKnownFor(aiRes.knownFor);
-        setVibe(aiRes.vibe);
-      } else {
-        setAiDescription(googleDetails?.editorialSummary || initialDescription || '');
-      }
-      setDetailsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [placeId, initialDescription]);
+  }, [placeId, initialDescription, fatalError]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const openMaps = () => {
@@ -285,6 +307,20 @@ export default function PlaceDetailScreen(props: any) {
   const displayPhone  = details?.phone || initialPhone;
   const displayWebsite = details?.website || initialWebsite;
 
+  if (fatalError) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.accent.danger} style={{ marginBottom: 16 }} />
+          <Text style={{ color: COLORS.accent.danger, fontSize: 17, fontWeight: '600', textAlign: 'center', marginBottom: 12 }}>{fatalError}</Text>
+          <TouchableOpacity onPress={() => navigation?.goBack?.()} style={{ marginTop: 8 }}>
+            <Text style={{ color: COLORS.accent.primary, fontWeight: '600', fontSize: 15 }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -293,7 +329,7 @@ export default function PlaceDetailScreen(props: any) {
         contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom) }}
       >
         {/* ── Hero image slider ─────────────────────────────────── */}
-        <View style={[styles.heroContainer, { height: HERO_HEIGHT }]}>
+        <View style={[styles.heroContainer, { height: HERO_HEIGHT }]}>...
           <ScrollView
             horizontal
             pagingEnabled
