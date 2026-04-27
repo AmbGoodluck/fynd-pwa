@@ -1,21 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
 import { COLORS } from '../theme/tokens';
-import AppHeader from '../components/AppHeader';
-import { useNotifications } from '../hooks/useNotifications';
-import NotificationItem from '../components/notifications/NotificationItem';
-import NotificationSectionHeader from '../components/notifications/NotificationSectionHeader';
-import type { FyndNotification } from '../types/notifications';
+import { supabase } from '../services/supabase';
+import { useAuthStore } from '../store/useAuthStore';
+
+type Notif = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  place_id?: string;
+  place_name?: string;
+  read: boolean;
+  created_at: string;
+};
 
 type Props = { navigation: any };
 
@@ -42,53 +50,123 @@ const sk = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#F2F2F7',
   },
-  icon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#E5E7EB' },
+  icon:  { width: 42, height: 42, borderRadius: 21, backgroundColor: '#E5E7EB' },
   lines: { flex: 1 },
-  line: { height: 12, borderRadius: 6, backgroundColor: '#E5E7EB' },
+  line:  { height: 12, borderRadius: 6, backgroundColor: '#E5E7EB' },
 });
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function NotificationsScreen({ navigation }: Props) {
-  const { notifications, grouped, unreadCount, loading, markAsRead, markAllAsRead } =
-    useNotifications();
+  const { user } = useAuthStore();
+  const [notifications, setNotifications] = useState<Notif[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handlePress = (notification: FyndNotification) => {
-    markAsRead(notification.id).catch(() => {});
-    const { screen, params } = notification.data;
-    if (screen) {
-      navigation.navigate(screen, params ?? {});
+  useEffect(() => {
+    if (!user?.id) { setLoading(false); return; }
+
+    const fetchNotifications = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (!error && data) setNotifications(data as Notif[]);
+      } catch {
+        // Silently fail — show empty state
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, [user?.id]);
+
+  const markAsRead = async (notifId: string) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', notifId);
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+  };
+
+  const markAllAsRead = async () => {
+    if (!user?.id) return;
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', user.id)
+      .eq('read', false);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handlePress = (n: Notif) => {
+    markAsRead(n.id).catch(() => {});
+    if (n.place_id) {
+      navigation.navigate('PlaceDetail', {
+        placeId: n.place_id,
+        name: n.place_name || '',
+      });
     }
   };
 
-  // Build a flat list with section headers interleaved
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Group into today / earlier
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const todayNotifs   = notifications.filter(n => new Date(n.created_at) >= dayStart);
+  const earlierNotifs = notifications.filter(n => new Date(n.created_at) < dayStart);
+
   type ListItem =
     | { type: 'header'; label: string; key: string }
-    | { type: 'item'; notification: FyndNotification; key: string };
+    | { type: 'item';   notif: Notif;  key: string };
 
   const listData: ListItem[] = [];
-  if (grouped.today.length > 0) {
+  if (todayNotifs.length > 0) {
     listData.push({ type: 'header', label: 'Today', key: 'h-today' });
-    grouped.today.forEach((n) =>
-      listData.push({ type: 'item', notification: n, key: n.id })
-    );
+    todayNotifs.forEach(n => listData.push({ type: 'item', notif: n, key: n.id }));
   }
-  if (grouped.earlier.length > 0) {
+  if (earlierNotifs.length > 0) {
     listData.push({ type: 'header', label: 'Earlier', key: 'h-earlier' });
-    grouped.earlier.forEach((n) =>
-      listData.push({ type: 'item', notification: n, key: n.id })
-    );
+    earlierNotifs.forEach(n => listData.push({ type: 'item', notif: n, key: n.id }));
   }
 
   const renderItem = ({ item }: { item: ListItem }) => {
     if (item.type === 'header') {
-      return <NotificationSectionHeader label={item.label} />;
+      return (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionLabel}>{item.label}</Text>
+        </View>
+      );
     }
-    return <NotificationItem notification={item.notification} onPress={handlePress} />;
+    const { notif } = item;
+    return (
+      <TouchableOpacity
+        style={[styles.notifRow, !notif.read && styles.notifRowUnread]}
+        onPress={() => handlePress(notif)}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.notifIcon, !notif.read && styles.notifIconUnread]}>
+          <Ionicons
+            name={notif.type === 'place' ? 'location-outline' : 'notifications-outline'}
+            size={20}
+            color={notif.read ? '#9CA3AF' : COLORS.accent.primary}
+          />
+        </View>
+        <View style={styles.notifBody}>
+          <Text style={[styles.notifTitle, !notif.read && styles.notifTitleUnread]} numberOfLines={1}>
+            {notif.title}
+          </Text>
+          {!!notif.body && (
+            <Text style={styles.notifSub} numberOfLines={2}>{notif.body}</Text>
+          )}
+        </View>
+        {!notif.read && <View style={styles.unreadDot} />}
+      </TouchableOpacity>
+    );
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Custom header — AppHeader only has title + back, so we extend it here */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -109,7 +187,7 @@ export default function NotificationsScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.skeletonWrap}>
-          {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
+          {[0, 1, 2, 3].map(i => <SkeletonRow key={i} />)}
         </View>
       ) : notifications.length === 0 ? (
         <View style={styles.empty}>
@@ -124,7 +202,7 @@ export default function NotificationsScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={listData}
-          keyExtractor={(item) => item.key}
+          keyExtractor={item => item.key}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
@@ -160,14 +238,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   skeletonWrap: { paddingTop: 8 },
-  listContent: { paddingBottom: 32 },
+  listContent:  { paddingBottom: 32 },
+  markAll:      { minWidth: 80, alignItems: 'flex-end' },
+  markAllText:  { fontSize: 13, fontFamily: F.medium, color: COLORS.accent.primary },
 
-  markAll: { minWidth: 80, alignItems: 'flex-end' },
-  markAllText: {
-    fontSize: 13,
-    fontFamily: F.medium,
-    color: COLORS.accent.primary,
+  sectionHeader: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 6 },
+  sectionLabel:  { fontSize: 12, fontFamily: F.semibold, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F2F2F7',
+    backgroundColor: '#fff',
   },
+  notifRowUnread: { backgroundColor: '#FFF9F8' },
+  notifIcon: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  notifIconUnread: { backgroundColor: COLORS.accent.primaryLight },
+  notifBody:       { flex: 1, gap: 3 },
+  notifTitle:      { fontSize: 14, fontFamily: F.medium, color: '#6B7280' },
+  notifTitleUnread: { fontFamily: F.semibold, color: '#111827' },
+  notifSub:        { fontSize: 13, fontFamily: F.regular, color: '#9CA3AF', lineHeight: 18 },
+  unreadDot:       { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent.primary },
 
   empty: {
     flex: 1,
@@ -176,26 +275,17 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 80, height: 80, borderRadius: 40,
     backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontFamily: F.semibold,
-    color: '#111827',
-    marginBottom: 8,
-    textAlign: 'center',
+    fontSize: 18, fontFamily: F.semibold, color: '#111827',
+    marginBottom: 8, textAlign: 'center',
   },
   emptyBody: {
-    fontSize: 14,
-    fontFamily: F.regular,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
+    fontSize: 14, fontFamily: F.regular, color: '#6B7280',
+    textAlign: 'center', lineHeight: 22,
   },
 });

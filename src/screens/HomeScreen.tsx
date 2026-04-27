@@ -17,8 +17,7 @@ import {
   reverseGeocodeFree,
   FyndPlace,
 } from '../services/freePlacesService';
-import { db } from '../services/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { supabase } from '../services/supabase';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -64,17 +63,26 @@ export default function HomeScreen({ navigation }: Props) {
   const [showServiceGate, setShowServiceGate] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Notification badge listener
+  // Fetch unread notification count from Supabase
   useEffect(() => {
-    const userId = user?.id;
-    if (!userId) return;
-    const q = query(
-      collection(db, 'notifications'),
-      where('user_id', '==', userId),
-      where('read', '==', false),
-    );
-    const unsub = onSnapshot(q, snap => setUnreadCount(snap.size), () => {});
-    return unsub;
+    if (!user?.id) return;
+
+    const fetchUnread = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+        if (!error && count !== null) setUnreadCount(count);
+      } catch {
+        setUnreadCount(0);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60000);
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   // Resolve city name when location becomes available
