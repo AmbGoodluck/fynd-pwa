@@ -24,12 +24,37 @@ import { maybeCreateDailyPickNotification } from '../services/notificationServic
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const QUICK_FILTERS = [
-  { id: 'for_you',   label: 'For You',  types: [] as string[] },
-  { id: 'food',      label: 'Food',     types: ['restaurant', 'food', 'meal_takeaway', 'bakery'] },
-  { id: 'coffee',    label: 'Coffee',   types: ['cafe'] },
-  { id: 'outdoors',  label: 'Outdoors', types: ['park', 'natural_feature', 'campground', 'tourist_attraction'] },
-  { id: 'nightlife', label: 'Night',    types: ['bar', 'night_club', 'pub'] },
-  { id: 'study',     label: 'Study',    types: ['library', 'cafe', 'book_store'] },
+  { id: 'for_you',   label: 'For You',  types: [] as string[], keywords: [] as string[] },
+  { id: 'food',      label: 'Food',     types: ['restaurant', 'food', 'meal_takeaway', 'bakery'], keywords: ['restaurant', 'food', 'grill', 'diner', 'kitchen', 'eatery', 'steakhouse', 'pizza', 'burger', 'wings', 'bbq', 'barbecue', 'sushi', 'mexican', 'chinese', 'indian', 'thai', 'italian', 'deli', 'buffet'] },
+  { id: 'coffee',    label: 'Coffee',   types: ['cafe'], keywords: ['coffee', 'cafe', 'espresso', 'latte', 'roast', 'brew', 'tea', 'bakery', 'pastry', 'donut', 'bagel', 'starbucks', 'dunkin'] },
+  { id: 'outdoors',  label: 'Outdoors', types: ['park', 'natural_feature', 'campground', 'tourist_attraction'], keywords: ['park', 'trail', 'hike', 'hiking', 'nature', 'garden', 'forest', 'lake', 'creek', 'river', 'mountain', 'overlook', 'scenic', 'outdoor', 'recreation', 'reserve', 'playground', 'field'] },
+  { id: 'nightlife', label: 'Night',    types: ['bar', 'night_club', 'pub'], keywords: ['bar', 'pub', 'tavern', 'lounge', 'brewery', 'taproom', 'cocktail', 'beer', 'wine', 'nightclub', 'club', 'nightlife', 'happy hour'] },
+  { id: 'study',     label: 'Study',    types: ['library', 'book_store'], keywords: ['library', 'study', 'book', 'quiet', 'wifi', 'laptop', 'coworking', 'workspace', 'coffee', 'cafe'] },
+];
+
+function cleanDescription(desc: string, placeName: string): string {
+  if (!desc) return '';
+  const lower = desc.toLowerCase();
+  const nameLower = placeName.toLowerCase();
+  let clean = desc;
+  if (lower.startsWith(nameLower)) {
+    clean = desc.slice(placeName.length)
+      .replace(/^\s*(is|are|was|has|offers|serves|provides|features|brings|sits|stands|lies)\s+/i, '')
+      .trim();
+    clean = clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
+  const firstSentence = clean.split('.')[0];
+  return firstSentence ? firstSentence + '.' : clean;
+}
+
+const CHAIN_NAMES = [
+  'mcdonald', 'burger king', 'wendy', 'taco bell', 'subway', 'domino',
+  'pizza hut', 'papa john', 'little caesars', 'sonic', 'arby', 'hardee',
+  'chick-fil-a', 'popeyes', 'kfc', 'dunkin', 'starbucks', 'red lobster',
+  'olive garden', 'applebee', 'chili', 'ihop', 'denny', 'waffle house',
+  'buffalo wild wings', 'hooters', 'outback', 'golden corral', 'panera',
+  'chipotle', 'five guys', 'zaxby', 'cookout', 'firehouse sub', 'jersey mike',
+  'jimmy john', 'panda express', 'raising cane', 'wingstop', "sonny's barbecue",
 ];
 
 const SERVICE_HUB_QUICK = [
@@ -111,13 +136,24 @@ export default function HomeScreen({ navigation }: Props) {
       .finally(() => setPlacesLoading(false));
   }, [location, cityName]);
 
-  // Derive filteredPlaces from places + activeFilter
+  // Derive filteredPlaces from places + activeFilter (type match OR keyword match)
   useEffect(() => {
     const filter = QUICK_FILTERS.find(f => f.id === activeFilter);
-    if (!filter || filter.types.length === 0) {
+    if (!filter || (filter.types.length === 0 && filter.keywords.length === 0)) {
       setFilteredPlaces(places);
     } else {
-      setFilteredPlaces(places.filter(p => p.types.some(t => filter.types.includes(t))));
+      setFilteredPlaces(places.filter(p => {
+        if (filter.types.length > 0 && p.types.some(t => filter.types.includes(t))) return true;
+        const haystack = [
+          p.name,
+          ...(p.types || []),
+          p.cuisine || '',
+          p.vibe || '',
+          p.ai_description || '',
+          ...(p.known_for || []),
+        ].join(' ').toLowerCase();
+        return filter.keywords.some(k => haystack.includes(k));
+      }));
     }
   }, [places, activeFilter]);
 
@@ -167,7 +203,19 @@ export default function HomeScreen({ navigation }: Props) {
       ].join(' ').toLowerCase();
       return haystack.includes(q);
     });
+    // Fix 4: Sort to push chains to the bottom
+    results.sort((a, b) => {
+      const aChain = CHAIN_NAMES.some(c => a.name.toLowerCase().includes(c)) ? 1 : 0;
+      const bChain = CHAIN_NAMES.some(c => b.name.toLowerCase().includes(c)) ? 1 : 0;
+      return aChain - bChain;
+    });
     setSearchResults(results);
+  };
+
+  const activateSearchWithKeyword = (keyword: string) => {
+    setSearchActive(true);
+    setSearchQuery(keyword);
+    handleSearch(keyword);
   };
 
   const cancelSearch = () => {
@@ -373,7 +421,7 @@ export default function HomeScreen({ navigation }: Props) {
                     <Text style={styles.heroName} numberOfLines={1}>{heroPlace.name}</Text>
                     {(() => {
                       const desc = heroPlace.ai_description
-                        ? heroPlace.ai_description.split('.')[0] + '.'
+                        ? cleanDescription(heroPlace.ai_description, heroPlace.name)
                         : heroPlace.cuisine
                           ? heroPlace.cuisine.charAt(0).toUpperCase() + heroPlace.cuisine.slice(1)
                           : '';
@@ -387,9 +435,20 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.emptyCard}>
               <Ionicons name="filter-outline" size={36} color="#C8C2CE" />
               <Text style={styles.emptyTitle}>
-                No {QUICK_FILTERS.find(f => f.id === activeFilter)?.label ?? ''} places nearby
+                {activeFilter === 'coffee'
+                  ? "We're still discovering coffee spots here. Try searching by name above."
+                  : activeFilter === 'study'
+                  ? "Study spots might be listed as libraries or cafes. Try the search bar."
+                  : `No ${QUICK_FILTERS.find(f => f.id === activeFilter)?.label ?? ''} places found nearby. Try a different filter.`}
               </Text>
-              <Text style={styles.emptySub}>Try a different filter.</Text>
+              <TouchableOpacity
+                onPress={() => activateSearchWithKeyword(
+                  QUICK_FILTERS.find(f => f.id === activeFilter)?.label.toLowerCase() ?? ''
+                )}
+                style={styles.searchInsteadBtn}
+              >
+                <Text style={styles.searchInsteadText}>Search instead →</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.emptyCard}>
@@ -433,7 +492,7 @@ export default function HomeScreen({ navigation }: Props) {
                     <Text style={styles.moreCardName} numberOfLines={1}>{place.name}</Text>
                     <Text style={styles.moreCardSub} numberOfLines={1}>
                       {place.ai_description
-                        ? place.ai_description.split('.')[0] + '.'
+                        ? cleanDescription(place.ai_description, place.name)
                         : place.cuisine || place.types[0]?.replace(/_/g, ' ') || 'Place'}
                     </Text>
                   </View>
@@ -614,7 +673,7 @@ const styles = StyleSheet.create({
   searchPlaceholder: { fontSize: 14, fontFamily: F.regular, color: '#9E95A8', flex: 1 },
 
   // ── Quick filters ─────────────────────────────────────────────────────────
-  filtersRow: { paddingHorizontal: 20, paddingBottom: 4, gap: 8 },
+  filtersRow: { paddingLeft: 20, paddingRight: 8, paddingBottom: 4, gap: 8 },
   filterChip: {
     paddingHorizontal: 16, paddingVertical: 8,
     borderRadius: 9999, backgroundColor: 'transparent',
@@ -677,6 +736,8 @@ const styles = StyleSheet.create({
     fontSize: 13, fontFamily: F.regular, color: '#6E6577',
     textAlign: 'center', paddingHorizontal: 32, lineHeight: 20,
   },
+  searchInsteadBtn: { marginTop: 10, paddingVertical: 6, paddingHorizontal: 16 },
+  searchInsteadText: { fontSize: 13, fontFamily: F.semibold, color: COLORS.accent.primary },
 
   // ── More for you ──────────────────────────────────────────────────────────
   moreRow:   { paddingLeft: 20, paddingRight: 8, gap: 12 },

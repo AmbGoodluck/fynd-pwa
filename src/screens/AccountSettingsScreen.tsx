@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 
 import { useAuthStore } from '../store/useAuthStore';
 import { supabase } from '../services/supabase';
+import { COLORS } from '../theme/tokens';
 
 type Props = { navigation: any };
 
@@ -85,7 +86,7 @@ export default function AccountSettingsScreen({ navigation }: Props) {
         <View style={styles.card}>
           <TouchableOpacity style={styles.menuRow} onPress={() => setChangePasswordOpen(!changePasswordOpen)}>
             <View style={styles.menuLeft}>
-              <Ionicons name="lock-closed" size={20} color="#22C55E" style={styles.menuIcon} />
+              <Ionicons name="lock-closed" size={20} color={COLORS.accent.primary} style={styles.menuIcon} />
               <Text style={styles.menuLabel}>Change Password</Text>
             </View>
             <Ionicons name={changePasswordOpen ? 'chevron-up' : 'chevron-down'} size={20} color="#57636C" style={{ opacity: 0.5 }} />
@@ -180,6 +181,6 @@ const styles = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F2F2F7', borderRadius: 14, borderWidth: 1, borderColor: '#E5E5EA', marginHorizontal: 14, marginVertical: 6, paddingHorizontal: 12, height: 46 },
   inputIcon: { marginRight: 8 },
   input: { flex: 1, fontSize: 14, color: '#111827' },
-  changeBtn: { backgroundColor: '#22C55E', borderRadius: 16, height: 40, alignItems: 'center', justifyContent: 'center', marginHorizontal: 40, marginVertical: 10 },
+  changeBtn: { backgroundColor: COLORS.accent.primary, borderRadius: 16, height: 40, alignItems: 'center', justifyContent: 'center', marginHorizontal: 40, marginVertical: 10 },
   changeBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 });

@@ -10,11 +10,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { searchNearbyFree, fyndPlaceToPlaceResult } from '../services/freePlacesService';
-import { PlaceResult, getPhotoUrl } from '../services/googlePlacesService';
+import { PlaceResult } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
 import AppBar from '../components/AppBar';
 import { getPlaceDisplayType } from '../utils/placeTypeMap';
+import { COLORS } from '../theme/tokens';
 
 const CATEGORIES = [
   { id: 'Medical',           label: 'Medical',        icon: 'medkit',              color: '#EF4444' },
@@ -159,7 +160,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <Image
-        source={{ uri: item.photoUrl || getPhotoUrl(item.photoRef) }}
+        source={{ uri: item.photoUrl ?? '' }}
         style={styles.cardImage}
       />
       <View style={styles.cardBody}>
@@ -210,7 +211,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
             <Ionicons
               name={cat.icon as any}
               size={22}
-              color={selectedCategory === cat.id ? '#10B981' : '#6B7280'}
+              color={selectedCategory === cat.id ? COLORS.accent.primary : '#6B7280'}
             />
             <Text style={[styles.catLabel, selectedCategory === cat.id && styles.catLabelActive]}>
               {cat.label}
@@ -222,7 +223,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
       {/* Results */}
       {loadingResults ? (
         <ScrollView contentContainerStyle={styles.loadingWrap} showsVerticalScrollIndicator={false}>
-          <ActivityIndicator color="#10B981" />
+          <ActivityIndicator color={COLORS.accent.primary} />
           <Text style={styles.loadingText}>Finding nearby services…</Text>
         </ScrollView>
       ) : results.length === 0 ? (
@@ -308,7 +309,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
               <View style={styles.modalSheet}>
                 <View style={styles.modalHandle} />
                 <View style={styles.modalIconWrap}>
-                  <Ionicons name="compass-outline" size={32} color="#10B981" />
+                  <Ionicons name="compass-outline" size={32} color={COLORS.accent.primary} />
                 </View>
                 <Text style={styles.modalTitle}>Account Required</Text>
                 <Text style={styles.modalBody}>
@@ -361,9 +362,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#fff', gap: 4,
   },
-  catCardActive: { borderColor: '#10B981', borderWidth: 1.5 },
+  catCardActive: { borderColor: COLORS.accent.primary, borderWidth: 1.5 },
   catLabel: { fontSize: 9, textAlign: 'center', color: '#6B7280', fontWeight: '500' },
-  catLabelActive: { color: '#10B981', fontWeight: '600' },
+  catLabelActive: { color: COLORS.accent.primary, fontWeight: '600' },
   list: { paddingHorizontal: 14, paddingBottom: 100 },
   card: {
     flexDirection: 'row', alignItems: 'center',
@@ -378,10 +379,10 @@ const styles = StyleSheet.create({
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   cardDistance: { fontSize: 12, color: '#57636C' },
   categoryBadge: {
-    alignSelf: 'flex-start', backgroundColor: '#F0FDF4',
+    alignSelf: 'flex-start', backgroundColor: COLORS.accent.primaryLight,
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2,
   },
-  categoryBadgeText: { fontSize: 11, color: '#10B981', fontWeight: '500' },
+  categoryBadgeText: { fontSize: 11, color: COLORS.accent.primary, fontWeight: '500' },
   routeBtn: {
     backgroundColor: '#1A1A1A',
     borderRadius: 9999,
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: '600', color: '#1A1A1A', marginTop: 14, marginBottom: 6 },
   emptyText: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 20 },
   retryBtn: {
-    backgroundColor: '#10B981', borderRadius: 14,
+    backgroundColor: COLORS.accent.primary, borderRadius: 14,
     paddingHorizontal: 28, paddingVertical: 12,
   },
   retryBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
@@ -417,7 +418,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E5EA', marginBottom: 20,
   },
   modalIconWrap: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0FDF4',
+    width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   modalTitle: {
@@ -429,15 +430,15 @@ const styles = StyleSheet.create({
     lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
   },
   modalPrimaryBtn: {
-    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalOutlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#10B981',
+    width: '100%', borderWidth: 1.5, borderColor: COLORS.accent.primary,
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalOutlineBtnText: { color: '#10B981', fontSize: 16, fontWeight: '600' },
+  modalOutlineBtnText: { color: COLORS.accent.primary, fontSize: 16, fontWeight: '600' },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
 });

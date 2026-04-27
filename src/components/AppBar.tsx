@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/useAuthStore';
 import { F } from '../theme/fonts';
 import { LOGO_SIZE } from '../theme/sizes';
+import { COLORS } from '../theme/tokens';
 
 interface AppBarProps {
   variant: 'root' | 'sub';
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 4,

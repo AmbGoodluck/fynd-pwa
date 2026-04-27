@@ -5,6 +5,7 @@ if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { submitFeedback } from '../services/feedbackService';
 import * as Sentry from '../services/sentry';
 import AppHeader from '../components/AppHeader';
@@ -76,7 +77,7 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
 
         {submitted && (
           <View style={styles.successBanner}>
-            <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.accent.sage} />
             <Text style={styles.successText}>Thank you! Your feedback was sent.</Text>
           </View>
         )}
@@ -150,7 +151,7 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.policyHeader} onPress={togglePolicy} activeOpacity={0.7}>
             <View style={styles.policyHeaderLeft}>
               <View style={styles.policyIcon}>
-                <Ionicons name="shield-checkmark-outline" size={18} color="#22C55E" />
+                <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.accent.primary} />
               </View>
               <Text style={styles.policyTitle}>Privacy Policy</Text>
             </View>
@@ -219,21 +220,21 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   scroll: { paddingHorizontal: 16, paddingBottom: 80 },
-  successBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', borderRadius: 14, padding: 14, marginTop: 16, marginBottom: 4, gap: 8, borderWidth: 1, borderColor: '#BBF7D0' },
-  successText: { fontSize: 14, color: '#16A34A', fontFamily: 'Inter_500Medium' },
+  successBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.accent.sageLight, borderRadius: 14, padding: 14, marginTop: 16, marginBottom: 4, gap: 8, borderWidth: 1, borderColor: COLORS.accent.sage },
+  successText: { fontSize: 14, color: COLORS.accent.sage, fontFamily: 'Inter_500Medium' },
   section: { paddingVertical: 20 },
   sectionTitle: { fontSize: 18, fontFamily: 'Inter_700Bold', color: '#111827', marginBottom: 3 },
   sectionSubtitle: { fontSize: 13, color: '#6B7280', marginBottom: 16 },
   divider: { height: 1, backgroundColor: '#E5E7EB', marginHorizontal: 4 },
   quickRow: { gap: 8 },
   quickBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, backgroundColor: '#fff', marginBottom: 4, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-  quickBtnSelected: { borderColor: '#22C55E', backgroundColor: '#F0FDF4' },
+  quickBtnSelected: { borderColor: COLORS.accent.primary, backgroundColor: COLORS.accent.primaryLight },
   quickEmoji: { fontSize: 20, marginRight: 12 },
   quickLabel: { fontSize: 15, color: '#374151' },
-  quickLabelSelected: { color: '#22C55E', fontFamily: 'Inter_500Medium' },
+  quickLabelSelected: { color: COLORS.accent.primary, fontFamily: 'Inter_500Medium' },
   inputWrap: { marginTop: 12 },
   textArea: { backgroundColor: '#fff', borderRadius: 14, padding: 14, fontSize: 15, color: '#111827', minHeight: 96, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB' },
-  sendBtn: { backgroundColor: '#22C55E', borderRadius: 14, height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 10, shadowColor: '#22C55E', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
+  sendBtn: { backgroundColor: COLORS.accent.primary, borderRadius: 14, height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 10, shadowColor: COLORS.accent.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3 },
   sendBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   starsRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 4 },
 
@@ -259,7 +260,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -276,5 +277,5 @@ const styles = StyleSheet.create({
   policyHeading: { fontSize: 13, fontWeight: '700', color: '#111827', marginTop: 14, marginBottom: 4 },
   policyText: { fontSize: 13, color: '#374151', lineHeight: 20 },
   policyBold: { fontWeight: '600', color: '#111827' },
-  policyLink: { color: '#22C55E', fontWeight: '500' },
+  policyLink: { color: COLORS.accent.primary, fontWeight: '500' },
 });

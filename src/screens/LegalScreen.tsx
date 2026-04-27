@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { COLORS } from '../theme/tokens';
 
 type Props = { navigation: any };
 
@@ -35,7 +36,7 @@ export default function LegalScreen({ navigation }: Props) {
               <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('LegalDetail', { pageId: item.id, title: item.label })}>
                 <View style={styles.rowLeft}>
                   <View style={styles.iconWrap}>
-                    <Ionicons name={item.icon as any} size={18} color="#22C55E" />
+                    <Ionicons name={item.icon as any} size={18} color={COLORS.accent.primary} />
                   </View>
                   <Text style={styles.rowLabel}>{item.label}</Text>
                 </View>
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
   rowLeft: { flexDirection: 'row', alignItems: 'center' },
-  iconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  iconWrap: { width: 32, height: 32, borderRadius: 8, backgroundColor: COLORS.accent.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   rowLabel: { fontSize: 15, color: '#111827', fontWeight: '500' },
   separator: { height: 1, backgroundColor: '#F2F2F7', marginLeft: 60 },
   lastUpdated: { fontSize: 12, color: '#8E8E93', textAlign: 'center', marginTop: 24 },

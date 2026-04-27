@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuthStore } from '../store/useAuthStore';
+import { COLORS } from '../theme/tokens';
 
 type Props = { navigation: any };
 
@@ -69,7 +70,7 @@ export default function DeleteAccountScreen({ navigation }: Props) {
       <View style={styles.card}>
         <TouchableOpacity style={styles.menuRow} onPress={() => navigation.goBack()}>
           <View style={styles.menuLeft}>
-            <Ionicons name="star" size={20} color="#22C55E" style={styles.menuIcon} />
+            <Ionicons name="star" size={20} color={COLORS.accent.primary} style={styles.menuIcon} />
             <Text style={styles.menuLabel}>Delete Account</Text>
           </View>
           <Ionicons name="chevron-down" size={20} color="#57636C" style={{ opacity: 0.5 }} />
@@ -130,17 +131,17 @@ const styles = StyleSheet.create({
   deleteBox: { padding: 16 },
   deleteText: { fontSize: 14, color: '#111827', textAlign: 'center', opacity: 0.6, lineHeight: 22, marginBottom: 20 },
   deleteActions: { flexDirection: 'row', justifyContent: 'space-evenly' },
-  pauseBtn: { backgroundColor: '#22C55E', borderRadius: 16, paddingHorizontal: 16, height: 36, alignItems: 'center', justifyContent: 'center' },
+  pauseBtn: { backgroundColor: COLORS.accent.primary, borderRadius: 16, paddingHorizontal: 16, height: 36, alignItems: 'center', justifyContent: 'center' },
   pauseBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   deleteBtn: { backgroundColor: 'rgba(20,24,27,0.7)', borderRadius: 16, paddingHorizontal: 16, height: 36, alignItems: 'center', justifyContent: 'center' },
   deleteBtnText: { color: '#fff', fontSize: 13, fontWeight: '500' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
   popup: { width: 300, backgroundColor: '#fff', borderRadius: 24, padding: 28, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
-  popupIconRing: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#22C55E', alignItems: 'center', justifyContent: 'center', marginBottom: 18, shadowColor: '#22C55E', shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  popupIconRing: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.accent.sage, alignItems: 'center', justifyContent: 'center', marginBottom: 18, shadowColor: COLORS.accent.sage, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
   popupTitle: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 10 },
   popupSubtitle: { fontSize: 13, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
   popupDivider: { width: '100%', height: 1, backgroundColor: '#F2F2F7', marginBottom: 16 },
   popupDots: { flexDirection: 'row', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E5EA' },
-  dotActive: { backgroundColor: '#22C55E', width: 20 },
+  dotActive: { backgroundColor: COLORS.accent.sage, width: 20 },
 });

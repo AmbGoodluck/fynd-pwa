@@ -63,6 +63,25 @@ function getTodayGoogleIndex(): number {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PlaceDetailScreen(props: any) {
+    // Fix 2: Generate AI description if missing and place has a name
+    useEffect(() => {
+      if (!aiDescription && name) {
+        generatePlaceDescription(
+          name,
+          initialAddress || '',
+          params.city || '',
+          params.types || [],
+          undefined,
+          undefined
+        ).then(result => {
+          if (result) {
+            setAiDescription(result.description);
+            setKnownFor(result.knownFor || []);
+            setVibe(result.vibe || '');
+          }
+        }).catch(() => {});
+      }
+    }, [aiDescription, name, initialAddress, params.city, params.types]);
   const { navigation, route } = props;
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -389,7 +408,11 @@ export default function PlaceDetailScreen(props: any) {
           ) : aiDescription ? (
             <Text style={styles.description}>{aiDescription}</Text>
           ) : (
-            <Text style={styles.descriptionMuted}>No description available.</Text>
+            <Text style={styles.descriptionMuted}>
+              {params.types?.length > 0
+                ? `A ${(params.types[0] as string).replace(/_/g, ' ')} in ${params.city || 'your area'}. Tap "I went here" to help us learn about this place.`
+                : 'Tap "I went here" to help us learn about this place.'}
+            </Text>
           )}
 
           {/* Rating row */}

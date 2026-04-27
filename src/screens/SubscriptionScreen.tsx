@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePremiumStore } from '../store/usePremiumStore';
 import { logEvent } from '../services/firebase';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 
 type Props = { navigation: any };
 
@@ -21,8 +22,8 @@ type Plan = 'monthly' | 'annual';
 const FEATURES = [
   {
     icon: 'map-outline',
-    color: '#22C55E',
-    bg: '#F0FDF4',
+    color: COLORS.accent.primary,
+    bg: COLORS.accent.primaryLight,
     title: 'Unlimited Trip Planning',
     desc: 'Plan as many trips as you want without weekly limits.',
   },
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
   logo: { width: 68, height: 68, marginBottom: 14 },
   plusBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: '#22C55E', borderRadius: 14,
+    backgroundColor: COLORS.accent.primary, borderRadius: 14,
     paddingHorizontal: 12, paddingVertical: 5,
     marginBottom: 18,
   },
@@ -322,21 +323,21 @@ const styles = StyleSheet.create({
     position: 'relative', overflow: 'hidden',
   },
   planCardAnnual: {
-    borderColor: '#D1FAE5', backgroundColor: '#F9FFFE',
+    borderColor: COLORS.accent.primaryLight, backgroundColor: '#FFFAF8',
   },
   planCardSelected: {
-    borderColor: '#22C55E',
-    shadowColor: '#22C55E', shadowOpacity: 0.15, shadowRadius: 12, elevation: 3,
+    borderColor: COLORS.accent.primary,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.15, shadowRadius: 12, elevation: 3,
   },
   planSelectedDot: {
     position: 'absolute', top: 12, right: 12,
     width: 18, height: 18, borderRadius: 9,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center', justifyContent: 'center',
   },
   bestValueBadge: {
     position: 'absolute', top: 0, left: 0, right: 0,
-    backgroundColor: '#22C55E', paddingVertical: 4, alignItems: 'center',
+    backgroundColor: COLORS.accent.primary, paddingVertical: 4, alignItems: 'center',
     borderTopLeftRadius: 16, borderTopRightRadius: 16,
   },
   bestValueText: { color: '#fff', fontSize: 11, fontFamily: F.bold, letterSpacing: 0.3 },
@@ -347,10 +348,10 @@ const styles = StyleSheet.create({
   planPrice: { fontSize: 28, fontFamily: F.bold, color: '#111827' },
   planPer: { fontSize: 12, color: '#9CA3AF', marginBottom: 6 },
   savingsBadge: {
-    backgroundColor: '#F0FDF4', borderRadius: 8,
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: 8,
     paddingHorizontal: 8, paddingVertical: 3, marginTop: 4,
   },
-  savingsText: { fontSize: 11, fontFamily: F.semibold, color: '#22C55E' },
+  savingsText: { fontSize: 11, fontFamily: F.semibold, color: COLORS.accent.primary },
 
   billingNote: {
     fontSize: 12, color: '#9CA3AF', textAlign: 'center',
@@ -359,10 +360,10 @@ const styles = StyleSheet.create({
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   primaryBtn: {
-    backgroundColor: '#22C55E', borderRadius: 18, height: 56,
+    backgroundColor: COLORS.accent.primary, borderRadius: 18, height: 56,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: '#22C55E', shadowOpacity: 0.35,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.35,
     shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 4,
   },
   primaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },

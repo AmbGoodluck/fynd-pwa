@@ -753,33 +753,38 @@ export function fyndPlaceToPlaceResult(place: FyndPlace): any {
 // ── ServiceHub Free Search ────────────────────────────────────────────────────
 
 const SERVICEHUB_OSM_TAGS: Record<string, string> = {
-  'Medical':           'hospital|clinic|doctors',
-  'Currency Exchange': 'bureau_de_change|bank',
+  'Medical':           'hospital|clinic|doctors|dentist|health_centre',
+  'Currency Exchange': 'bureau_de_change|bank|atm',
   'Public Bathrooms':  'toilets',
-  'Transport':         'bus_station|bus_stop|taxi|railway_station',
+  'Transport':         'bus_station|bus_stop|taxi|railway_station|ferry_terminal|subway_entrance',
   'Police':            'police',
   'Embassy':           'embassy',
-  'ATM':               'atm',
+  'ATM':               'atm|bank|bureau_de_change',
   'Pharmacy':          'pharmacy',
   'Hotel':             'hotel|motel|hostel',
   'Tourist Info':      'information',
   'Gas Station':       'fuel',
+  'Emergency':         'fire_station|hospital|police',
+  'Safety':            'police|fire_station',
 };
 
 export async function searchNearbyFree(
   lat: number,
   lng: number,
   category: string,
-  radiusKm: number = 5,
+  radiusKm: number = 10,
 ): Promise<FyndPlace[]> {
   const osmTag = SERVICEHUB_OSM_TAGS[category];
   if (!osmTag) return [];
 
   const radiusMeters = radiusKm * 1000;
   const query = `
-    [out:json][timeout:15];
-    node["amenity"~"${osmTag}"](around:${radiusMeters},${lat},${lng});
-    out body;
+    [out:json][timeout:20];
+    (
+      node["amenity"~"${osmTag}"](around:${radiusMeters},${lat},${lng});
+      way["amenity"~"${osmTag}"](around:${radiusMeters},${lat},${lng});
+    );
+    out center body;
   `;
 
   try {
@@ -794,16 +799,19 @@ export async function searchNearbyFree(
 
     return (data.elements || [])
       .filter((el: any) => el.tags?.name)
-      .slice(0, 15)
+      .slice(0, 20)
       .map((el: any, i: number) => {
         const tags = el.tags || {};
         const primaryTag = tags.amenity || tags.tourism || '';
         const types = OSM_TYPE_MAP[primaryTag] || ['point_of_interest'];
+        const placeLat = el.lat ?? el.center?.lat;
+        const placeLng = el.lon ?? el.center?.lon;
+        if (!placeLat || !placeLng) return null;
         return {
           id: `osm_${el.id}`,
           name: tags.name,
-          lat: el.lat,
-          lng: el.lon,
+          lat: placeLat,
+          lng: placeLng,
           address: [tags['addr:street'], tags['addr:city']].filter(Boolean).join(', ') || '',
           city: tags['addr:city'] || '',
           types,
@@ -813,7 +821,8 @@ export async function searchNearbyFree(
           photo_urls: getPhotoForPlace(types, i),
           osm_tags: tags,
         } as FyndPlace;
-      });
+      })
+      .filter(Boolean) as FyndPlace[];
   } catch {
     return [];
   }
