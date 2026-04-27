@@ -1,444 +1,193 @@
-/**
- * AllPlacesScreen
- *
- * Shows up to 20 top-rated places from place_details_cache.
- * Reached via "See all →" in ThingsToDoSection on the Home screen.
- */
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ImageBackground, Platform, ActivityIndicator,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '../services/firebase';
 import { F } from '../theme/fonts';
-import { COLORS } from '../theme/tokens';
+import { COLORS, RADIUS, SPACING } from '../theme/tokens';
 import { FALLBACK_IMAGE } from '../constants';
+import type { FyndPlace } from '../services/freePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
-import { useAuthStore } from '../store/useAuthStore';
-import GuestGateModal from '../components/GuestGateModal';
-import AppBar from '../components/AppBar';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+type Props = { navigation: any; route: any };
 
-interface CachedPlace {
-  place_id: string;
-  place_name: string;
-  formatted_address: string;
-  city: string;
-  rating?: number;
-  photo_urls: string[];
-  types: string[];
-  ai_description: string;
-  editorial_summary?: string;
-  vibe?: string;
-  lat: number;
-  lng: number;
-}
+export default function AllPlacesScreen({ navigation, route }: Props) {
+  const { places = [] as FyndPlace[], cityName = 'Nearby' } = route.params || {};
+  const tabBarHeight = useTabBarHeight();
+  const { savePlace, unsavePlace, savedPlaces, isGuest } = useGuestStore();
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+  const navToPlace = (place: FyndPlace) =>
+    navigation.navigate('PlaceDetail', {
+      placeId:     place.id,
+      name:        place.name,
+      address:     place.address,
+      photoUrl:    place.photo_urls[0] ?? '',
+      photoUrls:   place.photo_urls,
+      description: place.ai_description ?? '',
+      lat:         place.lat,
+      lng:         place.lng,
+      types:       place.types,
+      phone:       place.phone ?? '',
+      website:     place.website ?? '',
+      place,
+    });
 
-const EXCLUDED_TYPES = new Set(['gas_station', 'convenience_store', 'atm', 'car_wash', 'storage']);
-
-// Banner gradient overlay (cross-platform)
-const bannerGradient: any =
-  Platform.OS === 'web'
-    ? { background: 'linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.62) 100%)' }
-    : { backgroundColor: 'rgba(0,0,0,0.42)' };
-
-const cardGradient: any =
-  Platform.OS === 'web'
-    ? { background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 55%)' }
-    : { backgroundColor: 'rgba(0,0,0,0.28)' };
-
-// ── Place row card ─────────────────────────────────────────────────────────────
-
-function PlaceRow({
-  place,
-  index,
-  onPress,
-}: {
-  place: CachedPlace;
-  index: number;
-  onPress: () => void;
-}) {
-  const { isGuest, savePlace, unsavePlace, savedPlaces } = useGuestStore();
-  const { isAuthenticated } = useAuthStore();
-  const isSaved = savedPlaces.some(p => p.placeId === place.place_id);
-  const photoUrl = place.photo_urls?.[0] || FALLBACK_IMAGE;
-
-  const description = place.ai_description
-    ? place.ai_description.split('.')[0] + '.'
-    : place.editorial_summary
-      ? place.editorial_summary.split('.')[0] + '.'
+  const renderItem = ({ item: place }: { item: FyndPlace }) => {
+    const isSaved = savedPlaces.some(p => p.placeId === place.id);
+    const desc = place.ai_description
+      ? place.ai_description.split('.')[0] + '.'
       : '';
 
-  const [showGate, setShowGate] = useState(false);
-  const handleSave = () => {
-    if (!isAuthenticated || isGuest) {
-      setShowGate(true);
-      return;
-    }
-    if (isSaved) {
-      unsavePlace(place.place_id);
-    } else {
-      savePlace({
-        placeId: place.place_id,
-        name: place.place_name,
-        address: place.formatted_address,
-        rating: place.rating ?? 4.0,
-        description: place.ai_description || '',
-        photoRef: '',
-        photoUrl,
-        photoUrls: place.photo_urls,
-        coordinates: { lat: place.lat, lng: place.lng },
-        category: place.types?.[0]?.replace(/_/g, ' '),
-        city: place.city,
-        types: place.types,
-      } as any);
-    }
+    const handleSave = () => {
+      if (isGuest) return;
+      if (isSaved) {
+        unsavePlace(place.id);
+      } else {
+        savePlace({
+          placeId:     place.id,
+          name:        place.name,
+          address:     place.address,
+          description: desc,
+          photoUrl:    place.photo_urls[0] ?? FALLBACK_IMAGE,
+          photoUrls:   place.photo_urls,
+          coordinates: { lat: place.lat, lng: place.lng },
+          category:    place.types[0]?.replace(/_/g, ' ') || 'place',
+          types:       place.types,
+          city:        place.city,
+        } as any);
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => navToPlace(place)}
+        activeOpacity={0.8}
+      >
+        <Image
+          source={{ uri: place.photo_urls[0] ?? FALLBACK_IMAGE }}
+          style={styles.cardImage}
+        />
+        <View style={styles.cardBody}>
+          <Text style={styles.cardName} numberOfLines={1}>{place.name}</Text>
+          {!!desc && (
+            <Text style={styles.cardDesc} numberOfLines={2}>{desc}</Text>
+          )}
+          <View style={styles.cardMeta}>
+            {place.vibe ? (
+              <View style={styles.vibePill}>
+                <Text style={styles.vibePillText}>{place.vibe}</Text>
+              </View>
+            ) : place.types[0] ? (
+              <Text style={styles.typeText}>{place.types[0].replace(/_/g, ' ')}</Text>
+            ) : null}
+          </View>
+        </View>
+        <TouchableOpacity
+          onPress={handleSave}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={isSaved ? 'heart' : 'heart-outline'}
+            size={20}
+            color={isSaved ? COLORS.accent.primary : COLORS.text.disabled}
+          />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
   };
 
   return (
-    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.88}>
-      {/* Photo */}
-      <ImageBackground
-        source={{ uri: photoUrl }}
-        style={styles.rowImage}
-        imageStyle={styles.rowImageStyle}
-      >
-        <View style={[styles.rowImgGradient, cardGradient]} />
-        {/* Rank badge */}
-        <View style={styles.rankBadge}>
-          <Text style={styles.rankText}>{index + 1}</Text>
-        </View>
-      </ImageBackground>
-
-      {/* Body */}
-      <View style={styles.rowBody}>
-        <View style={styles.rowTop}>
-          <Text style={styles.rowName} numberOfLines={1}>{place.place_name}</Text>
-          <TouchableOpacity onPress={handleSave} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons
-                name={isSaved ? 'heart' : 'heart-outline'}
-                size={18}
-                color={isSaved ? '#E24B4A' : '#9CA3AF'}
-              />
-          </TouchableOpacity>
-        </View>
-
-        {description ? (
-          <Text style={styles.rowDesc} numberOfLines={2}>{description}</Text>
-        ) : null}
-
-        <View style={styles.rowMeta}>
-          {place.rating ? (
-            <View style={styles.metaChip}>
-              <Ionicons name="star" size={11} color="#F59E0B" />
-              <Text style={styles.metaChipText}>{Number(place.rating).toFixed(1)}</Text>
-            </View>
-          ) : null}
-          {place.vibe ? (
-            <View style={[styles.metaChip, styles.vibeChip]}>
-              <Text style={styles.vibeText}>{place.vibe}</Text>
-            </View>
-          ) : null}
-          {place.types?.[0] ? (
-            <Text style={styles.typeText} numberOfLines={1}>
-              {place.types[0].replace(/_/g, ' ')}
-            </Text>
-          ) : null}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={24} color={COLORS.text.primary} />
+        </TouchableOpacity>
+        <View style={styles.headerText}>
+          <Text style={styles.headerTitle}>Places near {cityName}</Text>
+          <Text style={styles.headerSub}>
+            {places.length} place{places.length !== 1 ? 's' : ''}
+          </Text>
         </View>
       </View>
-      <GuestGateModal
-        visible={showGate}
-        onDismiss={() => setShowGate(false)}
-        onLogin={() => { setShowGate(false); /* navigate to login if needed */ }}
-        onRegister={() => { setShowGate(false); /* navigate to register if needed */ }}
-        onContinueAsGuest={() => setShowGate(false)}
-      />
-    </TouchableOpacity>
-  );
-}
 
-// ── Main screen ────────────────────────────────────────────────────────────────
-
-type Props = { navigation: any; route?: any };
-
-export default function AllPlacesScreen({ navigation }: Props) {
-  const insets = useSafeAreaInsets();
-  const [places, setPlaces] = useState<CachedPlace[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [bannerPlace, setBannerPlace] = useState<CachedPlace | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        // Fetch 30 to allow client-side type filter → take top 20
-        const q = query(
-          collection(db, 'place_details_cache'),
-          orderBy('rating', 'desc'),
-          limit(30),
-        );
-        const snap = await getDocs(q);
-        if (cancelled) return;
-
-        const filtered = snap.docs
-          .map(d => ({ place_id: d.id, ...d.data() } as CachedPlace))
-          .filter(p => !p.types?.some(t => EXCLUDED_TYPES.has(t)))
-          .slice(0, 20);
-
-        if (filtered.length > 0) {
-          setBannerPlace(filtered[0]);
-          setPlaces(filtered);
+      <FlatList
+        data={places}
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + 24 }]}
+        renderItem={renderItem}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="map-outline" size={48} color={COLORS.text.disabled} />
+            <Text style={styles.emptyText}>No places found</Text>
+          </View>
         }
-      } catch {
-        // Firestore unavailable
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  const navigateToDetail = (place: CachedPlace) => {
-    navigation.navigate('PlaceDetail', {
-      placeId: place.place_id,
-      name: place.place_name,
-      photoUrl: place.photo_urls?.[0],
-      photoUrls: place.photo_urls,
-      description: place.ai_description,
-      rating: place.rating,
-      address: place.formatted_address,
-      types: place.types,
-      lat: place.lat,
-      lng: place.lng,
-    });
-  };
-
-  return (
-    <SafeAreaView style={styles.container} edges={Platform.OS === 'web' ? [] : ['top']}>
-      <AppBar
-        variant="sub"
-        title="Things to Do"
-        onBack={() => navigation.goBack()}
       />
-
-      {loading ? (
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#10B981" />
-        </View>
-      ) : (
-        <FlatList
-          data={places}
-          keyExtractor={item => item.place_id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: insets.bottom + 24 },
-          ]}
-          ListHeaderComponent={
-            bannerPlace ? (
-              <TouchableOpacity
-                activeOpacity={0.92}
-                onPress={() => navigateToDetail(bannerPlace)}
-              >
-                <ImageBackground
-                  source={{ uri: bannerPlace.photo_urls?.[0] || FALLBACK_IMAGE }}
-                  style={styles.banner}
-                  imageStyle={styles.bannerImg}
-                >
-                  <View style={[styles.bannerOverlay, bannerGradient]}>
-                    <View style={styles.bannerBadge}>
-                      <Text style={styles.bannerBadgeText}>🔥 Top Rated</Text>
-                    </View>
-                    <Text style={styles.bannerName} numberOfLines={2}>
-                      {bannerPlace.place_name}
-                    </Text>
-                    {bannerPlace.ai_description ? (
-                      <Text style={styles.bannerDesc} numberOfLines={2}>
-                        {bannerPlace.ai_description.split('.')[0] + '.'}
-                      </Text>
-                    ) : null}
-                    <View style={styles.bannerMeta}>
-                      {bannerPlace.rating ? (
-                        <View style={styles.bannerRating}>
-                          <Ionicons name="star" size={13} color="#F59E0B" />
-                          <Text style={styles.bannerRatingText}>
-                            {Number(bannerPlace.rating).toFixed(1)}
-                          </Text>
-                        </View>
-                      ) : null}
-                      {bannerPlace.vibe ? (
-                        <Text style={styles.bannerVibe}>{bannerPlace.vibe}</Text>
-                      ) : null}
-                    </View>
-                  </View>
-                </ImageBackground>
-              </TouchableOpacity>
-            ) : null
-          }
-          renderItem={({ item, index }) => (
-            <PlaceRow
-              place={item}
-              index={index}
-              onPress={() => navigateToDetail(item)}
-            />
-          )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
-      )}
     </SafeAreaView>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  list: { paddingTop: 0 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: SPACING.xl, paddingVertical: SPACING.md,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border.light,
+    backgroundColor: COLORS.background,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: COLORS.card.background,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: COLORS.border.light,
+  },
+  headerText:  { flex: 1 },
+  headerTitle: { fontSize: 17, fontFamily: F.bold, color: COLORS.text.primary },
+  headerSub:   { fontSize: 12, fontFamily: F.medium, color: COLORS.text.tertiary, marginTop: 2 },
 
-  // Hero banner
-  banner: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 20,
-    height: 220,
-    borderRadius: 18,
-    overflow: 'hidden',
-  },
-  bannerImg: { borderRadius: 18, resizeMode: 'cover' },
-  bannerOverlay: {
-    flex: 1,
-    borderRadius: 18,
-    padding: 18,
-    justifyContent: 'flex-end',
-  },
-  bannerBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EF4444',
-    borderRadius: 6,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    marginBottom: 10,
-  },
-  bannerBadgeText: { fontSize: 11, fontFamily: F.bold, color: '#fff' },
-  bannerName: {
-    fontSize: 22,
-    fontFamily: F.bold,
-    color: '#fff',
-    marginBottom: 6,
-    letterSpacing: -0.4,
-  },
-  bannerDesc: {
-    fontSize: 13,
-    fontFamily: F.regular,
-    color: 'rgba(255,255,255,0.85)',
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  bannerMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  bannerRating: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  bannerRatingText: { fontSize: 13, fontFamily: F.semibold, color: '#fff' },
-  bannerVibe: {
-    fontSize: 12,
-    fontFamily: F.medium,
-    color: 'rgba(255,255,255,0.8)',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
+  list: { paddingTop: SPACING.sm },
 
-  // Place rows
-  row: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: COLORS.border.light,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  card: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: SPACING.xl, marginBottom: SPACING.md,
+    padding: SPACING.md, borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.card.background,
+    borderWidth: 1, borderColor: COLORS.card.border,
+    shadowColor: '#1A1019', shadowOpacity: 0.04,
+    shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
   },
-  separator: { height: 10 },
-
-  rowImage: {
-    width: 96,
-    height: 96,
-    justifyContent: 'flex-end',
+  cardImage: {
+    width: 72, height: 72, borderRadius: RADIUS.xs,
+    marginRight: SPACING.md, backgroundColor: COLORS.border.light,
   },
-  rowImageStyle: { resizeMode: 'cover' },
-  rowImgGradient: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    height: 48,
+  cardBody: { flex: 1, gap: 4 },
+  cardName: { fontSize: 15, fontFamily: F.bold, color: COLORS.text.primary },
+  cardDesc: {
+    fontSize: 12, fontFamily: F.regular,
+    color: COLORS.text.tertiary, lineHeight: 16,
   },
-  rankBadge: {
-    position: 'absolute',
-    top: 7, left: 7,
-    width: 22, height: 22,
-    borderRadius: 11,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  vibePill: {
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: RADIUS.full,
+    paddingHorizontal: 8, paddingVertical: 2,
   },
-  rankText: { fontSize: 11, fontFamily: F.bold, color: '#fff' },
-
-  rowBody: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: 'space-between',
-  },
-  rowTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginBottom: 3,
-  },
-  rowName: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: F.semibold,
-    color: COLORS.text.primary,
-  },
-  rowDesc: {
-    fontSize: 12,
-    fontFamily: F.regular,
-    color: COLORS.text.secondary,
-    lineHeight: 16,
-    marginBottom: 6,
-  },
-  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  metaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  metaChipText: { fontSize: 11, fontFamily: F.medium, color: COLORS.text.secondary },
-  vibeChip: { backgroundColor: '#F0FDF4' },
-  vibeText: { fontSize: 11, fontFamily: F.medium, color: '#059669' },
+  vibePillText: { fontSize: 10, fontFamily: F.semibold, color: COLORS.accent.primary },
   typeText: {
-    fontSize: 11,
-    fontFamily: F.regular,
-    color: COLORS.text.tertiary,
-    textTransform: 'capitalize',
-    flexShrink: 1,
+    fontSize: 11, fontFamily: F.regular,
+    color: COLORS.text.hint, textTransform: 'capitalize',
   },
+
+  empty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingTop: 80, gap: 12,
+  },
+  emptyText: { fontSize: 16, fontFamily: F.semibold, color: COLORS.text.tertiary },
 });

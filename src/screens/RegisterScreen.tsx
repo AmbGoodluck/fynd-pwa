@@ -6,6 +6,9 @@ import { supabase } from '../services/supabase';
 import { createUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGuestStore } from '../store/useGuestStore';
+import { useOnboardingStore } from '../store/useOnboardingStore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 
 type Props = { navigation: any };
 
@@ -81,16 +84,39 @@ export default function RegisterScreen({ navigation }: Props) {
         console.warn('Firestore user create failed, bypassing:', dbErr.message);
       }
 
-      // Step 3: Hydrate state and log in
+      // Step 3: Save pending interests and welcome notification (non-fatal)
+      const pendingInterests = useOnboardingStore.getState().pendingInterests;
+      if (pendingInterests.length > 0) {
+        try {
+          await updateDoc(doc(db, 'users', data.user.id), { travelPreferences: pendingInterests });
+          useOnboardingStore.getState().clearPendingInterests();
+        } catch (e) {
+          console.error('[Register] Failed to save pending interests:', e);
+        }
+      }
+      try {
+        await supabase.from('notifications').insert({
+          user_id: data.user.id,
+          type: 'welcome',
+          title: 'Welcome to Fynd!',
+          body: 'Set your interests in Profile → Travel Preferences to get personalized recommendations.',
+          read: false,
+          created_at: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('[Register] Failed to create welcome notification:', e);
+      }
+
+      // Step 4: Hydrate state and log in
       clearGuest();
       login({
         id: data.user.id,
         email: data.user.email || email.trim(),
         fullName: fullName.trim(),
         isPremium: false,
-        travelPreferences: [],
+        travelPreferences: pendingInterests.length > 0 ? pendingInterests : [],
       });
-      navigation.replace('MainTabs');
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       return;
     } catch (e: any) {
       console.error('Register error:', e.message);

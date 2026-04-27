@@ -88,7 +88,7 @@ export default function LoginScreen({ navigation }: Props) {
       } catch (err: any) {
         console.warn('Hydrate saved places failed:', err.message);
       }
-      navigation.replace('MainTabs');
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (e: any) {
       console.error('Login error:', e.message);
       const isInvalidCreds = e.message?.includes('Invalid login credentials') || e.message?.includes('invalid_grant');

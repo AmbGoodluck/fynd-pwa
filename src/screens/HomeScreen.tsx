@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ImageBackground, Image, Modal, TouchableWithoutFeedback, Platform, Alert,
+  TextInput, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -18,32 +19,25 @@ import {
   FyndPlace,
 } from '../services/freePlacesService';
 import { supabase } from '../services/supabase';
+import { maybeCreateDailyPickNotification } from '../services/notificationService';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const QUICK_FILTERS = [
-  { id: 'all',     label: 'For You' },
-  { id: 'food',    label: 'Food' },
-  { id: 'coffee',  label: 'Coffee' },
-  { id: 'outdoor', label: 'Outdoors' },
-  { id: 'night',   label: 'Night' },
-  { id: 'study',   label: 'Study' },
+  { id: 'for_you',   label: 'For You',  types: [] as string[] },
+  { id: 'food',      label: 'Food',     types: ['restaurant', 'food', 'meal_takeaway', 'bakery'] },
+  { id: 'coffee',    label: 'Coffee',   types: ['cafe'] },
+  { id: 'outdoors',  label: 'Outdoors', types: ['park', 'natural_feature', 'campground', 'tourist_attraction'] },
+  { id: 'nightlife', label: 'Night',    types: ['bar', 'night_club', 'pub'] },
+  { id: 'study',     label: 'Study',    types: ['library', 'cafe', 'book_store'] },
 ];
 
-const FILTER_TYPE_MAP: Record<string, string[]> = {
-  food:    ['restaurant', 'fast_food', 'food_court'],
-  coffee:  ['cafe'],
-  outdoor: ['park', 'garden', 'playground'],
-  night:   ['bar', 'pub', 'nightclub'],
-  study:   ['library', 'cafe'],
-};
-
 const SERVICE_HUB_QUICK = [
-  { id: 'Medical',          label: 'Medical',   icon: 'medkit-outline',   color: '#EF4444', bg: '#FEF2F2' },
-  { id: 'Currency Exchange',label: 'Currency',  icon: 'cash-outline',     color: '#7C3AED', bg: '#F5F3FF' },
-  { id: 'Transport',        label: 'Transit',   icon: 'bus-outline',      color: '#0EA5E9', bg: '#F0F9FF' },
-  { id: 'Police',           label: 'Safety',    icon: 'shield-outline',   color: '#2D8E62', bg: '#EAF6F0' },
-  { id: 'Emergency',        label: 'Emergency', icon: 'alert-circle-outline', color: '#F59E0B', bg: '#FFFBEB' },
+  { id: 'Medical',           label: 'Medical',   icon: 'medkit-outline',        color: '#EF4444', bg: '#FEF2F2' },
+  { id: 'Currency Exchange', label: 'Currency',  icon: 'cash-outline',          color: '#7C3AED', bg: '#F5F3FF' },
+  { id: 'Transport',         label: 'Transit',   icon: 'bus-outline',           color: '#0EA5E9', bg: '#F0F9FF' },
+  { id: 'Police',            label: 'Safety',    icon: 'shield-outline',        color: '#2D8E62', bg: '#EAF6F0' },
+  { id: 'Emergency',         label: 'Emergency', icon: 'alert-circle-outline',  color: '#F59E0B', bg: '#FFFBEB' },
 ] as const;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -59,14 +53,19 @@ export default function HomeScreen({ navigation }: Props) {
   const [cityName, setCityName] = useState('');
   const [places, setPlaces] = useState<FyndPlace[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('for_you');
+  const [filteredPlaces, setFilteredPlaces] = useState<FyndPlace[]>([]);
   const [showServiceGate, setShowServiceGate] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FyndPlace[]>([]);
+
+  const searchInputRef = useRef<TextInput>(null);
 
   // Fetch unread notification count from Supabase
   useEffect(() => {
     if (!user?.id) return;
-
     const fetchUnread = async () => {
       try {
         const { count, error } = await supabase
@@ -79,7 +78,6 @@ export default function HomeScreen({ navigation }: Props) {
         setUnreadCount(0);
       }
     };
-
     fetchUnread();
     const interval = setInterval(fetchUnread, 60000);
     return () => clearInterval(interval);
@@ -93,7 +91,7 @@ export default function HomeScreen({ navigation }: Props) {
       .catch(() => {});
   }, [location]);
 
-  // Fetch nearby places once location + cityName are ready
+  // Fetch nearby places
   useEffect(() => {
     if (!location) return;
     setPlacesLoading(true);
@@ -103,23 +101,28 @@ export default function HomeScreen({ navigation }: Props) {
       cityName || 'Nearby',
       { limit: 20, generateAI: true },
     )
-      .then(results => setPlaces(results))
+      .then(results => {
+        setPlaces(results);
+        if (results.length > 0 && user?.id) {
+          maybeCreateDailyPickNotification(user.id, results[0]).catch(console.error);
+        }
+      })
       .catch(() => {})
       .finally(() => setPlacesLoading(false));
   }, [location, cityName]);
 
-  // Apply quick-filter
-  const filteredPlaces =
-    activeFilter === 'all'
-      ? places
-      : places.filter(p => {
-          const types = FILTER_TYPE_MAP[activeFilter] ?? [];
-          return p.types.some(t => types.includes(t));
-        });
+  // Derive filteredPlaces from places + activeFilter
+  useEffect(() => {
+    const filter = QUICK_FILTERS.find(f => f.id === activeFilter);
+    if (!filter || filter.types.length === 0) {
+      setFilteredPlaces(places);
+    } else {
+      setFilteredPlaces(places.filter(p => p.types.some(t => filter.types.includes(t))));
+    }
+  }, [places, activeFilter]);
 
   const heroPlace = filteredPlaces[0] ?? null;
-  const moreForYou = filteredPlaces.slice(1, 8);
-
+  const moreForYou = filteredPlaces.slice(1, 10);
   const isLoading = locationLoading || placesLoading;
 
   const userInitial =
@@ -148,6 +151,30 @@ export default function HomeScreen({ navigation }: Props) {
       website:     place.website ?? '',
       place,
     });
+
+  const handleSearch = (text: string) => {
+    setSearchQuery(text);
+    if (!text.trim()) { setSearchResults([]); return; }
+    const q = text.toLowerCase().trim();
+    const results = places.filter(p => {
+      const haystack = [
+        p.name,
+        ...(p.types || []),
+        p.cuisine || '',
+        p.vibe || '',
+        p.ai_description || '',
+        ...(p.known_for || []),
+      ].join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+    setSearchResults(results);
+  };
+
+  const cancelSearch = () => {
+    setSearchActive(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -194,236 +221,277 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       )}
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 24 }]}
-      >
-        {/* ── Location bar ──────────────────────────────────────────── */}
-        <View style={styles.locationBar}>
-          <Ionicons name="location-sharp" size={16} color={COLORS.accent.primary} />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {locationLoading
-              ? 'Finding your location…'
-              : cityName || 'Tap to set location'}
-          </Text>
-        </View>
-
-        {/* ── Search bar ────────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.searchBar}
-          activeOpacity={0.8}
-          onPress={() => {/* future: navigate to Search screen */}}
-        >
-          <Ionicons name="search-outline" size={18} color="#9E95A8" style={styles.searchIcon} />
-          <Text style={styles.searchPlaceholder}>Search places, vibes, cuisines…</Text>
-        </TouchableOpacity>
-
-        {/* ── Quick filters ─────────────────────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
-        >
-          {QUICK_FILTERS.map(f => (
-            <TouchableOpacity
-              key={f.id}
-              style={[styles.filterChip, activeFilter === f.id && styles.filterChipActive]}
-              onPress={() => setActiveFilter(f.id)}
-              activeOpacity={0.75}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  activeFilter === f.id && styles.filterChipTextActive,
-                ]}
-              >
-                {f.label}
-              </Text>
+      {/* ── Search overlay ──────────────────────────────────────────── */}
+      {searchActive ? (
+        <View style={styles.searchOverlay}>
+          {/* Input row */}
+          <View style={styles.searchInputRow}>
+            <View style={styles.searchInputWrap}>
+              <Ionicons name="search" size={17} color={COLORS.text.hint} style={styles.searchInputIcon} />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchInput}
+                placeholder="Search places, vibes, cuisines…"
+                placeholderTextColor={COLORS.text.hint}
+                value={searchQuery}
+                onChangeText={handleSearch}
+                autoFocus
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => { setSearchQuery(''); setSearchResults([]); }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close-circle" size={17} color={COLORS.text.hint} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity onPress={cancelSearch} style={styles.cancelBtn}>
+              <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* ── Today's Pick ──────────────────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Today's Pick</Text>
-        </View>
-
-        {isLoading ? (
-          <View style={[styles.heroCard, styles.skeleton]} />
-        ) : !location ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="location-outline" size={36} color="#C8C2CE" />
-            <Text style={styles.emptyTitle}>Location not available</Text>
-            <Text style={styles.emptySub}>
-              Allow location access to discover places near you.
-            </Text>
           </View>
-        ) : heroPlace ? (
-          <TouchableOpacity
-            style={styles.heroCard}
-            activeOpacity={0.9}
-            onPress={() => navToPlace(heroPlace)}
-          >
-            <ImageBackground
-              source={{ uri: heroPlace.photo_urls[0] ?? '' }}
-              style={styles.heroImage}
-              imageStyle={styles.heroImageStyle}
-            >
-              <View style={styles.heroOverlay}>
-                <View style={styles.heroTopRow}>
-                  <View style={styles.heroBadge}>
-                    <Text style={styles.heroBadgeText}>Picked for you</Text>
+
+          {/* Results */}
+          {searchQuery.trim().length === 0 ? (
+            <View style={styles.searchEmpty}>
+              <Ionicons name="search-outline" size={44} color={COLORS.text.disabled} />
+              <Text style={styles.searchEmptyText}>Search for a place or vibe</Text>
+            </View>
+          ) : searchResults.length === 0 ? (
+            <View style={styles.searchEmpty}>
+              <Ionicons name="search-outline" size={44} color={COLORS.text.disabled} />
+              <Text style={styles.searchEmptyText}>No places match "{searchQuery}"</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={searchResults}
+              keyExtractor={item => item.id}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.searchResultsList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.searchResultRow}
+                  onPress={() => { cancelSearch(); navToPlace(item); }}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: item.photo_urls[0] ?? '' }}
+                    style={styles.searchResultImage}
+                  />
+                  <View style={styles.searchResultBody}>
+                    <Text style={styles.searchResultName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.searchResultSub} numberOfLines={1}>
+                      {item.vibe || item.cuisine || item.types[0]?.replace(/_/g, ' ') || ''}
+                    </Text>
                   </View>
-                </View>
-                <View style={styles.heroBottom}>
-                  {(heroPlace.vibe ?? heroPlace.types[0]) ? (
-                    <View style={styles.heroVibePill}>
-                      <Text style={styles.heroVibePillText}>
-                        {heroPlace.vibe ?? heroPlace.types[0]}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.heroName} numberOfLines={1}>{heroPlace.name}</Text>
-                  {(() => {
-                    const desc = heroPlace.ai_description
-                      ? heroPlace.ai_description.split('.')[0] + '.'
-                      : heroPlace.cuisine
-                        ? heroPlace.cuisine.charAt(0).toUpperCase() + heroPlace.cuisine.slice(1)
-                        : '';
-                    return desc ? (
-                      <Text style={styles.heroDesc} numberOfLines={1}>{desc}</Text>
-                    ) : null;
-                  })()}
-                </View>
-              </View>
-            </ImageBackground>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.emptyCard}>
-            <Ionicons name="map-outline" size={36} color="#C8C2CE" />
-            <Text style={styles.emptyTitle}>No places found nearby</Text>
-            <Text style={styles.emptySub}>Try a different filter or expand your area.</Text>
-          </View>
-        )}
-
-        {/* ── More for you ──────────────────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>More for you</Text>
-          {!isLoading && moreForYou.length > 0 && (
-            <TouchableOpacity style={styles.seeAllBtn}>
-              <Text style={styles.seeAllText}>See all</Text>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.accent.primary} />
-            </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.text.disabled} />
+                </TouchableOpacity>
+              )}
+            />
           )}
         </View>
+      ) : (
+        /* ── Main scroll content ──────────────────────────────────── */
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 24 }]}
+        >
+          {/* ── Location bar ──────────────────────────────────────── */}
+          <View style={styles.locationBar}>
+            <Ionicons name="location-sharp" size={16} color={COLORS.accent.primary} />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {locationLoading ? 'Finding your location…' : cityName || 'Tap to set location'}
+            </Text>
+          </View>
 
-        {isLoading ? (
+          {/* ── Search bar (tappable placeholder) ─────────────────── */}
+          <TouchableOpacity
+            style={styles.searchBar}
+            activeOpacity={0.8}
+            onPress={() => setSearchActive(true)}
+          >
+            <Ionicons name="search-outline" size={18} color="#9E95A8" style={styles.searchIcon} />
+            <Text style={styles.searchPlaceholder}>Search places, vibes, cuisines…</Text>
+          </TouchableOpacity>
+
+          {/* ── Quick filters ─────────────────────────────────────── */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.moreRow}
-            scrollEnabled={false}
+            contentContainerStyle={styles.filtersRow}
           >
-            {[0, 1, 2].map(i => (
-              <View key={i} style={[styles.moreCard, styles.skeleton]} />
-            ))}
-          </ScrollView>
-        ) : moreForYou.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.moreRow}
-          >
-            {moreForYou.map(place => (
+            {QUICK_FILTERS.map(f => (
               <TouchableOpacity
-                key={place.id}
-                style={styles.moreCard}
-                activeOpacity={0.85}
-                onPress={() => navToPlace(place)}
+                key={f.id}
+                style={[styles.filterChip, activeFilter === f.id && styles.filterChipActive]}
+                onPress={() => setActiveFilter(f.id)}
+                activeOpacity={0.75}
               >
-                <View style={styles.moreCardImageWrap}>
-                  <Image
-                    source={{ uri: place.photo_urls[0] ?? '' }}
-                    style={styles.moreCardImage}
-                  />
-                  {place.vibe && (
-                    <View style={styles.cardVibePill}>
-                      <Text style={styles.cardVibeText}>{place.vibe}</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.moreCardBody}>
-                  <Text style={styles.moreCardName} numberOfLines={1}>{place.name}</Text>
-                  <Text style={styles.moreCardSub} numberOfLines={1}>
-                    {place.ai_description
-                      ? place.ai_description.split('.')[0] + '.'
-                      : place.cuisine || place.types[0]?.replace(/_/g, ' ') || 'Place'}
-                  </Text>
-                </View>
+                <Text style={[styles.filterChipText, activeFilter === f.id && styles.filterChipTextActive]}>
+                  {f.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
-        ) : null}
 
-        {/* ── Went Here Prompt ──────────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.wentHereCard}
-          activeOpacity={0.85}
-          onPress={() => Alert.alert('Coming soon!', 'Log a visit directly from any place page — tap "I went here" on the place detail.')}
-        >
-          <View style={styles.wentHereLeft}>
-            <View style={styles.wentHereIconWrap}>
-              <Ionicons name="star-outline" size={20} color={COLORS.accent.primary} />
-            </View>
-            <View>
-              <Text style={styles.wentHereTitle}>Been somewhere good?</Text>
-              <Text style={styles.wentHereSub}>Tell us about it</Text>
-            </View>
+          {/* ── Today's Pick ──────────────────────────────────────── */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Today's Pick</Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.accent.primary} />
-        </TouchableOpacity>
 
-        {/* ── ServiceHub Quick ──────────────────────────────────────── */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionLeft}>
-            <Ionicons name="compass-outline" size={18} color={COLORS.text.primary} />
-            <Text style={styles.sectionTitle}>ServiceHub</Text>
-          </View>
-          {isAuthenticated && !isGuest && (
-            <TouchableOpacity
-              style={styles.seeAllBtn}
-              onPress={() => navigation.navigate('ServiceHub')}
-            >
-              <Text style={styles.seeAllText}>See all</Text>
-              <Ionicons name="chevron-forward" size={14} color={COLORS.accent.primary} />
+          {isLoading ? (
+            <View style={[styles.heroCard, styles.skeleton]} />
+          ) : !location ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="location-outline" size={36} color="#C8C2CE" />
+              <Text style={styles.emptyTitle}>Location not available</Text>
+              <Text style={styles.emptySub}>Allow location access to discover places near you.</Text>
+            </View>
+          ) : heroPlace ? (
+            <TouchableOpacity style={styles.heroCard} activeOpacity={0.9} onPress={() => navToPlace(heroPlace)}>
+              <ImageBackground
+                source={{ uri: heroPlace.photo_urls[0] ?? '' }}
+                style={styles.heroImage}
+                imageStyle={styles.heroImageStyle}
+              >
+                <View style={styles.heroOverlay}>
+                  <View style={styles.heroTopRow}>
+                    <View style={styles.heroBadge}>
+                      <Text style={styles.heroBadgeText}>Picked for you</Text>
+                    </View>
+                  </View>
+                  <View style={styles.heroBottom}>
+                    {(heroPlace.vibe ?? heroPlace.types[0]) ? (
+                      <View style={styles.heroVibePill}>
+                        <Text style={styles.heroVibePillText}>
+                          {heroPlace.vibe ?? heroPlace.types[0]}
+                        </Text>
+                      </View>
+                    ) : null}
+                    <Text style={styles.heroName} numberOfLines={1}>{heroPlace.name}</Text>
+                    {(() => {
+                      const desc = heroPlace.ai_description
+                        ? heroPlace.ai_description.split('.')[0] + '.'
+                        : heroPlace.cuisine
+                          ? heroPlace.cuisine.charAt(0).toUpperCase() + heroPlace.cuisine.slice(1)
+                          : '';
+                      return desc ? <Text style={styles.heroDesc} numberOfLines={1}>{desc}</Text> : null;
+                    })()}
+                  </View>
+                </View>
+              </ImageBackground>
             </TouchableOpacity>
+          ) : filteredPlaces.length === 0 && places.length > 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="filter-outline" size={36} color="#C8C2CE" />
+              <Text style={styles.emptyTitle}>
+                No {QUICK_FILTERS.find(f => f.id === activeFilter)?.label ?? ''} places nearby
+              </Text>
+              <Text style={styles.emptySub}>Try a different filter.</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <Ionicons name="map-outline" size={36} color="#C8C2CE" />
+              <Text style={styles.emptyTitle}>No places found nearby</Text>
+              <Text style={styles.emptySub}>Try a different filter or expand your area.</Text>
+            </View>
           )}
-        </View>
 
-        <View style={styles.serviceRow}>
-          {SERVICE_HUB_QUICK.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.serviceCard}
-              onPress={() => handleServicePress(item.id)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.serviceIconWrap, { backgroundColor: item.bg }]}>
-                <Ionicons name={item.icon as any} size={24} color={item.color} />
+          {/* ── More for you ──────────────────────────────────────── */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>More for you</Text>
+            {!isLoading && filteredPlaces.length > 1 && (
+              <TouchableOpacity
+                style={styles.seeAllBtn}
+                onPress={() => navigation.navigate('AllPlaces', { places: filteredPlaces, cityName })}
+              >
+                <Text style={styles.seeAllText}>See all</Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.accent.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {isLoading ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moreRow} scrollEnabled={false}>
+              {[0, 1, 2].map(i => <View key={i} style={[styles.moreCard, styles.skeleton]} />)}
+            </ScrollView>
+          ) : moreForYou.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.moreRow}>
+              {moreForYou.map(place => (
+                <TouchableOpacity key={place.id} style={styles.moreCard} activeOpacity={0.85} onPress={() => navToPlace(place)}>
+                  <View style={styles.moreCardImageWrap}>
+                    <Image source={{ uri: place.photo_urls[0] ?? '' }} style={styles.moreCardImage} />
+                    {place.vibe && (
+                      <View style={styles.cardVibePill}>
+                        <Text style={styles.cardVibeText}>{place.vibe}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.moreCardBody}>
+                    <Text style={styles.moreCardName} numberOfLines={1}>{place.name}</Text>
+                    <Text style={styles.moreCardSub} numberOfLines={1}>
+                      {place.ai_description
+                        ? place.ai_description.split('.')[0] + '.'
+                        : place.cuisine || place.types[0]?.replace(/_/g, ' ') || 'Place'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          ) : null}
+
+          {/* ── Went Here Prompt ──────────────────────────────────── */}
+          <TouchableOpacity
+            style={styles.wentHereCard}
+            activeOpacity={0.85}
+            onPress={() => Alert.alert('Coming soon!', 'Log a visit directly from any place page — tap "I went here" on the place detail.')}
+          >
+            <View style={styles.wentHereLeft}>
+              <View style={styles.wentHereIconWrap}>
+                <Ionicons name="star-outline" size={20} color={COLORS.accent.primary} />
               </View>
-              <Text style={styles.serviceLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+              <View>
+                <Text style={styles.wentHereTitle}>Been somewhere good?</Text>
+                <Text style={styles.wentHereSub}>Tell us about it</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.accent.primary} />
+          </TouchableOpacity>
+
+          {/* ── ServiceHub Quick ──────────────────────────────────── */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionLeft}>
+              <Ionicons name="compass-outline" size={18} color={COLORS.text.primary} />
+              <Text style={styles.sectionTitle}>ServiceHub</Text>
+            </View>
+            {isAuthenticated && !isGuest && (
+              <TouchableOpacity
+                style={styles.seeAllBtn}
+                onPress={() => navigation.navigate('Services')}
+              >
+                <Text style={styles.seeAllText}>See all</Text>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.accent.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.serviceRow}>
+            {SERVICE_HUB_QUICK.map(item => (
+              <TouchableOpacity key={item.id} style={styles.serviceCard} onPress={() => handleServicePress(item.id)} activeOpacity={0.8}>
+                <View style={[styles.serviceIconWrap, { backgroundColor: item.bg }]}>
+                  <Ionicons name={item.icon as any} size={24} color={item.color} />
+                </View>
+                <Text style={styles.serviceLabel}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      )}
 
       {/* ── ServiceHub Guest Gate Modal ───────────────────────────── */}
-      <Modal
-        visible={showServiceGate}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowServiceGate(false)}
-      >
+      <Modal visible={showServiceGate} transparent animationType="slide" onRequestClose={() => setShowServiceGate(false)}>
         <TouchableWithoutFeedback onPress={() => setShowServiceGate(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
@@ -436,22 +504,13 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.modalBody}>
                   Create an account to access nearby services like medical help, transport, and emergency locations.
                 </Text>
-                <TouchableOpacity
-                  style={styles.modalPrimaryBtn}
-                  onPress={() => { setShowServiceGate(false); navigation.navigate('Login'); }}
-                >
+                <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => { setShowServiceGate(false); navigation.navigate('Login'); }}>
                   <Text style={styles.modalPrimaryBtnText}>Sign In</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalOutlineBtn}
-                  onPress={() => { setShowServiceGate(false); navigation.navigate('Register'); }}
-                >
+                <TouchableOpacity style={styles.modalOutlineBtn} onPress={() => { setShowServiceGate(false); navigation.navigate('Register'); }}>
                   <Text style={styles.modalOutlineBtnText}>Create Account</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalGhostBtn}
-                  onPress={() => setShowServiceGate(false)}
-                >
+                <TouchableOpacity style={styles.modalGhostBtn} onPress={() => setShowServiceGate(false)}>
                   <Text style={styles.modalGhostBtnText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
@@ -469,20 +528,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFAF8' },
   scroll:    { paddingBottom: 24 },
 
-  // ── AppBar (native) ──────────────────────────────────────────────────────
+  // ── AppBar ───────────────────────────────────────────────────────────────
   appBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12, backgroundColor: '#FFFAF8',
   },
-  appBarLeft:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  appBarLeft:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   appBarPinWrap: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  appBarBrand: { fontSize: 22, fontFamily: F.extrabold, color: '#1A1019' },
-  appBarRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bellWrap:    { position: 'relative', padding: 4 },
+  appBarBrand:  { fontSize: 22, fontFamily: F.extrabold, color: '#1A1019' },
+  appBarRight:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bellWrap:     { position: 'relative', padding: 4 },
   bellBadge: {
     position: 'absolute', top: 0, right: 0,
     minWidth: 16, height: 16, borderRadius: 8,
@@ -498,6 +557,42 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 14, fontFamily: F.bold, color: COLORS.accent.primaryDark },
 
+  // ── Search overlay ────────────────────────────────────────────────────────
+  searchOverlay: { flex: 1, backgroundColor: COLORS.background },
+  searchInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border.light,
+    backgroundColor: '#fff',
+  },
+  searchInputWrap: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.background, borderRadius: 12,
+    paddingHorizontal: 12, height: 44,
+    borderWidth: 1, borderColor: COLORS.border.default,
+  },
+  searchInputIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: F.medium, color: COLORS.text.primary },
+  cancelBtn: { paddingHorizontal: 4 },
+  cancelText: { fontSize: 14, fontFamily: F.semibold, color: COLORS.accent.primary },
+  searchEmpty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40,
+  },
+  searchEmptyText: { fontSize: 14, fontFamily: F.medium, color: COLORS.text.hint, textAlign: 'center' },
+  searchResultsList: { paddingTop: 4, paddingBottom: 24 },
+  searchResultRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 20, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: COLORS.border.light,
+    backgroundColor: '#fff',
+  },
+  searchResultImage: {
+    width: 56, height: 56, borderRadius: 8, backgroundColor: COLORS.border.light,
+  },
+  searchResultBody: { flex: 1 },
+  searchResultName: { fontSize: 14, fontFamily: F.bold, color: COLORS.text.primary, marginBottom: 3 },
+  searchResultSub:  { fontSize: 12, fontFamily: F.regular, color: COLORS.text.tertiary, textTransform: 'capitalize' },
+
   // ── Location bar ──────────────────────────────────────────────────────────
   locationBar: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -505,7 +600,7 @@ const styles = StyleSheet.create({
   },
   locationText: { fontSize: 13, fontFamily: F.semibold, color: COLORS.text.secondary, flex: 1 },
 
-  // ── Search bar ────────────────────────────────────────────────────────────
+  // ── Search bar (placeholder) ──────────────────────────────────────────────
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 20, marginBottom: 16,
@@ -534,7 +629,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, marginTop: 24, marginBottom: 12,
   },
-  sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionLeft:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: { fontSize: 17, fontFamily: F.bold, color: '#1A1019' },
   seeAllBtn:    { flexDirection: 'row', alignItems: 'center', gap: 2 },
   seeAllText:   { fontSize: 13, fontFamily: F.semibold, color: COLORS.accent.primary },
@@ -560,8 +655,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent.primary, borderRadius: 9999,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  heroBadgeText:  { fontSize: 11, fontFamily: F.bold, color: '#fff' },
-  heroBottom:     { gap: 4 },
+  heroBadgeText:    { fontSize: 11, fontFamily: F.bold, color: '#fff' },
+  heroBottom:       { gap: 4 },
   heroVibePill: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 9999,
@@ -571,7 +666,7 @@ const styles = StyleSheet.create({
   heroName:         { fontSize: 20, fontFamily: F.extrabold, color: '#fff' },
   heroDesc:         { fontSize: 12, fontFamily: F.regular, color: 'rgba(255,255,255,0.8)', lineHeight: 18 },
 
-  // ── Empty / no-location card ──────────────────────────────────────────────
+  // ── Empty card ────────────────────────────────────────────────────────────
   emptyCard: {
     marginHorizontal: 20, paddingVertical: 36, borderRadius: 24,
     backgroundColor: '#FFFFFF', alignItems: 'center', gap: 8,
@@ -584,7 +679,7 @@ const styles = StyleSheet.create({
   },
 
   // ── More for you ──────────────────────────────────────────────────────────
-  moreRow:       { paddingLeft: 20, paddingRight: 8, gap: 12 },
+  moreRow:   { paddingLeft: 20, paddingRight: 8, gap: 12 },
   moreCard: {
     width: 160, borderRadius: 20, overflow: 'hidden',
     backgroundColor: '#FFFFFF',
@@ -592,7 +687,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2,
   },
   moreCardImageWrap: { position: 'relative' },
-  moreCardImage: { width: '100%', height: 110, resizeMode: 'cover' },
+  moreCardImage:     { width: '100%', height: 110, resizeMode: 'cover' },
   cardVibePill: {
     position: 'absolute', bottom: 8, left: 8,
     backgroundColor: 'rgba(255,255,255,0.18)',
@@ -611,7 +706,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1, borderColor: 'rgba(232,80,58,0.15)',
   },
-  wentHereLeft:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  wentHereLeft:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
   wentHereIconWrap: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
@@ -624,7 +719,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     paddingHorizontal: 20, marginBottom: 8,
   },
-  serviceCard:    { alignItems: 'center', gap: 6, flex: 1 },
+  serviceCard:     { alignItems: 'center', gap: 6, flex: 1 },
   serviceIconWrap: {
     width: 52, height: 52, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
@@ -637,7 +732,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 24, paddingTop: 12, paddingBottom: 44, alignItems: 'center',
   },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E5EA', marginBottom: 20 },
+  modalHandle:  { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E5EA', marginBottom: 20 },
   modalIconWrap: {
     width: 64, height: 64, borderRadius: 32,
     backgroundColor: COLORS.accent.primaryLight,
