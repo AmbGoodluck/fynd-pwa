@@ -119,7 +119,7 @@ export default function AuthChoiceScreen({ navigation }: Props) {
                   <Text style={styles.permissionHeader}>Allowed:</Text>
                   {['Create Trip', 'View Suggested Places', 'Generate Itinerary', 'Use Map Navigation'].map(item => (
                     <View key={item} style={styles.permissionRow}>
-                      <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                      <Ionicons name="checkmark-circle" size={16} color={COLORS.accent.sage} />
                       <Text style={styles.permissionText}>{item}</Text>
                     </View>
                   ))}

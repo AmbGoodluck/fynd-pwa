@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { formatRelativeDate } from '../utils/date';
 import {
   getMoments,
@@ -475,7 +476,7 @@ export default function MomentsTab({
                 .finally(() => setLoading(false));
             }}
           >
-            <Ionicons name="refresh-outline" size={16} color="#22C55E" style={{ marginRight: 4 }} />
+            <Ionicons name="refresh-outline" size={16} color={COLORS.accent.primary} style={{ marginRight: 4 }} />
             <Text style={s.emptyAddText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -533,7 +534,7 @@ export default function MomentsTab({
             </Text>
             {isMember && (
               <TouchableOpacity style={s.emptyAddBtn} onPress={pickAndUpload}>
-                <Ionicons name="add-circle-outline" size={16} color="#22C55E" style={{ marginRight: 4 }} />
+                <Ionicons name="add-circle-outline" size={16} color={COLORS.accent.primary} style={{ marginRight: 4 }} />
                 <Text style={s.emptyAddText}>Add the first moment</Text>
               </TouchableOpacity>
             )}
@@ -577,7 +578,7 @@ export default function MomentsTab({
                 disabled={loadingMore}
               >
                 {loadingMore ? (
-                  <ActivityIndicator size="small" color="#22C55E" />
+                  <ActivityIndicator size="small" color={COLORS.accent.primary} />
                 ) : (
                   <Text style={s.loadMoreText}>Load more</Text>
                 )}
@@ -620,7 +621,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -670,12 +671,12 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#22C55E',
+    borderColor: COLORS.accent.primary,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  emptyAddText: { fontSize: 14, fontFamily: F.semibold, color: '#22C55E' },
+  emptyAddText: { fontSize: 14, fontFamily: F.semibold, color: COLORS.accent.primary },
 
   sectionHeader: { paddingHorizontal: 16, marginBottom: 8, marginTop: 4 },
   sectionLabel: { fontSize: 13, fontFamily: F.semibold, color: '#6B7280' },
@@ -697,7 +698,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
   },
-  loadMoreText: { fontSize: 14, fontFamily: F.semibold, color: '#22C55E' },
+  loadMoreText: { fontSize: 14, fontFamily: F.semibold, color: COLORS.accent.primary },
 });
 
 // Grid item styles

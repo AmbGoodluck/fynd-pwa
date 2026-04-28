@@ -126,7 +126,7 @@ function sortPlaces(places: FyndPlace[], preferences: string[] = []): FyndPlace[
 
 const BADGES = [
   { label: '🔥 Hot',      bg: '#EF4444' },
-  { label: '↑ Rising',    bg: '#10B981' },
+  { label: '↑ Rising',    bg: COLORS.accent.primary },
   { label: '✦ Popular',   bg: '#1A1A1A' },
 ] as const;
 
@@ -298,7 +298,7 @@ export default function ThingsToDoSection({ navigation }: Props) {
           <Text style={styles.headerTitle}>Things to Do</Text>
         </View>
         <View style={styles.seedingMsg}>
-          <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 10 }} />
+          <ActivityIndicator size="small" color={COLORS.accent.primary} style={{ marginRight: 10 }} />
           <Text style={styles.seedingText}>Discovering places near you…</Text>
         </View>
       </View>
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   seeAll: {
     fontSize: 13,
     fontFamily: F.semibold,
-    color: '#10B981',
+    color: COLORS.accent.primary,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveBtnActive: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
   },
   cardBody: {
     padding: 10,

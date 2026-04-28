@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { F } from '../../theme/fonts';
+import { COLORS } from '../../theme/tokens';
 import type { A2HSPlatform } from '../../hooks/useAddToHomeScreen';
 
 interface A2HSInstructionsProps {
@@ -23,7 +24,7 @@ function ShareIcon() {
   if (Platform.OS !== 'web') return null;
   return React.createElement('svg', {
     width: 28, height: 28, viewBox: '0 0 28 28',
-    fill: 'none', stroke: '#10B981', strokeWidth: 2,
+    fill: 'none', stroke: COLORS.accent.primary, strokeWidth: 2,
     strokeLinecap: 'round', strokeLinejoin: 'round',
   },
     React.createElement('rect', { x: 4, y: 8, width: 20, height: 16, rx: 4 }),
@@ -36,7 +37,7 @@ function AddIcon() {
   if (Platform.OS !== 'web') return null;
   return React.createElement('svg', {
     width: 28, height: 28, viewBox: '0 0 28 28',
-    fill: 'none', stroke: '#10B981', strokeWidth: 2,
+    fill: 'none', stroke: COLORS.accent.primary, strokeWidth: 2,
     strokeLinecap: 'round', strokeLinejoin: 'round',
   },
     React.createElement('rect', { x: 4, y: 4, width: 20, height: 20, rx: 4 }),
@@ -49,7 +50,7 @@ function DockIcon() {
   if (Platform.OS !== 'web') return null;
   return React.createElement('svg', {
     width: 28, height: 28, viewBox: '0 0 28 28',
-    fill: 'none', stroke: '#10B981', strokeWidth: 2,
+    fill: 'none', stroke: COLORS.accent.primary, strokeWidth: 2,
     strokeLinecap: 'round', strokeLinejoin: 'round',
   },
     React.createElement('rect', { x: 4, y: 6, width: 20, height: 14, rx: 3 }),
@@ -61,7 +62,7 @@ function CheckIcon() {
   if (Platform.OS !== 'web') return null;
   return React.createElement('svg', {
     width: 28, height: 28, viewBox: '0 0 28 28',
-    fill: 'none', stroke: '#10B981', strokeWidth: 2.5,
+    fill: 'none', stroke: COLORS.accent.primary, strokeWidth: 2.5,
     strokeLinecap: 'round', strokeLinejoin: 'round',
   },
     React.createElement('circle', { cx: 14, cy: 14, r: 10 }),
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -271,12 +272,12 @@ const styles = StyleSheet.create({
   gotItBtn: {
     marginTop: 28,
     width: '100%',
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#10B981',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },

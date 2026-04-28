@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../../theme/fonts';
+import { COLORS } from '../../theme/tokens';
 import type { FyndNotification } from '../../types/notifications';
 import { NOTIFICATION_CONFIG } from '../../lib/notifications/constants';
 import { getRelativeTime } from '../../lib/notifications/relativeTime';
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowUnread: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
   },
   iconWrap: {
     width: 42,
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     flexShrink: 0,
   },
 });

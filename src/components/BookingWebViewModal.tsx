@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { isGoogleMapsUrl } from '../services/bookingDetectionService';
 
 // WebView is only available on native — import conditionally to avoid web crashes
@@ -173,7 +174,7 @@ export default function BookingWebViewModal({
         ) : Platform.OS === 'web' || !WebView ? (
           /* ── Web / External State ────────────────────────── */
           <View style={styles.errorState}>
-            <Ionicons name="open-outline" size={60} color="#22C55E" />
+            <Ionicons name="open-outline" size={60} color={COLORS.accent.primary} />
             <Text style={styles.errorTitle}>Booking Opened</Text>
             <Text style={styles.errorBody}>
               The booking page has been opened in a new tab or external browser.
@@ -188,7 +189,7 @@ export default function BookingWebViewModal({
                     style={[styles.feedbackBtn, styles.feedbackBtnYes, { paddingHorizontal: 20, paddingVertical: 10 }]}
                     onPress={() => handleFeedback(true)}
                   >
-                    <Ionicons name="thumbs-up-outline" size={16} color="#22C55E" />
+                    <Ionicons name="thumbs-up-outline" size={16} color={COLORS.accent.primary} />
                     <Text style={[styles.feedbackBtnTextYes, { fontSize: 15 }]}>Yes, it was correct</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -230,7 +231,7 @@ export default function BookingWebViewModal({
 
             {loading && (
               <View style={styles.loadingOverlay} pointerEvents="none">
-                <ActivityIndicator size="large" color="#22C55E" />
+                <ActivityIndicator size="large" color={COLORS.accent.primary} />
                 <Text style={styles.loadingText}>Loading booking page…</Text>
               </View>
             )}
@@ -246,7 +247,7 @@ export default function BookingWebViewModal({
                     style={[styles.feedbackBtn, styles.feedbackBtnYes]}
                     onPress={() => handleFeedback(true)}
                   >
-                    <Ionicons name="thumbs-up-outline" size={14} color="#22C55E" />
+                    <Ionicons name="thumbs-up-outline" size={14} color={COLORS.accent.primary} />
                     <Text style={styles.feedbackBtnTextYes}>Yes</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
   fallbackBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -388,12 +389,12 @@ const styles = StyleSheet.create({
   },
   feedbackBtnYes: {
     borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
   },
   feedbackBtnNo: {
     borderColor: '#FECACA',
     backgroundColor: '#FEF2F2',
   },
-  feedbackBtnTextYes: { fontSize: 13, color: '#22C55E', fontFamily: F.semibold },
+  feedbackBtnTextYes: { fontSize: 13, color: COLORS.accent.primary, fontFamily: F.semibold },
   feedbackBtnTextNo:  { fontSize: 13, color: '#EF4444', fontFamily: F.semibold },
 });

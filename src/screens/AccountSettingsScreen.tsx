@@ -166,7 +166,7 @@ export default function AccountSettingsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { paddingBottom: 40 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 0, paddingBottom: 8 },
   name: { fontSize: 16, fontWeight: '500', color: '#111827', textAlign: 'center', marginBottom: 4 },

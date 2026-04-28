@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 
 type Props = {
   visible: boolean;
@@ -42,7 +43,7 @@ export default function FyndPlusUpgradeModal({
               <View style={styles.handle} />
 
               <View style={styles.iconWrap}>
-                <Ionicons name={icon as any} size={30} color="#22C55E" />
+                <Ionicons name={icon as any} size={30} color={COLORS.accent.primary} />
               </View>
 
               {/* FyndPlus badge */}
@@ -91,13 +92,13 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 10,
   },
   plusBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#22C55E', borderRadius: 12,
+    backgroundColor: COLORS.accent.primary, borderRadius: 12,
     paddingHorizontal: 10, paddingVertical: 4,
     marginBottom: 14,
   },
@@ -113,10 +114,10 @@ const styles = StyleSheet.create({
     lineHeight: 22, marginBottom: 24, paddingHorizontal: 4,
   },
   upgradeBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16,
     height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: '#22C55E', shadowOpacity: 0.3, shadowRadius: 8,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.3, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
   upgradeBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },

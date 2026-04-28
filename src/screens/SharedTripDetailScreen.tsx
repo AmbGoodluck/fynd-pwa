@@ -5,17 +5,17 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Modal,
-  Linking,
   Platform,
   TextInput,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import AppHeader from '../components/AppHeader';
 import PlaceCard from '../components/PlaceCard';
 import BookingWebViewModal, { isValidBookingUrl } from '../components/BookingWebViewModal';
@@ -333,7 +333,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <AppHeader title="Trip" onBack={() => navigation.goBack()} />
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#22C55E" />
+          <ActivityIndicator size="large" color={COLORS.accent.primary} />
         </View>
       </SafeAreaView>
     );
@@ -432,11 +432,11 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
           {/* Quick action row */}
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.quickBtn} onPress={handleShare}>
-              <Ionicons name="share-outline" size={18} color="#22C55E" />
+              <Ionicons name="share-outline" size={18} color={COLORS.accent.primary} />
               <Text style={styles.quickBtnText}>Share</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.quickBtn} onPress={handleViewMap}>
-              <Ionicons name="map-outline" size={18} color="#22C55E" />
+              <Ionicons name="map-outline" size={18} color={COLORS.accent.primary} />
               <Text style={styles.quickBtnText}>View Map</Text>
             </TouchableOpacity>
             {!isOwner && (
@@ -444,7 +444,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
                 <Ionicons
                   name={saved ? 'heart' : 'heart-outline'}
                   size={18}
-                  color={saved ? '#22C55E' : '#22C55E'}
+                  color={saved ? COLORS.accent.primary : COLORS.accent.primary}
                 />
                 <Text style={styles.quickBtnText}>{saved ? 'Saved' : 'Save'}</Text>
               </TouchableOpacity>
@@ -566,8 +566,8 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
             <TouchableWithoutFeedback>
               <View style={styles.confirmSheet}>
                 <View style={styles.confirmHandle} />
-                <View style={[styles.confirmIconWrap, { backgroundColor: '#F0FDF4' }]}>
-                  <Ionicons name="share-social-outline" size={30} color="#22C55E" />
+                <View style={[styles.confirmIconWrap, { backgroundColor: COLORS.accent.primaryLight }]}>
+                  <Ionicons name="share-social-outline" size={30} color={COLORS.accent.primary} />
                 </View>
                 <Text style={styles.confirmTitle}>Share Trip</Text>
                 <Text style={styles.shareSubtitle}>
@@ -586,7 +586,7 @@ export default function SharedTripDetailScreen({ navigation, route }: Props) {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.confirmDestructiveBtn, { backgroundColor: '#22C55E', shadowColor: '#22C55E' }]}
+                  style={[styles.confirmDestructiveBtn, { backgroundColor: COLORS.accent.primary, shadowColor: COLORS.accent.primary }]}
                   onPress={copyShareLink}
                 >
                   <Ionicons
@@ -744,7 +744,7 @@ const memberStyles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 6,
   },
-  ownerAvatar: { backgroundColor: '#22C55E' },
+  ownerAvatar: { backgroundColor: COLORS.accent.primary },
   initial: { fontSize: 20, fontFamily: F.bold, color: '#fff' },
   crownBadge: {
     position: 'absolute',
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: '#22C55E' },
+  tabActive: { borderBottomColor: COLORS.accent.primary },
   tabText: { fontSize: 15, color: '#6B7280', fontFamily: F.semibold },
   tabTextActive: { color: '#111827' },
 
@@ -830,11 +830,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     borderRadius: 12,
     paddingVertical: 10,
   },
-  quickBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#22C55E' },
+  quickBtnText: { fontSize: 13, fontFamily: F.semibold, color: COLORS.accent.primary },
 
   section: { marginBottom: 20 },
   sectionTitle: { fontSize: 16, fontFamily: F.bold, color: '#111827', marginBottom: 12 },
@@ -851,13 +851,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   mapBtn: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 16,
     height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#22C55E',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
@@ -887,12 +887,12 @@ const styles = StyleSheet.create({
 
   primaryBtn: {
     width: '100%',
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#22C55E',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -980,10 +980,10 @@ const styles = StyleSheet.create({
   confirmCancelBtn: { paddingVertical: 14, paddingHorizontal: 20 },
   confirmCancelBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.medium },
   shareDoneBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    width: '100%', borderWidth: 1.5, borderColor: COLORS.accent.primary,
     borderRadius: 16, height: 54, alignItems: 'center', justifyContent: 'center',
   },
-  shareDoneBtnText: { color: '#22C55E', fontSize: 16, fontFamily: F.bold },
+  shareDoneBtnText: { color: COLORS.accent.primary, fontSize: 16, fontFamily: F.bold },
 
   shareSubtitle: {
     fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 20,

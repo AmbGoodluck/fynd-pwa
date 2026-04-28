@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { F } from '../../theme/fonts';
+import { COLORS } from '../../theme/tokens';
 import { FALLBACK_IMAGE } from '../../constants';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ function relativeTime(ts: number): string {
   return `${Math.floor(days / 7)}w ago`;
 }
 
-const AVATAR_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
+const AVATAR_COLORS = [COLORS.accent.primary, '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 function avatarColor(name: string): string {
   return AVATAR_COLORS[(name.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 }
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
   },
   thumbnailBorder: {
     borderWidth: 2.5,
-    borderColor: '#10B981',
+    borderColor: COLORS.accent.primary,
     borderRadius: 14,
     overflow: 'hidden',
   },

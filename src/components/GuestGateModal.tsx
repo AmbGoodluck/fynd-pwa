@@ -4,6 +4,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../theme/tokens';
 
 type Props = {
   visible: boolean;
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,
   },
@@ -93,19 +94,19 @@ const styles = StyleSheet.create({
     lineHeight: 22, marginBottom: 28, paddingHorizontal: 8,
   },
   primaryBtn: {
-    width: '100%', backgroundColor: '#22C55E', borderRadius: 16,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.3,
     shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   outlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#22C55E',
+    width: '100%', borderWidth: 1.5, borderColor: COLORS.accent.primary,
     borderRadius: 16, height: 52, alignItems: 'center',
     justifyContent: 'center', marginBottom: 12,
   },
-  outlineBtnText: { color: '#22C55E', fontSize: 16, fontWeight: '600' },
+  outlineBtnText: { color: COLORS.accent.primary, fontSize: 16, fontWeight: '600' },
   ghostBtn: {
     paddingVertical: 10, paddingHorizontal: 20,
   },

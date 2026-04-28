@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import AppHeader from '../components/AppHeader';
 import { useSharedTripStore } from '../store/useSharedTripStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -105,7 +106,7 @@ function TripCard({
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={styles.momentsBtn}
         >
-          <Ionicons name="camera-outline" size={18} color="#22C55E" />
+          <Ionicons name="camera-outline" size={18} color={COLORS.accent.primary} />
         </TouchableOpacity>
       )}
 
@@ -234,7 +235,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#22C55E" />
+          <ActivityIndicator size="large" color={COLORS.accent.primary} />
         </View>
       ) : (
         <ScrollView
@@ -244,7 +245,7 @@ export default function SharedTripsScreen({ navigation }: Props) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#22C55E"
+              tintColor={COLORS.accent.primary}
             />
           }
         >
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: '#22C55E' },
+  tabActive: { borderBottomColor: COLORS.accent.primary },
   tabText: { fontSize: 15, color: '#6B7280', fontFamily: F.semibold },
   tabTextActive: { color: '#111827' },
 
@@ -430,11 +431,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   thumbMore: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  thumbMoreText: { fontSize: 11, fontFamily: F.bold, color: '#22C55E' },
+  thumbMoreText: { fontSize: 11, fontFamily: F.bold, color: COLORS.accent.primary },
 
   cardBody: { flex: 1 },
   cardTitle: { fontSize: 15, fontFamily: F.semibold, color: '#111827', marginBottom: 2 },

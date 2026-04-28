@@ -879,8 +879,8 @@ export function fyndPlaceToPlaceResult(place: FyndPlace): any {
     placeId: place.id,
     name: place.name,
     address: place.address,
-    rating: undefined,
-    description: place.ai_description || place.types[0]?.replace(/_/g, ' ') || '',
+    rating: place.rating,
+    description: place.ai_description || place.cuisine || place.types[0]?.replace(/_/g, ' ') || '',
     photoRef: '',
     photoUrl: place.photo_urls[0] || FALLBACK_IMAGE,
     photoUrls: place.photo_urls,
@@ -888,12 +888,11 @@ export function fyndPlaceToPlaceResult(place: FyndPlace): any {
     category: place.types[0]?.replace(/_/g, ' ') || 'place',
     types: place.types,
     city: place.city,
-    distanceKm: undefined,
-    walkMinutes: undefined,
     matchedTags: place.known_for?.slice(0, 2),
     opening_hours: place.opening_hours_raw
       ? { weekday_text: [place.opening_hours_raw] }
       : undefined,
+    distance_meters: place.distance_meters,
   };
 }
 

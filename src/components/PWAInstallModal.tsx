@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 
 interface Props {
   visible: boolean;
@@ -34,7 +35,7 @@ export default function PWAInstallModal({ visible, onInstall, onDismiss }: Props
 
               {/* Icon */}
               <View style={styles.iconWrap}>
-                <Ionicons name="phone-portrait-outline" size={32} color="#22C55E" />
+                <Ionicons name="phone-portrait-outline" size={32} color={COLORS.accent.primary} />
               </View>
 
               <Text style={styles.title}>Install Fynd</Text>
@@ -50,7 +51,7 @@ export default function PWAInstallModal({ visible, onInstall, onDismiss }: Props
                   { icon: 'notifications-outline', text: 'Full-screen, app-like experience' },
                 ].map((f) => (
                   <View key={f.icon} style={styles.featureRow}>
-                    <Ionicons name={f.icon as any} size={16} color="#22C55E" />
+                    <Ionicons name={f.icon as any} size={16} color={COLORS.accent.primary} />
                     <Text style={styles.featureText}>{f.text}</Text>
                   </View>
                 ))}
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,
     borderWidth: 1, borderColor: '#BBF7D0',
@@ -129,14 +130,14 @@ const styles = StyleSheet.create({
   },
   installBtn: {
     width: '100%',
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 16,
     height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-    shadowColor: '#22C55E',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.35,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },

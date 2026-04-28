@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { useUserLocation } from '../hooks/useUserLocation';
 import {
   getVisibleCategories,
@@ -137,7 +138,7 @@ export default function TrendingSection({ navigation }: Props) {
         {locationDenied ? (
           <TouchableOpacity style={styles.locationPrompt} onPress={retryLocation} activeOpacity={0.85}>
             <View style={styles.locationPromptIcon}>
-              <Ionicons name="location-outline" size={22} color="#10B981" />
+              <Ionicons name="location-outline" size={22} color={COLORS.accent.primary} />
             </View>
             <Text style={styles.locationPromptTitle}>Allow location access</Text>
             <Text style={styles.locationPromptHint}>
@@ -235,9 +236,9 @@ const styles = StyleSheet.create({
     width: 200,
     height: CARD_H,
     borderRadius: 12,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     borderWidth: 1.5,
-    borderColor: '#D1FAE5',
+    borderColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
   locationPromptTitle: {
     fontSize: 13,
     fontFamily: F.semibold,
-    color: '#065F46',
+    color: COLORS.accent.primary,
     marginBottom: 4,
     textAlign: 'center',
   },

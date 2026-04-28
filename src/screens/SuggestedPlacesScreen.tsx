@@ -8,6 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 
 import PlacePreviewModal, { type PreviewPlace } from '../components/PlacePreviewModal';
 import GuestGateModal from '../components/GuestGateModal';
@@ -367,7 +368,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
       {/* ── Universal Place Search ───────────────────────────── */}
       <View style={styles.uniSearchWrap}>
         <View style={[styles.uniSearchRow, placeSearchFocused && styles.uniSearchRowFocused]}>
-          <Ionicons name="add-circle-outline" size={18} color="#10B981" style={{ marginRight: 8 }} />
+          <Ionicons name="add-circle-outline" size={18} color={COLORS.accent.primary} style={{ marginRight: 8 }} />
           <TextInput
             style={styles.uniSearchInput}
             placeholder="Search any place to add…"
@@ -380,7 +381,7 @@ export default function SuggestedPlacesScreen({ navigation, route }: Props) {
             onSubmitEditing={() => Keyboard.dismiss()}
           />
           {placeSearchLoading
-            ? <ActivityIndicator size="small" color="#10B981" />
+            ? <ActivityIndicator size="small" color={COLORS.accent.primary} />
             : placeSearch.length > 0
               ? <TouchableOpacity onPress={() => { setPlaceSearch(''); setPlaceSearchResults([]); setPlaceSearchFocused(false); }}>
                   <Ionicons name="close-circle" size={16} color="#8E8E93" />
@@ -631,7 +632,7 @@ const styles = StyleSheet.create({
   avatarImg: { width: 40, height: 40, borderRadius: 20, resizeMode: 'cover' },
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.accent.primary, alignItems: 'center', justifyContent: 'center',
   },
   avatarLetter: { color: '#fff', fontFamily: F.bold, fontSize: 16 },
 
@@ -697,11 +698,11 @@ const styles = StyleSheet.create({
   },
   uniSearchRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F0FDF4', borderRadius: 14,
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: 14,
     borderWidth: 0, borderColor: 'transparent',
     paddingHorizontal: 12, height: 44,
   },
-  uniSearchRowFocused: { borderColor: '#10B981', borderWidth: 1.5 },
+  uniSearchRowFocused: { borderColor: COLORS.accent.primary, borderWidth: 1.5 },
   uniSearchInput: { flex: 1, fontSize: 14, fontFamily: F.regular, color: '#1A1A1A' },
   uniSearchDropdown: {
     backgroundColor: '#fff', borderRadius: 14,
@@ -728,13 +729,13 @@ const styles = StyleSheet.create({
   outOfCityText: { fontSize: 11, fontFamily: F.medium, color: '#92400E' },
   uniAddBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#10B981', borderRadius: 9999,
+    backgroundColor: COLORS.accent.primary, borderRadius: 9999,
     paddingHorizontal: 12, paddingVertical: 6, marginLeft: 8,
   },
   uniAddBtnText: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
   uniAddedBadge: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginLeft: 8,
+    backgroundColor: COLORS.accent.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 8,
   },
   uniEmptyState: {
     backgroundColor: '#fff', borderRadius: 14,
@@ -750,7 +751,7 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#1A1A1A', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  backBtn: { backgroundColor: '#10B981', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
+  backBtn: { backgroundColor: COLORS.accent.primary, borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   backBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
 
   // ── CTA bar ──────────────────────────────────────────────────
@@ -760,12 +761,12 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   ctaBtn: {
-    backgroundColor: '#10B981', borderRadius: 12, height: 50,
+    backgroundColor: COLORS.accent.primary, borderRadius: 12, height: 50,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#10B981', shadowOpacity: 0.3, shadowRadius: 10,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.3, shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 }, elevation: 4,
   },
-  ctaBtnDisabled: { backgroundColor: '#10B981', opacity: 0.4, shadowOpacity: 0 },
+  ctaBtnDisabled: { backgroundColor: COLORS.accent.primary, opacity: 0.4, shadowOpacity: 0 },
   ctaBtnText: { color: '#fff', fontSize: 15, fontFamily: F.semibold },
 
   // ── Modals ───────────────────────────────────────────────────
@@ -783,15 +784,15 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 22, fontFamily: F.bold, color: '#1A1A1A', marginBottom: 10, textAlign: 'center' },
   modalBody: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 4 },
   modalPrimaryBtn: {
-    width: '100%', backgroundColor: '#10B981', borderRadius: 16,
+    width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16,
     height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   modalPrimaryBtnText: { color: '#fff', fontSize: 16, fontFamily: F.bold },
   modalOutlineBtn: {
-    width: '100%', borderWidth: 1.5, borderColor: '#10B981',
+    width: '100%', borderWidth: 1.5, borderColor: COLORS.accent.primary,
     borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  modalOutlineBtnText: { color: '#10B981', fontSize: 16, fontFamily: F.semibold },
+  modalOutlineBtnText: { color: COLORS.accent.primary, fontSize: 16, fontFamily: F.semibold },
   modalGhostBtn: { paddingVertical: 10, paddingHorizontal: 20 },
   modalGhostBtnText: { color: '#9CA3AF', fontSize: 14, fontFamily: F.semibold },
 });

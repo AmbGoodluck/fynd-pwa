@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { COLORS } from '../theme/tokens';
 import { supabase } from '../services/supabase';
 import { getUserDoc, createUserDoc } from '../services/database';
 import { useAuthStore } from '../store/useAuthStore';
@@ -198,6 +199,6 @@ const styles = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#F2F2F7', borderRadius: 14, paddingHorizontal: 14, height: 50, marginBottom: 12 },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 15, color: '#111827' },
-  actionBtn: { width: '100%', backgroundColor: '#22C55E', borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  actionBtn: { width: '100%', backgroundColor: COLORS.accent.primary, borderRadius: 16, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
   actionBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

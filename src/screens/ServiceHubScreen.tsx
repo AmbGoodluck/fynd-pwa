@@ -10,7 +10,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { searchNearbyFree, fyndPlaceToPlaceResult } from '../services/freePlacesService';
-import { PlaceResult } from '../services/googlePlacesService';
 import { useGuestStore } from '../store/useGuestStore';
 import { useAuthStore } from '../store/useAuthStore';
 import AppBar from '../components/AppBar';
@@ -25,7 +24,7 @@ const CATEGORIES = [
   { id: 'Police',            label: 'Police',          icon: 'shield',              color: '#1D3557' },
   { id: 'Embassy',           label: 'Embassy',         icon: 'flag',                color: '#7C3AED' },
   { id: 'ATM',               label: 'ATM / Bank',      icon: 'card',                color: '#B45309' },
-  { id: 'Pharmacy',          label: 'Pharmacy',        icon: 'medical',             color: '#10B981' },
+  { id: 'Pharmacy',          label: 'Pharmacy',        icon: 'medical',             color: COLORS.accent.sage },
   { id: 'Hotel',             label: 'Hotel',           icon: 'bed',                 color: '#F59E0B' },
   { id: 'Tourist Info',      label: 'Tourist Info',    icon: 'information-circle',  color: '#06B6D4' },
   { id: 'Gas Station',       label: 'Gas Station',     icon: 'flame',               color: '#F97316' },
@@ -36,7 +35,7 @@ type Props = { navigation: any; route?: any };
 export default function ServiceHubScreen({ navigation, route }: Props) {
   const initialCategory = route?.params?.initialCategory || CATEGORIES[0].id;
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [results, setResults] = useState<PlaceResult[]>([]);
+  const [results, setResults] = useState<any[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showGuestModal, setShowGuestModal] = useState(false);
@@ -127,8 +126,8 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
       } else {
         const mapped = fyndPlaces.map(fyndPlaceToPlaceResult);
         const withDist = mapped
-          .map((p: PlaceResult) => ({ ...p, distanceKm: calcDistanceKm(loc.lat, loc.lng, p.coordinates.lat, p.coordinates.lng) }))
-          .sort((a: PlaceResult & { distanceKm: number }, b: PlaceResult & { distanceKm: number }) => (a.distanceKm || 0) - (b.distanceKm || 0));
+          .map((p: any) => ({ ...p, distanceKm: calcDistanceKm(loc.lat, loc.lng, p.coordinates.lat, p.coordinates.lng) }))
+          .sort((a: any, b: any) => (a.distanceKm || 0) - (b.distanceKm || 0));
         setResults(withDist);
       }
     } catch (e) {
@@ -145,7 +144,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
     fetchNearbyForCategory(catId);
   };
 
-  const openRoute = (item: PlaceResult) => {
+  const openRoute = (item: any) => {
     const stops = [{
       id: item.placeId,
       name: item.name,
@@ -343,7 +342,7 @@ export default function ServiceHubScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6,
@@ -384,7 +383,7 @@ const styles = StyleSheet.create({
   },
   categoryBadgeText: { fontSize: 11, color: COLORS.accent.primary, fontWeight: '500' },
   routeBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 9999,
     paddingHorizontal: 14,
     paddingVertical: 8,

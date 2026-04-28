@@ -18,6 +18,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { F } from '../../theme/fonts';
+import { COLORS } from '../../theme/tokens';
 import { useAddToHomeScreen } from '../../hooks/useAddToHomeScreen';
 import A2HSInstructions from './A2HSInstructions';
 
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 16,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -284,13 +285,13 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     width: '100%' as any,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 16,
     height: 52,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
-    shadowColor: '#10B981',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -341,7 +342,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   toastBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 12,
     height: 44,
     alignItems: 'center',

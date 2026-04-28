@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FALLBACK_IMAGE } from '../constants';
+import { COLORS } from '../theme/tokens';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -149,7 +150,7 @@ export default function PlacePreviewModal({
                 {/* Booking availability badge */}
                 {place.bookingUrl ? (
                   <View style={styles.bookingBadge}>
-                    <Ionicons name="calendar-outline" size={14} color="#22C55E" />
+                    <Ionicons name="calendar-outline" size={14} color={COLORS.accent.primary} />
                     <Text style={styles.bookingBadgeText}>Booking available</Text>
                   </View>
                 ) : null}
@@ -267,7 +268,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1D5DB',
   },
   dotActive: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     width: 8, height: 8, borderRadius: 4,
   },
   // Content
@@ -294,17 +295,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7', borderRadius: 8,
     paddingHorizontal: 8, paddingVertical: 4,
   },
-  categoryChip: { backgroundColor: '#F0FDF4' },
+  categoryChip: { backgroundColor: COLORS.accent.primaryLight },
   metaText: { fontSize: 12, color: '#57636C' },
-  categoryText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
+  categoryText: { fontSize: 12, color: COLORS.accent.primary, fontWeight: '600' },
   bookingBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F0FDF4', borderRadius: 8,
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 5,
     alignSelf: 'flex-start', marginBottom: 10,
     borderWidth: 1, borderColor: '#BBF7D0',
   },
-  bookingBadgeText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
+  bookingBadgeText: { fontSize: 12, color: COLORS.accent.primary, fontWeight: '600' },
   description: {
     fontSize: 14, color: '#374151', lineHeight: 22, marginBottom: 10,
   },
@@ -324,11 +325,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
   },
   vibeChip: {
-    backgroundColor: '#F0FDF4', borderRadius: 8,
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 4,
     borderWidth: 1, borderColor: '#BBF7D0',
   },
-  vibeChipText: { fontSize: 12, color: '#22C55E', fontWeight: '600' },
+  vibeChipText: { fontSize: 12, color: COLORS.accent.primary, fontWeight: '600' },
   // Actions
   actions: {
     flexDirection: 'column', gap: 10,
@@ -342,15 +343,15 @@ const styles = StyleSheet.create({
   viewDetailsBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 6,
-    borderWidth: 1.5, borderColor: '#22C55E',
+    borderWidth: 1.5, borderColor: COLORS.accent.primary,
     borderRadius: 14, height: 48,
   },
-  viewDetailsBtnText: { color: '#22C55E', fontSize: 13, fontWeight: '600' },
+  viewDetailsBtnText: { color: COLORS.accent.primary, fontSize: 13, fontWeight: '600' },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 6,
-    backgroundColor: '#22C55E', borderRadius: 14, height: 48,
-    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    backgroundColor: COLORS.accent.primary, borderRadius: 14, height: 48,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.3,
     shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
   actionBtnRemove: {

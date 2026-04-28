@@ -4,7 +4,6 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, LayoutAnimation, P
 if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { F } from '../theme/fonts';
 import { COLORS } from '../theme/tokens';
 import { submitFeedback } from '../services/feedbackService';
 import * as Sentry from '../services/sentry';
@@ -218,7 +217,7 @@ export default function SupportFeedbackScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { paddingHorizontal: 16, paddingBottom: 80 },
   successBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.accent.sageLight, borderRadius: 14, padding: 14, marginTop: 16, marginBottom: 4, gap: 8, borderWidth: 1, borderColor: COLORS.accent.sage },
   successText: { fontSize: 14, color: COLORS.accent.sage, fontFamily: 'Inter_500Medium' },

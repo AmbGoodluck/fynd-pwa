@@ -18,6 +18,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import AppHeader from '../components/AppHeader';
 import { submitFeedback } from '../services/feedbackService';
 import { useAuthStore } from '../store/useAuthStore';
@@ -422,7 +423,7 @@ export default function MapScreen({ navigation, route }: Props) {
           {/* Loading overlay */}
           {mapLoading && (
             <View style={styles.mapLoadingOverlay}>
-              <ActivityIndicator color="#22C55E" size="large" />
+              <ActivityIndicator color={COLORS.accent.primary} size="large" />
               <Text style={styles.mapLoadingTxt}>Loading map…</Text>
             </View>
           )}
@@ -537,14 +538,14 @@ export default function MapScreen({ navigation, route }: Props) {
                   ) : null}
                   {distToActive !== null ? (
                     <View style={styles.chip}>
-                      <Ionicons name="walk-outline" size={11} color="#22C55E" />
+                      <Ionicons name="walk-outline" size={11} color={COLORS.accent.primary} />
                       <Text style={styles.chipTxt}>
                         {distToActive} km · {walkTime(distToActive)}
                       </Text>
                     </View>
                   ) : activeStop.distance ? (
                     <View style={styles.chip}>
-                      <Ionicons name="walk-outline" size={11} color="#22C55E" />
+                      <Ionicons name="walk-outline" size={11} color={COLORS.accent.primary} />
                       <Text style={styles.chipTxt}>{activeStop.distance}</Text>
                     </View>
                   ) : null}
@@ -555,7 +556,7 @@ export default function MapScreen({ navigation, route }: Props) {
                 style={styles.goBtn}
                 onPress={() => navigateToStop(activeStop)}
               >
-                <Ionicons name="navigate-outline" size={20} color="#22C55E" />
+                <Ionicons name="navigate-outline" size={20} color={COLORS.accent.primary} />
                 <Text style={styles.goBtnTxt}>Go</Text>
               </TouchableOpacity>
             </View>
@@ -565,7 +566,7 @@ export default function MapScreen({ navigation, route }: Props) {
           {nextStopInfo && userLoc ? (
              <View style={styles.nextStopCard}>
                <View style={styles.nextStopIconBox}>
-                 <Ionicons name="navigate" size={16} color="#22C55E" />
+                 <Ionicons name="navigate" size={16} color={COLORS.accent.primary} />
                </View>
                <View style={styles.nextStopBody}>
                  <Text style={styles.nextStopTitle}>Next: {nextStopInfo.stopName}</Text>
@@ -601,7 +602,7 @@ export default function MapScreen({ navigation, route }: Props) {
         {!hasTabStops && (
           <View style={styles.idleCard}>
             <View style={styles.idleIconWrap}>
-              <Ionicons name="compass-outline" size={40} color="#22C55E" />
+              <Ionicons name="compass-outline" size={40} color={COLORS.accent.primary} />
             </View>
             <Text style={styles.idleTitle}>Your trip map lives here</Text>
             <Text style={styles.idleSub}>
@@ -639,7 +640,7 @@ export default function MapScreen({ navigation, route }: Props) {
         {/* Loading overlay */}
         {mapLoading && (
           <View style={styles.mapLoadingOverlay}>
-            <ActivityIndicator color="#22C55E" size="large" />
+            <ActivityIndicator color={COLORS.accent.primary} size="large" />
             <Text style={styles.mapLoadingTxt}>Loading map…</Text>
           </View>
         )}
@@ -742,14 +743,14 @@ export default function MapScreen({ navigation, route }: Props) {
               ) : null}
               {distToActive !== null ? (
                 <View style={styles.chip}>
-                  <Ionicons name="walk-outline" size={11} color="#22C55E" />
+                  <Ionicons name="walk-outline" size={11} color={COLORS.accent.primary} />
                   <Text style={styles.chipTxt}>
                     {distToActive} km · {walkTime(distToActive)}
                   </Text>
                 </View>
               ) : activeStop.distance ? (
                 <View style={styles.chip}>
-                  <Ionicons name="walk-outline" size={11} color="#22C55E" />
+                  <Ionicons name="walk-outline" size={11} color={COLORS.accent.primary} />
                   <Text style={styles.chipTxt}>{activeStop.distance}</Text>
                 </View>
               ) : null}
@@ -760,7 +761,7 @@ export default function MapScreen({ navigation, route }: Props) {
             style={styles.goBtn}
             onPress={() => navigateToStop(activeStop)}
           >
-            <Ionicons name="navigate-outline" size={20} color="#22C55E" />
+            <Ionicons name="navigate-outline" size={20} color={COLORS.accent.primary} />
             <Text style={styles.goBtnTxt}>Go</Text>
           </TouchableOpacity>
           </View>
@@ -806,7 +807,7 @@ export default function MapScreen({ navigation, route }: Props) {
         {nextStopInfo && userLoc ? (
            <View style={[styles.nextStopCard, { marginHorizontal: 14, marginBottom: 8, marginTop: 2 }]}>
              <View style={styles.nextStopIconBox}>
-               <Ionicons name="navigate" size={16} color="#22C55E" />
+               <Ionicons name="navigate" size={16} color={COLORS.accent.primary} />
              </View>
              <View style={styles.nextStopBody}>
                <Text style={styles.nextStopTitle}>Next: {nextStopInfo.stopName}</Text>
@@ -953,9 +954,9 @@ const styles = StyleSheet.create({
   fullscreenBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#374151' },
   navigateBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#22C55E', borderRadius: 22,
+    backgroundColor: COLORS.accent.primary, borderRadius: 22,
     paddingHorizontal: 14, paddingVertical: 8,
-    shadowColor: '#22C55E', shadowOpacity: 0.45, shadowRadius: 8,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.45, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 }, elevation: 5,
   },
   navigateBtnTxt: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
@@ -983,10 +984,10 @@ const styles = StyleSheet.create({
   },
   idleIconWrap: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: '#22C55E', shadowOpacity: 0.18, shadowRadius: 16,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.18, shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   idleTitle: {
@@ -1000,9 +1001,9 @@ const styles = StyleSheet.create({
   idleSubBold: { fontFamily: F.semibold, color: '#111827' },
   idleCta: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#22C55E', borderRadius: 16,
+    backgroundColor: COLORS.accent.primary, borderRadius: 16,
     paddingHorizontal: 32, paddingVertical: 14,
-    shadowColor: '#22C55E', shadowOpacity: 0.35, shadowRadius: 12,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.35, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 5,
   },
   idleCtaTxt: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
@@ -1030,7 +1031,7 @@ const styles = StyleSheet.create({
   arrowBtnDim: { opacity: 0.3 },
   stopBarCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 6 },
   stopBarCount: { fontSize: 11, fontFamily: F.regular, color: '#9CA3AF', letterSpacing: 0.2 },
-  stopBarNum: { fontFamily: F.bold, color: '#22C55E', fontSize: 13 },
+  stopBarNum: { fontFamily: F.bold, color: COLORS.accent.primary, fontSize: 13 },
   stopBarOf: { fontFamily: F.regular, color: '#9CA3AF', fontSize: 11 },
   stopBarName: {
     fontSize: 15, fontFamily: F.semibold, color: '#111827',
@@ -1044,7 +1045,7 @@ const styles = StyleSheet.create({
     width: 6, height: 6, borderRadius: 3, backgroundColor: '#E5E7EB',
   },
   progressDotActive: {
-    width: 20, height: 6, borderRadius: 3, backgroundColor: '#22C55E',
+    width: 20, height: 6, borderRadius: 3, backgroundColor: COLORS.accent.primary,
   },
 
   // ── Active stop detail card ──
@@ -1066,16 +1067,16 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#F0FDF4', borderRadius: 20,
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: 20,
     paddingHorizontal: 8, paddingVertical: 3,
   },
   chipTxt: { fontSize: 11, fontFamily: F.medium, color: '#16A34A' },
   goBtn: {
     width: 64, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#F0FDF4',
-    borderLeftWidth: 1, borderLeftColor: '#D1FAE5', gap: 4,
+    backgroundColor: COLORS.accent.primaryLight,
+    borderLeftWidth: 1, borderLeftColor: COLORS.accent.primaryLight, gap: 4,
   },
-  goBtnTxt: { fontSize: 11, fontFamily: F.bold, color: '#22C55E', letterSpacing: 0.2 },
+  goBtnTxt: { fontSize: 11, fontFamily: F.bold, color: COLORS.accent.primary, letterSpacing: 0.2 },
 
   // ── Thumbnail strip ──
   thumbScroll: { marginTop: 10, marginBottom: 4 },
@@ -1086,8 +1087,8 @@ const styles = StyleSheet.create({
     borderWidth: 2.5, borderColor: 'transparent', position: 'relative',
   },
   thumbImgWrapActive: {
-    borderColor: '#22C55E',
-    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    borderColor: COLORS.accent.primary,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.3,
     shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
   },
   thumbImg: { width: 64, height: 64, resizeMode: 'cover' },
@@ -1097,21 +1098,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
   },
-  thumbBadgeActive: { backgroundColor: '#22C55E' },
+  thumbBadgeActive: { backgroundColor: COLORS.accent.primary },
   thumbBadgeTxt: { fontSize: 10, fontFamily: F.bold, color: '#fff' },
   thumbLbl: {
     fontSize: 10, fontFamily: F.regular, color: '#9CA3AF',
     marginTop: 5, textAlign: 'center', width: 72,
   },
-  thumbLblActive: { fontFamily: F.semibold, color: '#22C55E' },
+  thumbLblActive: { fontFamily: F.semibold, color: COLORS.accent.primary },
 
   // ── Next Stop ETA Card ──
   nextStopCard: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F0FDF4', borderRadius: 14,
+    backgroundColor: COLORS.accent.primaryLight, borderRadius: 14,
     paddingHorizontal: 12, paddingVertical: 10,
     borderWidth: 1, borderColor: '#DCFCE7',
-    shadowColor: '#22C55E', shadowOpacity: 0.06,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.06,
     shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2,
     marginTop: 4,
   },
@@ -1155,8 +1156,8 @@ const styles = StyleSheet.create({
   ratingCancelTxt: { fontSize: 14, fontFamily: F.semibold, color: '#6B7280' },
   ratingSubmitBtn: {
     flex: 1, paddingVertical: 13, borderRadius: 14,
-    backgroundColor: '#22C55E', alignItems: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.3,
+    backgroundColor: COLORS.accent.primary, alignItems: 'center',
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.3,
     shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 3,
   },
   ratingSubmitBtnDisabled: { backgroundColor: '#D1D5DB', shadowOpacity: 0, elevation: 0 },
@@ -1166,9 +1167,9 @@ const styles = StyleSheet.create({
   serviceHubFab: {
     position: 'absolute', right: 16, bottom: 228,
     width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#22C55E', shadowOpacity: 0.45, shadowRadius: 12,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.45, shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 }, elevation: 8, zIndex: 20,
   },
 });

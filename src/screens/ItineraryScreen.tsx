@@ -22,6 +22,7 @@ import { useBookingLinksStore } from '../store/useBookingLinksStore';
 import { useTripStore } from '../store/useTripStore';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import AppBar from '../components/AppBar';
+import { COLORS } from '../theme/tokens';
 
 // Matches the image height used in SuggestedPlacesScreen for visual consistency
 const ITEM_HEIGHT = 128;
@@ -488,7 +489,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               style={styles.momentsBtn}
               onPress={() => navigation.navigate('Moments', { trip_id: tripData.tripId, tripName: destination, isMember: true })}
             >
-              <Ionicons name="camera-outline" size={18} color="#10B981" style={{ marginRight: 6 }} />
+              <Ionicons name="camera-outline" size={18} color={COLORS.accent.primary} style={{ marginRight: 6 }} />
               <Text style={styles.momentsBtnText}>Moments</Text>
             </TouchableOpacity>
           ) : null}
@@ -522,7 +523,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 
             <TouchableOpacity style={styles.modalOption} onPress={openInAppMap}>
               <View style={styles.modalOptionIcon}>
-                <Ionicons name="map-outline" size={24} color="#10B981" />
+                <Ionicons name="map-outline" size={24} color={COLORS.accent.primary} />
               </View>
               <View style={styles.modalOptionText}>
                 <Text style={styles.modalOptionLabel}>In-App Map</Text>
@@ -565,7 +566,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
               <View style={styles.shareModalSheet}>
                 <View style={styles.modalHandle} />
                 <View style={styles.shareModalIconWrap}>
-                  <Ionicons name="share-social-outline" size={28} color="#10B981" />
+                  <Ionicons name="share-social-outline" size={28} color={COLORS.accent.primary} />
                 </View>
                 <Text style={styles.shareModalTitle}>Share Trip</Text>
                 <Text style={styles.shareModalBody}>Add up to 7 members to your trip</Text>
@@ -600,7 +601,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
                   style={styles.viewTripsBtn}
                   onPress={() => { setShowShareModal(false); navigation.navigate('SharedTrips'); }}
                 >
-                  <Ionicons name="people-outline" size={15} color="#10B981" style={{ marginRight: 6 }} />
+                  <Ionicons name="people-outline" size={15} color={COLORS.accent.primary} style={{ marginRight: 6 }} />
                   <Text style={styles.viewTripsBtnText}>View Shared Trips</Text>
                 </TouchableOpacity>
 
@@ -719,7 +720,7 @@ export default function ItineraryScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   // Custom header
   header: {
@@ -765,7 +766,7 @@ const styles = StyleSheet.create({
   indexBadge: {
     position: 'absolute', top: 10, left: 10,
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(34, 197, 94, 0.95)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.accent.primary, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.2,
     shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
@@ -792,7 +793,7 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontFamily: F.semibold, color: '#1A1A1A', marginTop: 16, marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#57636C', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
-  goBackBtn: { backgroundColor: '#10B981', borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
+  goBackBtn: { backgroundColor: COLORS.accent.primary, borderRadius: 16, paddingHorizontal: 40, paddingVertical: 14 },
   goBackBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
   bottomBar: {
     paddingHorizontal: 16, paddingVertical: 16,
@@ -812,15 +813,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#10B981',
-    backgroundColor: '#F0FDF4',
+    borderColor: COLORS.accent.primary,
+    backgroundColor: COLORS.accent.primaryLight,
   },
-  momentsBtnText: { color: '#10B981', fontSize: 15, fontFamily: F.semibold },
+  momentsBtnText: { color: COLORS.accent.primary, fontSize: 15, fontFamily: F.semibold },
   mapBtn: {
     flex: 1,
-    backgroundColor: '#10B981', borderRadius: 16, height: 54,
+    backgroundColor: COLORS.accent.primary, borderRadius: 16, height: 54,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#10B981', shadowOpacity: 0.35, shadowRadius: 12,
+    shadowColor: COLORS.accent.primary, shadowOpacity: 0.35, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 4,
   },
   mapBtnText: { color: '#fff', fontSize: 16, fontFamily: F.semibold },
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
   },
   modalOptionIcon: {
     width: 48, height: 48, borderRadius: 14,
-    backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginRight: 14,
+    backgroundColor: COLORS.accent.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 14,
   },
   modalOptionText: { flex: 1 },
   modalOptionLabel: { fontSize: 16, fontWeight: '600', color: '#1A1A1A', marginBottom: 2 },
@@ -858,7 +859,7 @@ const styles = StyleSheet.create({
     padding: 20, paddingBottom: 40, alignItems: 'center',
   },
   shareModalIconWrap: {
-    width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0FDF4',
+    width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
   shareModalTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 6, textAlign: 'center' },
@@ -877,10 +878,10 @@ const styles = StyleSheet.create({
   },
   copyBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#10B981', borderRadius: 14,
+    backgroundColor: COLORS.accent.primary, borderRadius: 14,
     width: '100%', height: 50, marginBottom: 12,
   },
-  copyBtnDone: { backgroundColor: '#16A34A' },
+  copyBtnDone: { backgroundColor: COLORS.accent.sage },
   copyBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   viewTripsBtn: {
     flexDirection: 'row',
@@ -890,10 +891,10 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#10B981',
+    borderColor: COLORS.accent.primary,
     marginBottom: 8,
   },
-  viewTripsBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#10B981' },
+  viewTripsBtnText: { fontSize: 14, fontFamily: F.semibold, color: COLORS.accent.primary },
 
   copiedToast: {
     position: 'absolute',
@@ -901,7 +902,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#16A34A',
+    backgroundColor: COLORS.accent.sage,
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 12,

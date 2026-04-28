@@ -20,6 +20,7 @@ import {
   StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../theme/tokens';
 
 type RenderFn<T> = (item: T, index: number, dragHandle: React.ReactElement) => React.ReactNode;
 
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
   },
   dropLine: {
     height: 3,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     marginHorizontal: 16,
     borderRadius: 2,
     marginBottom: 2,

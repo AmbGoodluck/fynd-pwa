@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { COLORS } from '../theme/tokens';
 
 type Props = { navigation: any; route: any };
 
@@ -70,7 +71,7 @@ export default function LegalDetailScreen({ navigation, route }: Props) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {pageId === 'ai' && (
           <View style={styles.noticeBox}>
-            <Ionicons name="sparkles" size={18} color="#22C55E" style={{ marginBottom: 6 }} />
+            <Ionicons name="sparkles" size={18} color={COLORS.accent.primary} style={{ marginBottom: 6 }} />
             <Text style={styles.noticeTitle}>AI Recommendations Notice</Text>
             <Text style={styles.noticeText}>Fynd uses AI to suggest places and itineraries. Always use personal judgment when exploring.</Text>
           </View>
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
   sectionHeading: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8 },
   sectionBody: { fontSize: 15, color: '#374151', lineHeight: 24 },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
-  bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E', marginTop: 8, marginRight: 10 },
+  bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.accent.primary, marginTop: 8, marginRight: 10 },
   bulletText: { flex: 1, fontSize: 15, color: '#374151', lineHeight: 24 },
   lastUpdated: { fontSize: 12, color: '#8E8E93', textAlign: 'center', marginTop: 8 },
 });

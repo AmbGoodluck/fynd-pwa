@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { COLORS } from '../theme/tokens';
 
 type Props = {
   title: string;
@@ -17,7 +18,7 @@ export default function FyndButton({ title, onPress, loading, disabled, variant 
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? '#22C55E' : '#fff'} />
+        <ActivityIndicator color={variant === 'outline' ? COLORS.accent.primary : '#fff'} />
       ) : (
         <Text style={[styles.text, variant === 'outline' && styles.outlineText]}>{title}</Text>
       )}
@@ -27,8 +28,8 @@ export default function FyndButton({ title, onPress, loading, disabled, variant 
 
 const styles = StyleSheet.create({
   button: { backgroundColor: 'transparent', padding: 0, borderRadius: 30, alignItems: 'center' },
-  outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: '#22C55E' },
+  outline: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: COLORS.accent.primary },
   disabled: { opacity: 0.5 },
   text: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  outlineText: { color: '#22C55E' },
+  outlineText: { color: COLORS.accent.primary },
 });

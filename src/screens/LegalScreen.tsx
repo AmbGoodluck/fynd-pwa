@@ -53,7 +53,7 @@ export default function LegalScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2F2F7' },
+  container: { flex: 1, backgroundColor: COLORS.background },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 0, paddingBottom: 8 },
   header: { paddingHorizontal: 20, paddingBottom: 20 },
   title: { fontSize: 28, fontWeight: '700', color: '#111827', marginBottom: 4 },

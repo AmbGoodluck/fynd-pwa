@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Image, Text, StyleSheet, View } from 'react-native';
+import { COLORS } from '../theme/tokens';
 
 type Props = {
   photoUrl?: string | null;
@@ -29,6 +30,6 @@ export default function Avatar({ photoUrl, name, size = 40, onPress }: Props) {
 
 const styles = StyleSheet.create({
   image: { resizeMode: 'cover' },
-  placeholder: { backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'center' },
+  placeholder: { backgroundColor: COLORS.accent.primary, justifyContent: 'center', alignItems: 'center' },
   initials: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

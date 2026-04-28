@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ImageBackground, Image, Modal, TouchableWithoutFeedback, Platform, Alert,
+  ImageBackground, Image, Modal, TouchableWithoutFeedback, Platform,
   TextInput, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { COLORS } from '../theme/tokens';
 import PWATopBar from '../components/PWATopBar';
 import {
   getPlacesForLocation,
+  fetchPlacesFromFoursquare,
   reverseGeocodeFree,
   FyndPlace,
 } from '../services/freePlacesService';
@@ -22,6 +23,14 @@ import { supabase } from '../services/supabase';
 import { maybeCreateDailyPickNotification } from '../services/notificationService';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+
+const FILTER_FSQ_CATEGORIES: Record<string, string> = {
+  food:      '13065,13000',
+  coffee:    '13032,13035',
+  outdoors:  '16000',
+  nightlife: '13003,10032',
+  study:     '12054,13032,11068',
+};
 
 const QUICK_FILTERS = [
   { id: 'for_you',   label: 'For You',  types: [] as string[], keywords: [] as string[] },
@@ -85,8 +94,10 @@ export default function HomeScreen({ navigation }: Props) {
   const [searchActive, setSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<FyndPlace[]>([]);
+  const [filterLoading, setFilterLoading] = useState(false);
 
   const searchInputRef = useRef<TextInput>(null);
+  const searchDebounce = useRef<any>(null);
 
   // Fetch unread notification count from Supabase
   useEffect(() => {
@@ -136,25 +147,33 @@ export default function HomeScreen({ navigation }: Props) {
       .finally(() => setPlacesLoading(false));
   }, [location, cityName]);
 
-  // Derive filteredPlaces from places + activeFilter (type match OR keyword match)
+  // Derive filteredPlaces from places + activeFilter; FSQ fallback when local results are sparse
   useEffect(() => {
     const filter = QUICK_FILTERS.find(f => f.id === activeFilter);
     if (!filter || (filter.types.length === 0 && filter.keywords.length === 0)) {
       setFilteredPlaces(places);
-    } else {
-      setFilteredPlaces(places.filter(p => {
-        if (filter.types.length > 0 && p.types.some(t => filter.types.includes(t))) return true;
-        const haystack = [
-          p.name,
-          ...(p.types || []),
-          p.cuisine || '',
-          p.vibe || '',
-          p.ai_description || '',
-          ...(p.known_for || []),
-        ].join(' ').toLowerCase();
-        return filter.keywords.some(k => haystack.includes(k));
-      }));
+      return;
     }
+    const local = places.filter(p => {
+      if (filter.types.length > 0 && p.types.some(t => filter.types.includes(t))) return true;
+      const hay = [p.name, ...(p.types || []), p.cuisine || '', p.vibe || '', p.ai_description || '', ...(p.known_for || [])].join(' ').toLowerCase();
+      return filter.keywords.some(k => hay.includes(k));
+    });
+
+    if (local.length >= 3 || !location) {
+      setFilteredPlaces(local);
+      return;
+    }
+
+    // Not enough local results — fetch from Foursquare by category
+    const fsqCats = FILTER_FSQ_CATEGORIES[filter.id];
+    if (!fsqCats) { setFilteredPlaces(local); return; }
+
+    setFilterLoading(true);
+    fetchPlacesFromFoursquare(location.latitude, location.longitude, 30, cityName, fsqCats.split(','))
+      .then(results => setFilteredPlaces(results.length > 0 ? results : local))
+      .catch(() => setFilteredPlaces(local))
+      .finally(() => setFilterLoading(false));
   }, [places, activeFilter]);
 
   const heroPlace = filteredPlaces[0] ?? null;
@@ -188,28 +207,76 @@ export default function HomeScreen({ navigation }: Props) {
       place,
     });
 
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
+  const handleSearch = async (text: string) => {
     if (!text.trim()) { setSearchResults([]); return; }
     const q = text.toLowerCase().trim();
-    const results = places.filter(p => {
-      const haystack = [
-        p.name,
-        ...(p.types || []),
-        p.cuisine || '',
-        p.vibe || '',
-        p.ai_description || '',
-        ...(p.known_for || []),
-      ].join(' ').toLowerCase();
-      return haystack.includes(q);
+    const local = places.filter(p => {
+      const hay = [p.name, ...(p.types || []), p.cuisine || '', p.vibe || '', p.ai_description || '', ...(p.known_for || [])].join(' ').toLowerCase();
+      return hay.includes(q);
     });
-    // Fix 4: Sort to push chains to the bottom
-    results.sort((a, b) => {
+    local.sort((a, b) => {
       const aChain = CHAIN_NAMES.some(c => a.name.toLowerCase().includes(c)) ? 1 : 0;
       const bChain = CHAIN_NAMES.some(c => b.name.toLowerCase().includes(c)) ? 1 : 0;
       return aChain - bChain;
     });
-    setSearchResults(results);
+    setSearchResults(local);
+
+    if (local.length < 5 && location) {
+      try {
+        const FSQ_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
+        if (!FSQ_KEY) return;
+        const params = new URLSearchParams({
+          query: text,
+          ll: `${location.latitude},${location.longitude}`,
+          radius: '30000',
+          limit: '10',
+          fields: 'fsq_id,name,location,categories,geocodes,photos,rating,tel,website,hours',
+        });
+        const resp = await fetch(`https://api.foursquare.com/v3/places/search?${params.toString()}`, {
+          headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const fsqResults = (data.results || []).map((place: any, i: number) => {
+          const photos = (place.photos || []).map((p: any) => `${p.prefix}600x400${p.suffix}`);
+          const loc = place.location || {};
+          return {
+            id: `fsq_${place.fsq_id}`,
+            name: place.name,
+            lat: place.geocodes?.main?.latitude,
+            lng: place.geocodes?.main?.longitude,
+            address: loc.formatted_address || '',
+            city: loc.locality || cityName,
+            types: (place.categories || []).map((c: any) => (c.short_name || '').toLowerCase().replace(/\s+/g, '_')),
+            photo_urls: photos.length > 0 ? photos : [],
+            phone: place.tel,
+            website: place.website,
+            rating: place.rating ? Math.round(place.rating) / 2 : undefined,
+            opening_hours_raw: place.hours?.display,
+          } as FyndPlace;
+        });
+        const existingNames = new Set(local.map(p => p.name.toLowerCase()));
+        const unique = fsqResults.filter((p: FyndPlace) => !existingNames.has(p.name.toLowerCase()));
+        setSearchResults([...local, ...unique]);
+      } catch {
+        // Non-fatal — local results already shown
+      }
+    }
+  };
+
+  const handleSearchDebounced = (text: string) => {
+    setSearchQuery(text);
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (!text.trim()) { setSearchResults([]); return; }
+    const q = text.toLowerCase().trim();
+    const local = places.filter(p => {
+      const hay = [p.name, ...(p.types || []), p.cuisine || '', p.vibe || '', p.ai_description || ''].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    setSearchResults(local);
+    if (local.length < 5) {
+      searchDebounce.current = setTimeout(() => handleSearch(text), 400);
+    }
   };
 
   const activateSearchWithKeyword = (keyword: string) => {
@@ -282,7 +349,7 @@ export default function HomeScreen({ navigation }: Props) {
                 placeholder="Search places, vibes, cuisines…"
                 placeholderTextColor={COLORS.text.hint}
                 value={searchQuery}
-                onChangeText={handleSearch}
+                onChangeText={handleSearchDebounced}
                 autoFocus
                 returnKeyType="search"
               />
@@ -389,7 +456,7 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.sectionTitle}>Today's Pick</Text>
           </View>
 
-          {isLoading ? (
+          {isLoading || filterLoading ? (
             <View style={[styles.heroCard, styles.skeleton]} />
           ) : !location ? (
             <View style={styles.emptyCard}>
@@ -505,7 +572,7 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.wentHereCard}
             activeOpacity={0.85}
-            onPress={() => Alert.alert('Coming soon!', 'Log a visit directly from any place page — tap "I went here" on the place detail.')}
+            onPress={() => navigation.navigate('AllPlaces', { places, cityName, showVisitPrompt: true })}
           >
             <View style={styles.wentHereLeft}>
               <View style={styles.wentHereIconWrap}>

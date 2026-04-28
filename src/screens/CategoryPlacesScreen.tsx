@@ -12,6 +12,7 @@ import {
 
 
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { useRoute } from '@react-navigation/native';
 
 export default function CategoryPlacesScreen({ navigation }) {
@@ -37,7 +38,7 @@ export default function CategoryPlacesScreen({ navigation }) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   // Header
   header: {
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingVertical: 10,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
   },
   actionBtnText: { fontSize: 14, fontFamily: F.semibold, color: '#fff' },
 

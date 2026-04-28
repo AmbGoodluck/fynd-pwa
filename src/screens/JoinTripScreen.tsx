@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import {
   getSharedTrip,
   getMembership,
@@ -145,7 +146,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.center}>
           <View style={styles.iconWrap}>
-            <Ionicons name="people-outline" size={40} color="#22C55E" />
+            <Ionicons name="people-outline" size={40} color={COLORS.accent.primary} />
           </View>
           <Text style={styles.alreadyTitle}>You've been invited!</Text>
           <Text style={styles.notFoundSub}>
@@ -154,8 +155,8 @@ export default function JoinTripScreen({ navigation, route }: Props) {
           <TouchableOpacity style={styles.primaryBtn} onPress={handleSignIn}>
             <Text style={styles.primaryBtnText}>Sign In</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#22C55E', marginTop: 0 }]} onPress={handleRegister}>
-            <Text style={[styles.primaryBtnText, { color: '#22C55E' }]}>Create Account</Text>
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: COLORS.accent.primary, marginTop: 0 }]} onPress={handleRegister}>
+            <Text style={[styles.primaryBtnText, { color: COLORS.accent.primary }]}>Create Account</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.ghostBtn} onPress={goBack}>
             <Text style={styles.ghostBtnText}>Cancel</Text>
@@ -169,7 +170,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#22C55E" />
+          <ActivityIndicator size="large" color={COLORS.accent.primary} />
           <Text style={styles.loadingText}>Loading trip...</Text>
         </View>
       </SafeAreaView>
@@ -196,7 +197,7 @@ export default function JoinTripScreen({ navigation, route }: Props) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.center}>
           <View style={styles.iconWrap}>
-            <Ionicons name="checkmark-circle" size={48} color="#22C55E" />
+            <Ionicons name="checkmark-circle" size={48} color={COLORS.accent.primary} />
           </View>
           <Text style={styles.alreadyTitle}>You're already in this trip!</Text>
           <Text style={styles.alreadySub}>{trip.trip_name}</Text>
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -402,13 +403,13 @@ const styles = StyleSheet.create({
   actions: { gap: 12 },
   joinError: { fontSize: 13, color: '#EF4444', textAlign: 'center', fontFamily: F.medium },
   primaryBtn: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     borderRadius: 16,
     height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#22C55E',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },

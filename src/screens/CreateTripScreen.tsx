@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import AppHeader from '../components/AppHeader';
 import FyndScrollContainer from '../components/FyndScrollContainer';
 import { reverseGeocode, autocompletePlaces, AutocompleteSuggestion } from '../services/googlePlacesService';
@@ -93,7 +94,7 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
       {...pan.panHandlers}
     >
       <View style={{ height: 6, backgroundColor: '#F2F2F7', borderRadius: 3 }}>
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: '#10B981', borderRadius: 3 }} />
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: ratio * trackW, backgroundColor: COLORS.accent.primary, borderRadius: 3 }} />
       </View>
       <View
         style={{
@@ -102,7 +103,7 @@ function FyndSlider({ min, max, value, step = 1, onChange }: {
           left: HPAD + ratio * trackW - THUMB / 2,
           width: THUMB, height: THUMB, borderRadius: THUMB / 2,
           backgroundColor: '#fff',
-          borderWidth: 2, borderColor: '#10B981',
+          borderWidth: 2, borderColor: COLORS.accent.primary,
           shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
           shadowOffset: { width: 0, height: 3 },
         }}
@@ -417,7 +418,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                 /* Auto-detected state */
                 <>
                   <View style={styles.destinationBadge}>
-                    <Ionicons name="location" size={13} color="#10B981" />
+                    <Ionicons name="location" size={13} color={COLORS.accent.primary} />
                     <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
                   </View>
                   <View style={styles.locationHintRow}>
@@ -432,7 +433,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                 /* Manual input state — show selected city with option to use location */
                 <>
                   <View style={styles.destinationBadge}>
-                    <Ionicons name="search-outline" size={13} color="#10B981" />
+                    <Ionicons name="search-outline" size={13} color={COLORS.accent.primary} />
                     <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
                   </View>
                   <View style={styles.locationHintRow}>
@@ -442,7 +443,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                     <Text style={styles.locationHintDot}> · </Text>
                     <TouchableOpacity onPress={handleUseLocation} disabled={locationLoading}>
                       {locationLoading
-                        ? <ActivityIndicator size="small" color="#10B981" />
+                        ? <ActivityIndicator size="small" color={COLORS.accent.primary} />
                         : <Text style={styles.locationHintChange}>Use my location</Text>
                       }
                     </TouchableOpacity>
@@ -475,7 +476,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                   </View>
                   {destination ? (
                     <View style={styles.destinationBadge}>
-                      <Ionicons name="location" size={13} color="#10B981" />
+                      <Ionicons name="location" size={13} color={COLORS.accent.primary} />
                       <Text style={styles.destinationBadgeText} numberOfLines={1}> {destination}</Text>
                     </View>
                   ) : null}
@@ -635,7 +636,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                 returnKeyType="search"
               />
               {suggestionsLoading && (
-                <ActivityIndicator size="small" color="#10B981" style={{ marginLeft: 6 }} />
+                <ActivityIndicator size="small" color={COLORS.accent.primary} style={{ marginLeft: 6 }} />
               )}
             </View>
 
@@ -656,7 +657,7 @@ export default function CreateTripScreen({ navigation }: Props) {
                     onPress={() => handleSelectSuggestion(item)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="location-outline" size={14} color="#10B981" style={{ marginRight: 8 }} />
+                    <Ionicons name="location-outline" size={14} color={COLORS.accent.primary} style={{ marginRight: 8 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.suggestionMain} numberOfLines={1}>{item.mainText}</Text>
                       {item.secondaryText ? (
@@ -687,12 +688,12 @@ export default function CreateTripScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   progressWrapper: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
   progressContainer: { flexDirection: 'row', gap: 6, marginBottom: 6 },
   progressSegment: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB' },
-  progressActive: { backgroundColor: '#10B981' },
+  progressActive: { backgroundColor: COLORS.accent.primary },
   stepLabel: { color: '#9CA3AF', fontSize: 12, fontFamily: F.regular, marginBottom: 2 },
 
   scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 4 },
@@ -701,36 +702,36 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB' },
   cardLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: { fontSize: 15, fontFamily: F.medium, color: '#111827', flex: 1 },
-  cardValue: { fontSize: 16, fontFamily: F.bold, color: '#10B981', marginLeft: 8 },
+  cardValue: { fontSize: 16, fontFamily: F.bold, color: COLORS.accent.primary, marginLeft: 8 },
 
   locationBtnRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   locationBtn: { flex: 1, height: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', paddingHorizontal: 12 },
   locationBtnOutline: { borderWidth: 1.5, borderColor: '#D1D5DB', backgroundColor: '#fff' },
   locationBtnOutlineText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
-  locationBtnFilled: { backgroundColor: '#10B981' },
+  locationBtnFilled: { backgroundColor: COLORS.accent.primary },
   locationBtnFilledText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
-  destinationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: '#F0FDF4', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8 },
-  destinationBadgeText: { fontSize: 13, fontFamily: F.medium, color: '#16A34A', flex: 1 },
+  destinationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: COLORS.accent.primaryLight, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 8 },
+  destinationBadgeText: { fontSize: 13, fontFamily: F.medium, color: COLORS.accent.primary, flex: 1 },
   locationHintRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingHorizontal: 2 },
   locationHintText: { fontSize: 12, fontFamily: F.regular, color: '#6B7280' },
   locationHintDot: { fontSize: 12, color: '#9CA3AF' },
-  locationHintChange: { fontSize: 12, fontFamily: F.semibold, color: '#10B981' },
+  locationHintChange: { fontSize: 12, fontFamily: F.semibold, color: COLORS.accent.primary },
 
   sliderLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, marginTop: 2 },
   sliderLabelText: { fontSize: 12, fontFamily: F.regular, color: '#9CA3AF' },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   timeChip: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', backgroundColor: '#fff' },
-  timeChipActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
+  timeChipActive: { backgroundColor: COLORS.accent.primary, borderColor: COLORS.accent.primary },
   timeChipText: { fontSize: 13, fontFamily: F.medium, color: '#374151' },
   timeChipTextActive: { fontFamily: F.semibold, color: '#fff' },
 
   ctaBtn: { marginTop: 8, height: 52, borderRadius: 14, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  ctaBtnEnabled: { backgroundColor: '#10B981' },
+  ctaBtnEnabled: { backgroundColor: COLORS.accent.primary },
   ctaBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
   ctaBtnTextEnabled: { color: '#fff' },
 
-  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  iconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.accent.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   vibeTitleRow: { width: '100%', marginBottom: 6 },
   vibeTitle: { fontSize: 26, fontFamily: F.bold, color: '#111827', lineHeight: 32 },
   vibeSubtitleRow: { width: '100%', marginBottom: 16 },
@@ -753,12 +754,12 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     gap: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: COLORS.background,
   },
   backBtn: { flex: 1, height: 54, borderRadius: 27, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   backBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#374151' },
   findBtn: { flex: 2, height: 54, borderRadius: 27, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
-  findBtnEnabled: { backgroundColor: '#10B981' },
+  findBtnEnabled: { backgroundColor: COLORS.accent.primary },
   findBtnText: { fontSize: 16, fontFamily: F.semibold, color: '#9CA3AF' },
   findBtnTextEnabled: { color: '#fff' },
 
@@ -800,7 +801,7 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 6 },
   modalCancel: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' },
   modalCancelText: { fontSize: 15, fontFamily: F.medium, color: '#374151' },
-  modalConfirm: { flex: 1, height: 44, borderRadius: 12, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' },
+  modalConfirm: { flex: 1, height: 44, borderRadius: 12, backgroundColor: COLORS.accent.primary, alignItems: 'center', justifyContent: 'center' },
   modalConfirmText: { fontSize: 15, fontFamily: F.semibold, color: '#fff' },
 });
  

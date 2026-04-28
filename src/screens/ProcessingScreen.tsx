@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Sentry from '../services/sentry';
 import { getPlacesForLocation, fyndPlaceToPlaceResult } from '../services/freePlacesService';
@@ -175,7 +176,7 @@ export default function ProcessingScreen({ navigation, route }: Props) {
       <View style={styles.inner}>
         <View style={styles.animationWrap}>
           {Platform.OS === 'web' ? (
-            <ActivityIndicator size={100} color="#22C55E" />
+            <ActivityIndicator size={100} color={COLORS.accent.primary} />
           ) : (
             <LottieView
               source={require('../../assets/loading.json')}
@@ -205,11 +206,11 @@ const styles = StyleSheet.create({
     maxWidth: 220,
     aspectRatio: 1,
     borderRadius: 9999,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 36,
-    shadowColor: '#22C55E',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.12,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
   dotActive: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     width: 18,
   },
   subMessage: {
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   retryBtn: {
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 12,

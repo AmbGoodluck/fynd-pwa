@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { FALLBACK_IMAGE } from '../constants';
 
 type Props = {
@@ -206,7 +207,7 @@ const PlaceCard = React.memo(function PlaceCard({
                 <Ionicons
                   name={isAdded ? 'checkmark-circle' : 'add-circle-outline'}
                   size={16}
-                  color={isAdded ? '#fff' : '#10B981'}
+                  color={isAdded ? '#fff' : COLORS.accent.primary}
                 />
                 <Text style={[styles.addBtnText, isAdded && styles.addBtnTextSelected]}>
                   {isAdded ? 'Added' : 'Add to Itinerary'}
@@ -267,7 +268,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  addBtnHSelected: { backgroundColor: '#10B981' },
+  addBtnHSelected: { backgroundColor: COLORS.accent.primary },
   addBtnHText: { fontSize: 12, fontFamily: F.semibold, color: '#fff' },
   addBtnHTextSelected: { color: '#fff' },
 
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 14, left: 14,
     width: 30, height: 30, borderRadius: 15,
-    backgroundColor: '#10B981',
+    backgroundColor: COLORS.accent.primary,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 }, elevation: 3,
@@ -412,10 +413,10 @@ const styles = StyleSheet.create({
   addBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 10, borderRadius: 12,
-    backgroundColor: '#F0FDF4', borderWidth: 1.5, borderColor: '#10B981',
+    backgroundColor: COLORS.accent.primaryLight, borderWidth: 1.5, borderColor: COLORS.accent.primary,
   },
-  addBtnSelected: { backgroundColor: '#10B981' },
-  addBtnText: { fontSize: 13, fontFamily: F.semibold, color: '#10B981' },
+  addBtnSelected: { backgroundColor: COLORS.accent.primary },
+  addBtnText: { fontSize: 13, fontFamily: F.semibold, color: COLORS.accent.primary },
   addBtnTextSelected: { color: '#fff' },
   bookBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

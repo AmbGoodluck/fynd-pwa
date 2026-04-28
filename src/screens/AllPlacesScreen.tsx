@@ -14,7 +14,7 @@ import { useTabBarHeight } from '../hooks/useTabBarHeight';
 type Props = { navigation: any; route: any };
 
 export default function AllPlacesScreen({ navigation, route }: Props) {
-  const { places = [] as FyndPlace[], cityName = 'Nearby' } = route.params || {};
+  const { places = [] as FyndPlace[], cityName = 'Nearby', showVisitPrompt = false } = route.params || {};
   const tabBarHeight = useTabBarHeight();
   const { savePlace, unsavePlace, savedPlaces, isGuest } = useGuestStore();
 
@@ -117,6 +117,13 @@ export default function AllPlacesScreen({ navigation, route }: Props) {
         </View>
       </View>
 
+      {showVisitPrompt && (
+        <View style={styles.visitBanner}>
+          <Ionicons name="walk-outline" size={15} color={COLORS.accent.primary} />
+          <Text style={styles.visitBannerText}>Tap a place you visited to let us know</Text>
+        </View>
+      )}
+
       <FlatList
         data={places}
         keyExtractor={item => item.id}
@@ -152,6 +159,16 @@ const styles = StyleSheet.create({
   headerText:  { flex: 1 },
   headerTitle: { fontSize: 17, fontFamily: F.bold, color: COLORS.text.primary },
   headerSub:   { fontSize: 12, fontFamily: F.medium, color: COLORS.text.tertiary, marginTop: 2 },
+
+  visitBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: COLORS.accent.primaryLight,
+    paddingHorizontal: SPACING.xl, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(232,80,58,0.12)',
+  },
+  visitBannerText: {
+    fontSize: 13, fontFamily: F.medium, color: COLORS.accent.primary, flex: 1,
+  },
 
   list: { paddingTop: SPACING.sm },
 

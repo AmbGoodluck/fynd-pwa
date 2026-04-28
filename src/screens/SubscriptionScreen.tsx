@@ -89,7 +89,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
         <StatusBar barStyle="dark-content" />
         <View style={styles.confirmWrap}>
           <View style={styles.confirmIconCircle}>
-            <Ionicons name="checkmark" size={40} color="#22C55E" />
+            <Ionicons name="checkmark" size={40} color={COLORS.accent.sage} />
           </View>
           <View style={styles.plusBadge}>
             <Ionicons name="star" size={11} color="#fff" />
@@ -248,7 +248,7 @@ export default function SubscriptionScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAFA' },
+  container: { flex: 1, backgroundColor: COLORS.background },
 
   closeBtn: {
     position: 'absolute',
@@ -385,9 +385,9 @@ const styles = StyleSheet.create({
   },
   confirmIconCircle: {
     width: 88, height: 88, borderRadius: 44,
-    backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: COLORS.accent.sageLight, alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
-    shadowColor: '#22C55E', shadowOpacity: 0.2,
+    shadowColor: COLORS.accent.sage, shadowOpacity: 0.2,
     shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 3,
   },
   confirmTitle: {

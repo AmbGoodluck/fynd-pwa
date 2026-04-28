@@ -24,6 +24,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Location from 'expo-location';
 import * as Sentry from '../services/sentry';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 import { logEvent } from '../services/firebase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -537,7 +538,7 @@ export default function NavigationScreen({ navigation, route }: Props) {
         {/* Loading overlay */}
         {mapLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator color="#22C55E" size="large" />
+            <ActivityIndicator color={COLORS.accent.primary} size="large" />
             <Text style={styles.loadingText}>Loading navigation…</Text>
           </View>
         )}
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     borderRadius: 14,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -803,7 +804,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     borderRadius: 14,
-    backgroundColor: '#22C55E',
+    backgroundColor: COLORS.accent.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

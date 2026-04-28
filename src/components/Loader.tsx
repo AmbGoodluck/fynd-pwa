@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { F } from '../theme/fonts';
+import { COLORS } from '../theme/tokens';
 
 const LottieView = Platform.OS !== 'web'
   ? require('lottie-react-native').default
@@ -30,7 +31,7 @@ export default function Loader({ message }: Props) {
     <View style={styles.container}>
       <View style={styles.animationWrap}>
         {Platform.OS === 'web' ? (
-          <ActivityIndicator size={100} color="#22C55E" />
+          <ActivityIndicator size={100} color={COLORS.accent.primary} />
         ) : (
           <LottieView
             source={require('../../assets/loading.json')}
@@ -60,11 +61,11 @@ const styles = StyleSheet.create({
     maxWidth: 220,
     aspectRatio: 1,
     borderRadius: 9999,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: COLORS.accent.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 36,
-    shadowColor: '#22C55E',
+    shadowColor: COLORS.accent.primary,
     shadowOpacity: 0.12,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   },
   dotRow: { flexDirection: 'row', gap: 6, marginBottom: 16 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E5E7EB' },
-  dotActive: { backgroundColor: '#22C55E', width: 18 },
+  dotActive: { backgroundColor: COLORS.accent.primary, width: 18 },
   subMessage: {
     fontSize: 14,
     fontFamily: F.regular,
