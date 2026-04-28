@@ -19,22 +19,25 @@ import { FALLBACK_IMAGE } from '../constants';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface FyndPlace {
-  id: string;                     // "osm_{osm_id}"
+  id: string;                       // "osm_{id}" or "fsq_{fsq_id}"
   name: string;
   lat: number;
   lng: number;
   address: string;
   city: string;
-  types: string[];                // Google-style type names for compatibility
+  types: string[];                  // Google-style type names for compatibility
   phone?: string;
   website?: string;
-  opening_hours_raw?: string;     // Raw OSM hours string e.g. "Mo-Fr 09:00-17:00"
-  photo_urls: string[];           // Category stock photos
-  ai_description?: string;        // Generated on first visit
+  opening_hours_raw?: string;       // Raw hours string
+  photo_urls: string[];             // Foursquare real photos or category stock photos
+  ai_description?: string;          // Generated on first visit
   known_for?: string[];
   vibe?: string;
   cuisine?: string;
-  osm_tags: Record<string, string>; // Raw OSM tags for extra context
+  osm_tags?: Record<string, string>; // Raw OSM tags (OSM places only)
+  rating?: number;                   // 0-5 scale (from Foursquare, 0-10 → /2)
+  fsq_tips?: string;                 // User tip text from Foursquare
+  distance_meters?: number;          // Distance from search center
 }
 
 export interface CityCache {
@@ -365,9 +368,152 @@ export async function fetchOSMPlaces(
   }));
 }
 
+// ── Foursquare API ────────────────────────────────────────────────────────────
+
+const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
+const FSQ_BASE_URL = 'https://api.foursquare.com/v3';
+
+const fsqHeaders = {
+  'Authorization': FSQ_API_KEY,
+  'Accept': 'application/json',
+};
+
+export const FSQ_CATEGORIES: Record<string, string> = {
+  restaurant: '13065', cafe: '13032', coffee: '13032', bar: '13003',
+  bakery: '13002', fast_food: '13145', ice_cream: '13046', dessert: '13040',
+  brunch: '13065', night_club: '10032', lounge: '13025', brewery: '13029',
+  park: '16032', trail: '16038', garden: '16019', nature: '16027',
+  campground: '16004', beach: '16001', lake: '16024', playground: '16033',
+  museum: '10027', art_gallery: '10004', theater: '10024',
+  store: '17000', thrift: '17088', mall: '17114', bookstore: '17018',
+  hospital: '15014', pharmacy: '15027', police: '12072', bank: '11002',
+  atm: '11001', gas_station: '19007', bus_station: '19042', gym: '18021',
+  library: '12054', hotel: '19014', coworking: '11068',
+};
+
+const SERVICEHUB_FSQ_CATEGORIES: Record<string, string> = {
+  'Medical':           '15014,15000',
+  'Currency':          '11002,11001',
+  'Currency Exchange': '11002,11001',
+  'Public Bathrooms':  '12000',
+  'Transport':         '19042,19043,19040',
+  'Police':            '12072',
+  'Embassy':           '12032',
+  'ATM':               '11001',
+  'ATM / Bank':        '11001,11002',
+  'Pharmacy':          '15027',
+  'Hotel':             '19014,19009',
+  'Tourist Info':      '16000',
+  'Gas Station':       '19007',
+  'Emergency':         '15014,12072',
+  'Safety':            '12072',
+};
+
+function formatFoursquareHours(hours: any): string | undefined {
+  if (!hours?.display) return undefined;
+  return hours.display;
+}
+
+export async function fetchPlacesFromFoursquare(
+  lat: number,
+  lng: number,
+  radiusKm: number = 30,
+  cityName: string = '',
+  categories?: string[],
+): Promise<FyndPlace[]> {
+  if (!FSQ_API_KEY) {
+    console.warn('[freePlaces] No Foursquare API key — falling back to OSM');
+    return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+  }
+
+  try {
+    const params = new URLSearchParams({
+      ll: `${lat},${lng}`,
+      radius: `${Math.min(radiusKm * 1000, 50000)}`,
+      limit: '50',
+      sort: 'RELEVANCE',
+      fields: 'fsq_id,name,location,categories,distance,geocodes,hours,tel,website,rating,photos,tips,price,popularity',
+    });
+
+    if (categories && categories.length > 0) {
+      params.set('categories', categories.join(','));
+    }
+
+    const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
+    const response = await fetch(url, { headers: fsqHeaders });
+
+    if (!response.ok) {
+      console.error('[freePlaces] Foursquare error:', response.status);
+      return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+    }
+
+    const data = await response.json();
+    const results = data.results || [];
+
+    return results.map((place: any, index: number) => {
+      const photos = (place.photos || []).map((p: any) =>
+        `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
+      );
+
+      const types = (place.categories || []).map((cat: any) =>
+        (cat.short_name || cat.name || '').toLowerCase().replace(/\s+/g, '_')
+      );
+
+      const broadTypes: string[] = [];
+      for (const cat of place.categories || []) {
+        const catId = String(cat.id);
+        if (catId.startsWith('130')) broadTypes.push('restaurant', 'food');
+        if (catId.startsWith('100')) broadTypes.push('bar', 'night_club');
+        if (catId.startsWith('160')) broadTypes.push('park', 'natural_feature');
+        if (catId.startsWith('170')) broadTypes.push('store');
+        if (catId.startsWith('150')) broadTypes.push('hospital');
+        if (catId.startsWith('180')) broadTypes.push('gym');
+        if (catId.startsWith('120')) broadTypes.push('library', 'point_of_interest');
+        if (catId.startsWith('190')) broadTypes.push('lodging');
+        if (catId === '13032') broadTypes.push('cafe');
+        if (catId === '13003') broadTypes.push('bar');
+        if (catId === '10027') broadTypes.push('museum', 'tourist_attraction');
+        if (catId === '10004') broadTypes.push('art_gallery');
+      }
+
+      const allTypes = [...new Set([...types, ...broadTypes])];
+      if (allTypes.length === 0) allTypes.push('point_of_interest');
+
+      const loc = place.location || {};
+      const address = loc.formatted_address ||
+        [loc.address, loc.locality, loc.region, loc.postcode].filter(Boolean).join(', ') ||
+        cityName;
+
+      const tipText = place.tips?.[0]?.text || '';
+
+      return {
+        id: `fsq_${place.fsq_id}`,
+        name: place.name || '',
+        lat: place.geocodes?.main?.latitude || lat,
+        lng: place.geocodes?.main?.longitude || lng,
+        address,
+        city: loc.locality || loc.region || cityName,
+        types: allTypes,
+        phone: place.tel,
+        website: place.website,
+        opening_hours_raw: formatFoursquareHours(place.hours),
+        photo_urls: photos.length > 0 ? photos : getPhotoForPlace(allTypes, index),
+        cuisine: (place.categories || []).map((c: any) => c.short_name || c.name).join(', '),
+        rating: place.rating ? Math.round(place.rating) / 2 : undefined,
+        fsq_tips: tipText || undefined,
+        distance_meters: place.distance,
+      } as FyndPlace;
+    });
+  } catch (error) {
+    console.error('[freePlaces] Foursquare fetch error:', error);
+    return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+  }
+}
+
 // ── AsyncStorage Cache ────────────────────────────────────────────────────────
 
-const CACHE_PREFIX = 'fynd_city_';
+const CACHE_VERSION = 'v2_fsq';
+const CACHE_PREFIX = `fynd_${CACHE_VERSION}_`;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function getCacheKey(lat: number, lng: number): string {
@@ -416,31 +562,33 @@ export async function updateCachedCityPlaces(lat: number, lng: number, places: F
 // ── AI Descriptions (background) ─────────────────────────────────────────────
 
 async function addAIDescriptions(places: FyndPlace[], cityName: string): Promise<FyndPlace[]> {
-  const toGenerate = places.slice(0, 40);
+  const toGen = places.slice(0, 40);
   const rest = places.slice(40);
   const enriched: FyndPlace[] = [];
 
-  for (let i = 0; i < toGenerate.length; i += 5) {
-    const batch = toGenerate.slice(i, i + 5);
+  for (let i = 0; i < toGen.length; i += 5) {
+    const batch = toGen.slice(i, i + 5);
     const results = await Promise.allSettled(
       batch.map(async (place) => {
         if (place.ai_description) return place;
         try {
+          const extraContext = [
+            place.fsq_tips ? `User tip: "${place.fsq_tips}"` : '',
+            place.rating    ? `Rating: ${place.rating}/5`       : '',
+            place.cuisine   ? `Cuisine: ${place.cuisine}`       : '',
+          ].filter(Boolean).join('. ');
+
           const result = await generatePlaceDescription(
             place.name,
             place.address,
             cityName,
             place.types,
+            place.rating ? place.rating * 2 : undefined,
             undefined,
-            undefined,
+            extraContext || undefined,
           );
           if (result) {
-            return {
-              ...place,
-              ai_description: result.description,
-              known_for: result.knownFor,
-              vibe: result.vibe,
-            };
+            return { ...place, ai_description: result.description, known_for: result.knownFor, vibe: result.vibe };
           }
         } catch {
           // AI generation failed — return place without description
@@ -453,7 +601,7 @@ async function addAIDescriptions(places: FyndPlace[], cityName: string): Promise
       enriched.push(result.status === 'fulfilled' ? result.value : batch[enriched.length % batch.length]);
     }
 
-    if (i + 5 < toGenerate.length) {
+    if (i + 5 < toGen.length) {
       await new Promise(r => setTimeout(r, 200));
     }
   }
@@ -696,33 +844,32 @@ export async function getPlacesForLocation(
     return filterAndSort(cached.places, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
   }
 
-  // 2. Fetch from OSM at full radius (always 30km for cache completeness)
-  const osmPlaces = await fetchPlacesFromOSM(lat, lng, FETCH_RADIUS_KM, cityName);
+  // 2. Fetch from Foursquare (primary) — falls back to OSM internally if FSQ fails
+  const places = await fetchPlacesFromFoursquare(lat, lng, FETCH_RADIUS_KM, cityName);
 
-  if (osmPlaces.length === 0) {
+  if (places.length === 0) {
     return [];
   }
 
   // 3. Save to local cache immediately (without AI descriptions)
-  const initialCache: CityCache = {
+  await setCachedCity(lat, lng, {
     city_name: cityName,
     lat,
     lng,
     fetched_at: Date.now(),
-    places: osmPlaces,
+    places,
     ai_generated: false,
-  };
-  await setCachedCity(lat, lng, initialCache);
+  });
 
   // 4. Generate AI descriptions in the background (don't block UI)
   if (generateAI) {
-    addAIDescriptions(osmPlaces, cityName).then(async (enriched) => {
+    addAIDescriptions(places, cityName).then(async (enriched) => {
       await updateCachedCityPlaces(lat, lng, enriched);
     }).catch(console.error);
   }
 
-  // 5. Return filtered + sorted results (applying distance cutoff for requested radius)
-  return filterAndSort(osmPlaces, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
+  // 5. Return filtered + sorted results
+  return filterAndSort(places, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
 }
 
 // ── PlaceResult Mapper ────────────────────────────────────────────────────────
@@ -774,6 +921,56 @@ export async function searchNearbyFree(
   category: string,
   radiusKm: number = 10,
 ): Promise<FyndPlace[]> {
+  // Try Foursquare first
+  const fsqCats = SERVICEHUB_FSQ_CATEGORIES[category];
+  if (fsqCats && FSQ_API_KEY) {
+    try {
+      const params = new URLSearchParams({
+        ll: `${lat},${lng}`,
+        radius: `${Math.min(radiusKm * 1000, 50000)}`,
+        categories: fsqCats,
+        limit: '15',
+        sort: 'DISTANCE',
+        fields: 'fsq_id,name,location,categories,distance,geocodes,tel,website,photos,hours',
+      });
+
+      const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
+      const response = await fetch(url, { headers: fsqHeaders });
+
+      if (response.ok) {
+        const data = await response.json();
+        const results: FyndPlace[] = (data.results || []).map((place: any, i: number) => {
+          const photos = (place.photos || []).map((p: any) =>
+            `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
+          );
+          const loc = place.location || {};
+          const types = (place.categories || []).map((c: any) =>
+            (c.short_name || c.name || '').toLowerCase().replace(/\s+/g, '_')
+          );
+          const allTypes = types.length > 0 ? types : ['point_of_interest'];
+          return {
+            id: `fsq_${place.fsq_id}`,
+            name: place.name || '',
+            lat: place.geocodes?.main?.latitude || lat,
+            lng: place.geocodes?.main?.longitude || lng,
+            address: loc.formatted_address || [loc.address, loc.locality].filter(Boolean).join(', ') || '',
+            city: loc.locality || '',
+            types: allTypes,
+            phone: place.tel,
+            website: place.website,
+            opening_hours_raw: formatFoursquareHours(place.hours),
+            photo_urls: photos.length > 0 ? photos : getPhotoForPlace(allTypes, i),
+            distance_meters: place.distance,
+          } as FyndPlace;
+        });
+        if (results.length > 0) return results;
+      }
+    } catch (e) {
+      console.error('[ServiceHub] Foursquare error:', e);
+    }
+  }
+
+  // Fallback to OSM
   const osmTag = SERVICEHUB_OSM_TAGS[category];
   if (!osmTag) return [];
 

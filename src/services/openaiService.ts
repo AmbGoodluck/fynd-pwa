@@ -117,7 +117,18 @@ export async function generatePlaceDescription(
   types: string[],
   rating?: number,
   priceLevel?: number,
+  extraContext?: string,
 ): Promise<PlaceDescriptionResult | null> {
+  const userContent = [
+    `Place: ${placeName}`,
+    `Address: ${address}`,
+    `City: ${city}`,
+    `Type: ${types.join(', ') || 'unknown'}`,
+    `Rating: ${rating ?? 'unknown'}/5`,
+    `Price level: ${priceLevel ?? 'unknown'}`,
+    extraContext ? `Context: ${extraContext}` : '',
+  ].filter(Boolean).join('\n');
+
   const payload = {
     model: 'gpt-4o-mini',
     max_tokens: 300,
@@ -129,7 +140,7 @@ export async function generatePlaceDescription(
       },
       {
         role: 'user',
-        content: `Place: ${placeName}\nAddress: ${address}\nCity: ${city}\nType: ${types.join(', ') || 'unknown'}\nRating: ${rating ?? 'unknown'}/5\nPrice level: ${priceLevel ?? 'unknown'}`,
+        content: userContent,
       },
     ],
   };
