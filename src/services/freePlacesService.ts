@@ -371,6 +371,7 @@ export async function fetchOSMPlaces(
 // ── Foursquare API ────────────────────────────────────────────────────────────
 
 const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
+console.log('[freePlaces] FSQ_API_KEY present:', !!FSQ_API_KEY, 'length:', FSQ_API_KEY.length);
 const FSQ_BASE_URL = 'https://api.foursquare.com/v3';
 
 const fsqHeaders = {
@@ -419,9 +420,11 @@ export async function fetchPlacesFromFoursquare(
   lng: number,
   radiusKm: number = 30,
   cityName: string = '',
-  categories?: string[],
+  categories?: string[], // Optional Foursquare category IDs to filter by
 ): Promise<FyndPlace[]> {
+  console.log('[freePlaces] fetchPlacesFromFoursquare called — lat:', lat, 'lng:', lng, 'hasKey:', !!FSQ_API_KEY);
   if (!FSQ_API_KEY) {
+    console.log('[freePlaces] NO FSQ KEY — falling back to OSM');
     console.warn('[freePlaces] No Foursquare API key — falling back to OSM');
     return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
   }
