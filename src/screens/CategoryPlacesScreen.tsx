@@ -15,8 +15,8 @@ import { F } from '../theme/fonts';
 import { COLORS } from '../theme/tokens';
 import { useRoute } from '@react-navigation/native';
 
-export default function CategoryPlacesScreen({ navigation }) {
-  const route = useRoute();
+export default function CategoryPlacesScreen({ navigation }: { navigation: any }) {
+  const route = useRoute<any>();
   const category = route?.params?.category;
 
   if (!category) {
