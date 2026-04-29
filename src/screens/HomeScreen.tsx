@@ -74,6 +74,11 @@ const SERVICE_HUB_QUICK = [
   { id: 'Emergency',         label: 'Emergency', icon: 'alert-circle-outline',  color: '#F59E0B', bg: '#FFFBEB' },
 ] as const;
 
+// ── Default location (Berea, KY) — used when location permission is denied ────
+const DEFAULT_LAT  = 37.5687;
+const DEFAULT_LNG  = -84.2963;
+const DEFAULT_CITY = 'Berea';
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 type Props = { navigation: any };
@@ -119,33 +124,39 @@ export default function HomeScreen({ navigation }: Props) {
     return () => clearInterval(interval);
   }, [user?.id]);
 
-  // Resolve city name when location becomes available
+  // Fetch city name + nearby places; falls back to Berea, KY when location is unavailable
   useEffect(() => {
-    if (!location) return;
-    reverseGeocodeFree(location.latitude, location.longitude)
-      .then(name => setCityName(name))
-      .catch(() => {});
-  }, [location]);
+    const load = async () => {
+      setPlacesLoading(true);
+      try {
+        const lat  = location?.latitude  ?? DEFAULT_LAT;
+        const lng  = location?.longitude ?? DEFAULT_LNG;
+        let city   = DEFAULT_CITY;
 
-  // Fetch nearby places
-  useEffect(() => {
-    if (!location) return;
-    setPlacesLoading(true);
-    getPlacesForLocation(
-      location.latitude,
-      location.longitude,
-      cityName || 'Nearby',
-      { limit: 20, generateAI: true },
-    )
-      .then(results => {
+        if (location) {
+          city = await reverseGeocodeFree(location.latitude, location.longitude);
+        }
+
+        setCityName(city);
+        const results = await getPlacesForLocation(lat, lng, city, {
+          limit: 20,
+          generateAI: true,
+        });
         setPlaces(results);
         if (results.length > 0 && user?.id) {
           maybeCreateDailyPickNotification(user.id, results[0]).catch(console.error);
         }
-      })
-      .catch(() => {})
-      .finally(() => setPlacesLoading(false));
-  }, [location, cityName]);
+      } catch (e) {
+        console.error('[Home] Error loading places:', e);
+      } finally {
+        setPlacesLoading(false);
+      }
+    };
+
+    if (!locationLoading || !location) {
+      load();
+    }
+  }, [location?.latitude, location?.longitude, locationLoading]);
 
   // Derive filteredPlaces from places + activeFilter; FSQ fallback when local results are sparse
   useEffect(() => {
@@ -417,7 +428,11 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={styles.locationBar}>
             <Ionicons name="location-sharp" size={16} color={COLORS.accent.primary} />
             <Text style={styles.locationText} numberOfLines={1}>
-              {locationLoading ? 'Finding your location…' : cityName || 'Tap to set location'}
+              {locationLoading
+                ? 'Finding your location…'
+                : location
+                  ? cityName || DEFAULT_CITY
+                  : `${DEFAULT_CITY} (default)`}
             </Text>
           </View>
 
@@ -458,12 +473,6 @@ export default function HomeScreen({ navigation }: Props) {
 
           {isLoading || filterLoading ? (
             <View style={[styles.heroCard, styles.skeleton]} />
-          ) : !location ? (
-            <View style={styles.emptyCard}>
-              <Ionicons name="location-outline" size={36} color="#C8C2CE" />
-              <Text style={styles.emptyTitle}>Location not available</Text>
-              <Text style={styles.emptySub}>Allow location access to discover places near you.</Text>
-            </View>
           ) : heroPlace ? (
             <TouchableOpacity style={styles.heroCard} activeOpacity={0.9} onPress={() => navToPlace(heroPlace)}>
               <ImageBackground
