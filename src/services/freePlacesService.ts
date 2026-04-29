@@ -1,377 +1,77 @@
 /**
  * freePlacesService.ts
  *
- * Zero-cost places service replacing Google Places API + Firestore place caching.
+ * Places service powered by Foursquare Places API (100M+ POIs, real photos, ratings).
  *
  * Architecture:
- *   User opens app → AsyncStorage local cache → (miss) → Overpass API (FREE)
- *                 → OpenAI AI descriptions ($0.01/city, first visit only)
- *                 → write to AsyncStorage
+ *   User opens app → Foursquare API fetch
+ *                 → OpenAI AI descriptions (background, first visit only)
  *
- * No Firestore collections for places. No Google Places for discovery.
- * Everything lives on the user's device after the first fetch.
+ * No OSM/Overpass. No Google Places for discovery.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generatePlaceDescription } from './openaiService';
 import { FALLBACK_IMAGE } from '../constants';
 
+// ── Cache clearing on module load ─────────────────────────────────────────────
+
+async function clearOldCaches() {
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const fyndKeys = allKeys.filter(k => k.startsWith('fynd_'));
+    if (fyndKeys.length > 0) {
+      await AsyncStorage.multiRemove(fyndKeys);
+      console.log('[freePlaces] Cleared', fyndKeys.length, 'old cache entries');
+    }
+  } catch {}
+}
+clearOldCaches();
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface FyndPlace {
-  id: string;                       // "osm_{id}" or "fsq_{fsq_id}"
+  id: string;                        // "fsq_{fsq_id}"
   name: string;
   lat: number;
   lng: number;
   address: string;
   city: string;
-  types: string[];                  // Google-style type names for compatibility
+  types: string[];                   // Google-style type names for compatibility
   phone?: string;
   website?: string;
-  opening_hours_raw?: string;       // Raw hours string
-  photo_urls: string[];             // Foursquare real photos or category stock photos
-  ai_description?: string;          // Generated on first visit
+  opening_hours_raw?: string;
+  photo_urls: string[];              // Foursquare real photos or FALLBACK_IMAGE
+  ai_description?: string;
   known_for?: string[];
   vibe?: string;
   cuisine?: string;
-  osm_tags?: Record<string, string>; // Raw OSM tags (OSM places only)
-  rating?: number;                   // 0-5 scale (from Foursquare, 0-10 → /2)
-  fsq_tips?: string;                 // User tip text from Foursquare
-  distance_meters?: number;          // Distance from search center
+  osm_tags?: Record<string, string>; // Kept for interface compatibility (unused)
+  rating?: number;                   // 0-5 scale (Foursquare 0-10 → /2)
+  fsq_tips?: string;
+  distance_meters?: number;
 }
 
 export interface CityCache {
   city_name: string;
   lat: number;
   lng: number;
-  fetched_at: number;             // Unix timestamp
+  fetched_at: number;
   places: FyndPlace[];
-  ai_generated: boolean;          // Whether AI descriptions have been added
+  ai_generated: boolean;
 }
 
-// ── Legacy OSMPlace type (kept for backwards compat with citySeedService) ─────
-
-export interface OSMPlace {
-  osm_id: number;
-  name: string;
-  lat: number;
-  lng: number;
-  amenity?: string;
-  tourism?: string;
-  leisure?: string;
-  shop?: string;
-  cuisine?: string;
-  phone?: string;
-  website?: string;
-  opening_hours?: string;
-  address: string;
-  city: string;
-  types: string[];
-  rating?: number;
+/** Legacy export — some callers may reference this; now just returns FALLBACK_IMAGE */
+export function getCategoryPhoto(_types: string[]): string {
+  return FALLBACK_IMAGE;
 }
 
-// ── Category Stock Photos ─────────────────────────────────────────────────────
-
-const CATEGORY_PHOTOS: Record<string, string[]> = {
-  restaurant: [
-    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600',
-    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
-    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600',
-  ],
-  cafe: [
-    'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600',
-    'https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=600',
-    'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?w=600',
-  ],
-  bar: [
-    'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600',
-    'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600',
-  ],
-  park: [
-    'https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?w=600',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600',
-    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600',
-  ],
-  museum: [
-    'https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=600',
-    'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?w=600',
-  ],
-  library: [
-    'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=600',
-    'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600',
-  ],
-  gym: [
-    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600',
-  ],
-  store: [
-    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600',
-    'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=600',
-  ],
-  bakery: [
-    'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600',
-  ],
-  hotel: [
-    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600',
-  ],
-  movie_theater: [
-    'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600',
-  ],
-  tourist_attraction: [
-    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600',
-    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=600',
-  ],
-  natural_feature: [
-    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600',
-    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600',
-  ],
-  campground: [
-    'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600',
-  ],
-  night_club: [
-    'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600',
-  ],
-  hospital: [
-    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600',
-  ],
-  pharmacy: [
-    'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=600',
-  ],
-  police: [
-    'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600',
-  ],
-  bank: [
-    'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=600',
-  ],
-  default: [
-    'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600',
-    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600',
-  ],
-};
-
-// Also export for any code that still references the old constant name
-export const CATEGORY_FALLBACK_PHOTOS: Record<string, string> = {
-  restaurant: CATEGORY_PHOTOS.restaurant[0],
-  cafe: CATEGORY_PHOTOS.cafe[0],
-  bar: CATEGORY_PHOTOS.bar[0],
-  park: CATEGORY_PHOTOS.park[0],
-  museum: CATEGORY_PHOTOS.museum[0],
-  library: CATEGORY_PHOTOS.library[0],
-  gym: CATEGORY_PHOTOS.gym[0],
-  store: CATEGORY_PHOTOS.store[0],
-  hotel: CATEGORY_PHOTOS.hotel[0],
-  movie_theater: CATEGORY_PHOTOS.movie_theater[0],
-  bakery: CATEGORY_PHOTOS.bakery[0],
-  tourist_attraction: CATEGORY_PHOTOS.tourist_attraction[0],
-  natural_feature: CATEGORY_PHOTOS.natural_feature[0],
-  campground: CATEGORY_PHOTOS.campground[0],
-  night_club: CATEGORY_PHOTOS.night_club[0],
-  bowling_alley: 'https://images.unsplash.com/photo-1545232979-8bf68ee9b1af?w=600',
-  point_of_interest: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600',
-  default: CATEGORY_PHOTOS.default[0],
-};
-
-function getPhotoForPlace(types: string[], placeIndex: number): string[] {
-  for (const type of types) {
-    const photos = CATEGORY_PHOTOS[type];
-    if (photos && photos.length > 0) {
-      return [photos[placeIndex % photos.length]];
-    }
-  }
-  const fallback = CATEGORY_PHOTOS.default;
-  return [fallback[placeIndex % fallback.length]];
-}
-
-/** Legacy helper — returns single photo URL for a type list */
-export function getCategoryPhoto(types: string[]): string {
-  return getPhotoForPlace(types, 0)[0];
-}
-
-// ── OSM Type Map ──────────────────────────────────────────────────────────────
-
-const OSM_TYPE_MAP: Record<string, string[]> = {
-  restaurant: ['restaurant', 'food'],
-  cafe: ['cafe', 'food'],
-  bar: ['bar'],
-  pub: ['bar'],
-  fast_food: ['restaurant', 'meal_takeaway'],
-  ice_cream: ['bakery', 'food'],
-  bakery: ['bakery', 'food'],
-  food_court: ['restaurant', 'food'],
-  biergarten: ['bar'],
-  nightclub: ['night_club', 'bar'],
-  library: ['library'],
-  arts_centre: ['art_gallery', 'museum'],
-  cinema: ['movie_theater'],
-  theatre: ['performing_arts_theater'],
-  community_centre: ['community_center'],
-  gym: ['gym'],
-  fitness_centre: ['gym'],
-  pharmacy: ['pharmacy'],
-  hospital: ['hospital'],
-  police: ['police'],
-  bank: ['bank'],
-  atm: ['atm'],
-  museum: ['museum', 'tourist_attraction'],
-  gallery: ['art_gallery'],
-  viewpoint: ['tourist_attraction', 'natural_feature'],
-  attraction: ['tourist_attraction'],
-  picnic_site: ['park'],
-  camp_site: ['campground'],
-  hotel: ['lodging'],
-  motel: ['lodging'],
-  hostel: ['lodging'],
-  information: ['tourist_attraction'],
-  park: ['park'],
-  garden: ['park'],
-  nature_reserve: ['park', 'natural_feature'],
-  playground: ['park'],
-  sports_centre: ['gym'],
-  swimming_pool: ['gym'],
-  golf_course: ['park'],
-  bowling_alley: ['bowling_alley'],
-  stadium: ['stadium'],
-  supermarket: ['supermarket', 'store'],
-  convenience: ['convenience_store', 'store'],
-  clothes: ['clothing_store', 'store'],
-  books: ['book_store', 'store'],
-  gift: ['store'],
-  antiques: ['store'],
-  charity: ['store'],
-  second_hand: ['store'],
-  mall: ['shopping_mall'],
-  department_store: ['department_store', 'store'],
-  coffee: ['cafe'],
-  bureau_de_change: ['bank'],
-  toilets: ['establishment'],
-  bus_station: ['transit_station'],
-  bus_stop: ['transit_station'],
-  taxi: ['transit_station'],
-  railway_station: ['transit_station'],
-  embassy: ['local_government_office'],
-  fuel: ['gas_station'],
-  clinic: ['hospital'],
-  doctors: ['hospital'],
-};
-
-// ── Overpass API ──────────────────────────────────────────────────────────────
-
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
-
-function buildOverpassQuery(lat: number, lng: number, radiusMeters: number): string {
-  return `
-    [out:json][timeout:25];
-    (
-      node["amenity"~"restaurant|cafe|bar|pub|fast_food|ice_cream|bakery|food_court|biergarten|nightclub|library|arts_centre|cinema|theatre|community_centre|gym|fitness_centre|pharmacy|hospital|police|bank|atm"](around:${radiusMeters},${lat},${lng});
-      node["tourism"~"museum|gallery|viewpoint|attraction|picnic_site|camp_site|hotel|motel|hostel|information"](around:${radiusMeters},${lat},${lng});
-      node["leisure"~"park|garden|nature_reserve|playground|sports_centre|fitness_centre|swimming_pool|golf_course|bowling_alley|stadium"](around:${radiusMeters},${lat},${lng});
-      node["shop"~"supermarket|convenience|clothes|books|gift|antiques|charity|second_hand|mall|department_store|bakery|coffee"](around:${radiusMeters},${lat},${lng});
-      way["amenity"~"restaurant|cafe|bar|pub|fast_food|library|arts_centre|cinema|theatre|community_centre|hospital|pharmacy|police"](around:${radiusMeters},${lat},${lng});
-      way["tourism"~"museum|gallery|attraction|hotel"](around:${radiusMeters},${lat},${lng});
-      way["leisure"~"park|garden|nature_reserve|sports_centre|stadium"](around:${radiusMeters},${lat},${lng});
-    );
-    out center body;
-  `;
-}
-
-export async function fetchPlacesFromOSM(
-  lat: number,
-  lng: number,
-  radiusKm: number = 30,
-  cityName: string = '',
-): Promise<FyndPlace[]> {
-  const query = buildOverpassQuery(lat, lng, radiusKm * 1000);
-
-  const response = await fetch(OVERPASS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `data=${encodeURIComponent(query)}`,
-  });
-
-  if (!response.ok) throw new Error(`Overpass API error: ${response.status}`);
-
-  const data = await response.json();
-  const elements = data.elements || [];
-
-  const seen = new Map<string, boolean>();
-  const places: FyndPlace[] = [];
-
-  for (let i = 0; i < elements.length; i++) {
-    const el = elements[i];
-    const tags = el.tags || {};
-    const name = tags.name;
-    if (!name) continue;
-
-    const elLat = el.lat || el.center?.lat;
-    const elLng = el.lon || el.center?.lon;
-    if (!elLat || !elLng) continue;
-
-    const key = name.toLowerCase().trim();
-    if (seen.has(key)) continue;
-    seen.set(key, true);
-
-    const primaryTag = tags.amenity || tags.tourism || tags.leisure || tags.shop || '';
-    const types = OSM_TYPE_MAP[primaryTag] || ['point_of_interest'];
-
-    const addrParts = [
-      tags['addr:housenumber'],
-      tags['addr:street'],
-      tags['addr:city'] || cityName,
-      tags['addr:state'],
-      tags['addr:postcode'],
-    ].filter(Boolean);
-
-    places.push({
-      id: `osm_${el.id}`,
-      name,
-      lat: elLat,
-      lng: elLng,
-      address: addrParts.length > 0 ? addrParts.join(', ') : cityName,
-      city: tags['addr:city'] || cityName,
-      types,
-      phone: tags.phone || tags['contact:phone'],
-      website: tags.website || tags['contact:website'],
-      opening_hours_raw: tags.opening_hours,
-      photo_urls: getPhotoForPlace(types, i),
-      cuisine: tags.cuisine,
-      osm_tags: tags,
-    });
-  }
-
-  return places;
-}
-
-/** Legacy export — maps OSMPlace shape from old fetchOSMPlaces calls */
-export async function fetchOSMPlaces(
-  lat: number,
-  lng: number,
-  radiusKm: number = 30,
-  cityName: string = '',
-): Promise<OSMPlace[]> {
-  const places = await fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
-  return places.map(p => ({
-    osm_id: Number(p.id.replace('osm_', '')),
-    name: p.name,
-    lat: p.lat,
-    lng: p.lng,
-    amenity: p.osm_tags?.amenity,
-    tourism: p.osm_tags?.tourism,
-    leisure: p.osm_tags?.leisure,
-    shop: p.osm_tags?.shop,
-    cuisine: p.cuisine,
-    phone: p.phone,
-    website: p.website,
-    opening_hours: p.opening_hours_raw,
-    address: p.address,
-    city: p.city,
-    types: p.types,
-    rating: undefined,
-  }));
-}
+/** Legacy export */
+export const CATEGORY_FALLBACK_PHOTOS: Record<string, string> = {};
 
 // ── Foursquare API ────────────────────────────────────────────────────────────
 
 const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
-console.log('[freePlaces] FSQ_API_KEY present:', !!FSQ_API_KEY, 'length:', FSQ_API_KEY.length);
 const FSQ_BASE_URL = 'https://api.foursquare.com/v3';
 
 const fsqHeaders = {
@@ -420,13 +120,13 @@ export async function fetchPlacesFromFoursquare(
   lng: number,
   radiusKm: number = 30,
   cityName: string = '',
-  categories?: string[], // Optional Foursquare category IDs to filter by
+  categories?: string[],
 ): Promise<FyndPlace[]> {
-  console.log('[freePlaces] fetchPlacesFromFoursquare called — lat:', lat, 'lng:', lng, 'hasKey:', !!FSQ_API_KEY);
+  console.log('[FSQ] API Key present:', !!FSQ_API_KEY, 'Key length:', FSQ_API_KEY.length);
+
   if (!FSQ_API_KEY) {
-    console.log('[freePlaces] NO FSQ KEY — falling back to OSM');
-    console.warn('[freePlaces] No Foursquare API key — falling back to OSM');
-    return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+    console.error('[FSQ] NO API KEY — cannot fetch places');
+    return [];
   }
 
   try {
@@ -443,17 +143,23 @@ export async function fetchPlacesFromFoursquare(
     }
 
     const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
+    console.log('[FSQ] Fetching URL:', url);
+
     const response = await fetch(url, { headers: fsqHeaders });
+    console.log('[FSQ] Response status:', response.status);
 
     if (!response.ok) {
-      console.error('[freePlaces] Foursquare error:', response.status);
-      return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+      const errorText = await response.text();
+      console.error('[FSQ] Error response:', response.status, errorText);
+      return [];
     }
 
     const data = await response.json();
+    console.log('[FSQ] Results count:', data.results?.length || 0);
+
     const results = data.results || [];
 
-    return results.map((place: any, index: number) => {
+    return results.map((place: any) => {
       const photos = (place.photos || []).map((p: any) =>
         `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
       );
@@ -500,7 +206,7 @@ export async function fetchPlacesFromFoursquare(
         phone: place.tel,
         website: place.website,
         opening_hours_raw: formatFoursquareHours(place.hours),
-        photo_urls: photos.length > 0 ? photos : getPhotoForPlace(allTypes, index),
+        photo_urls: photos.length > 0 ? photos : [FALLBACK_IMAGE],
         cuisine: (place.categories || []).map((c: any) => c.short_name || c.name).join(', '),
         rating: place.rating ? Math.round(place.rating) / 2 : undefined,
         fsq_tips: tipText || undefined,
@@ -508,8 +214,8 @@ export async function fetchPlacesFromFoursquare(
       } as FyndPlace;
     });
   } catch (error) {
-    console.error('[freePlaces] Foursquare fetch error:', error);
-    return fetchPlacesFromOSM(lat, lng, radiusKm, cityName);
+    console.error('[FSQ] Fetch error:', error);
+    return [];
   }
 }
 
@@ -520,7 +226,6 @@ const CACHE_PREFIX = `fynd_${CACHE_VERSION}_`;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function getCacheKey(lat: number, lng: number): string {
-  // Round to 1 decimal place — groups nearby coordinates (~10km) to same cache entry
   const roundedLat = Math.round(lat * 10) / 10;
   const roundedLng = Math.round(lng * 10) / 10;
   return `${CACHE_PREFIX}${roundedLat}_${roundedLng}`;
@@ -624,13 +329,9 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ── Vibe → OSM type synonyms ──────────────────────────────────────────────────
-// Maps plain-English vibe tokens (from CreateTripScreen keywords) to the
-// Google-style type names stored in FyndPlace.types. This lets the scorer
-// give a type-level hit even before AI descriptions are generated.
+// ── Vibe → type synonyms ──────────────────────────────────────────────────────
 
 const VIBE_SYNONYMS: Record<string, string[]> = {
-  // Nature / outdoors
   outdoor:        ['park', 'natural_feature', 'campground', 'tourist_attraction'],
   outdoors:       ['park', 'natural_feature', 'campground'],
   nature:         ['park', 'natural_feature', 'campground'],
@@ -642,7 +343,6 @@ const VIBE_SYNONYMS: Record<string, string[]> = {
   viewpoint:      ['natural_feature', 'tourist_attraction'],
   campground:     ['campground'],
   adventure:      ['park', 'campground', 'tourist_attraction', 'natural_feature', 'bowling_alley'],
-  // Arts / culture
   culture:        ['museum', 'art_gallery', 'tourist_attraction', 'performing_arts_theater'],
   cultural:       ['museum', 'art_gallery', 'tourist_attraction'],
   art:            ['art_gallery', 'museum'],
@@ -653,45 +353,36 @@ const VIBE_SYNONYMS: Record<string, string[]> = {
   heritage:       ['museum', 'tourist_attraction'],
   landmark:       ['tourist_attraction'],
   monument:       ['tourist_attraction'],
-  // Photography
   photography:    ['natural_feature', 'tourist_attraction', 'park', 'art_gallery'],
-  // Music / entertainment
   music:          ['night_club', 'bar', 'performing_arts_theater'],
   concert:        ['night_club', 'performing_arts_theater'],
   venue:          ['night_club', 'performing_arts_theater', 'bar'],
   festival:       ['tourist_attraction', 'park'],
   entertainment:  ['movie_theater', 'night_club', 'performing_arts_theater', 'bowling_alley'],
-  // Nightlife
   nightlife:      ['bar', 'night_club'],
   nightclub:      ['night_club'],
   lounge:         ['bar', 'night_club'],
   pub:            ['bar'],
-  // Food / dining
   dining:         ['restaurant', 'food'],
   restaurant:     ['restaurant', 'food'],
   food:           ['restaurant', 'cafe', 'bakery', 'food'],
   cafe:           ['cafe'],
   coffee:         ['cafe'],
   bakery:         ['bakery'],
-  // Shopping
   shopping:       ['store', 'shopping_mall', 'clothing_store'],
   boutique:       ['store', 'clothing_store'],
   market:         ['store', 'shopping_mall'],
   mall:           ['shopping_mall'],
-  // Wellness / sports
   wellness:       ['gym'],
   yoga:           ['gym'],
   spa:            ['gym'],
   sports:         ['gym', 'stadium'],
   stadium:        ['stadium'],
   recreation:     ['park', 'gym', 'bowling_alley'],
-  // Accommodation
   hotel:          ['lodging'],
   lodging:        ['lodging'],
 };
 
-// Expand raw vibe keyword string tokens into a de-duped set that includes
-// both the original tokens AND their mapped OSM type synonyms.
 function expandVibeTokens(vibeFilter: string[]): string[] {
   const rawTokens = vibeFilter
     .flatMap(v => v.toLowerCase().split(/[^a-z0-9]+/g))
@@ -701,15 +392,13 @@ function expandVibeTokens(vibeFilter: string[]): string[] {
   for (const token of rawTokens) {
     const mapped = VIBE_SYNONYMS[token];
     if (mapped) {
-      for (const t of mapped) expanded.add(t.replace(/_/g, ' ')); // "night_club" → "night club" for text match
-      for (const t of mapped) expanded.add(t); // keep raw for type comparison
+      for (const t of mapped) expanded.add(t.replace(/_/g, ' '));
+      for (const t of mapped) expanded.add(t);
     }
   }
   return Array.from(expanded);
 }
 
-// Score a place against the expanded token list.
-// Type match (exact) = 3 pts, type match (substring) = 2 pts, text match = 1 pt.
 function scorePlace(place: FyndPlace, tokens: string[]): number {
   const placeTypes = (place.types || []).map(t => t.toLowerCase());
   const textHaystack = [
@@ -723,11 +412,11 @@ function scorePlace(place: FyndPlace, tokens: string[]): number {
   let score = 0;
   for (const token of tokens) {
     if (placeTypes.includes(token)) {
-      score += 3; // exact type match — strongest signal
+      score += 3;
     } else if (placeTypes.some(t => t.includes(token) || token.includes(t))) {
-      score += 2; // partial type match
+      score += 2;
     } else if (textHaystack.includes(token)) {
-      score += 1; // text / AI description match
+      score += 1;
     }
   }
   return score;
@@ -755,7 +444,7 @@ function isChain(name: string): boolean {
 
 // ── Filter & Sort ─────────────────────────────────────────────────────────────
 
-const MIN_VIBE_RESULTS = 8; // fall back to all places if fewer than this many matches
+const MIN_VIBE_RESULTS = 8;
 
 function filterAndSort(
   places: FyndPlace[],
@@ -766,19 +455,15 @@ function filterAndSort(
   originLng?: number,
   maxDistanceKm?: number,
 ): FyndPlace[] {
-  // 1. Remove utility/non-exploration types
   let filtered = places.filter(p => !p.types.some(t => excludeTypes.includes(t)));
 
-  // 2. Distance cutoff — filter to user's requested radius
   if (originLat !== undefined && originLng !== undefined && maxDistanceKm) {
     const nearby = filtered.filter(p => haversineKm(originLat, originLng, p.lat, p.lng) <= maxDistanceKm);
-    // If the radius is very tight and returns almost nothing, relax it gracefully
     if (nearby.length >= 3) {
       filtered = nearby;
     }
   }
 
-  // 3. Vibe scoring — requires matching at least one token to appear in results
   if (vibeFilter.length > 0) {
     const tokens = expandVibeTokens(vibeFilter);
 
@@ -790,8 +475,6 @@ function filterAndSort(
         return a.place.name.localeCompare(b.place.name);
       });
 
-      // Only return places with at least one token match.
-      // If not enough match (new city, no AI yet), fall back to full sorted list.
       const matching = scored.filter(s => s.score > 0);
       filtered = matching.length >= MIN_VIBE_RESULTS
         ? matching.map(s => s.place)
@@ -799,7 +482,6 @@ function filterAndSort(
     }
   }
 
-  // 4. Push chains to the end, preserving relative order within each tier
   filtered.sort((a, b) => {
     const aChain = isChain(a.name) ? 1 : 0;
     const bChain = isChain(b.name) ? 1 : 0;
@@ -831,47 +513,17 @@ export async function getPlacesForLocation(
     limit = 60,
   } = options || {};
 
-  // Cache is always populated at full radius (30km) so any smaller radius
-  // request can be served from the same cache entry via post-filter.
-  const FETCH_RADIUS_KM = 30;
+  // ALWAYS fetch from Foursquare — no cache for now
+  console.log('[freePlaces] Fetching from Foursquare for', cityName, 'at', lat, lng);
+  const places = await fetchPlacesFromFoursquare(lat, lng, radiusKm, cityName);
+  console.log('[freePlaces] Foursquare returned', places.length, 'places');
 
-  // 1. Check local cache
-  const cached = await getCachedCity(lat, lng);
-  if (cached && cached.places.length > 0) {
-    if (generateAI && !cached.ai_generated) {
-      // Fire-and-forget AI enrichment
-      addAIDescriptions(cached.places, cityName).then(async (enriched) => {
-        await updateCachedCityPlaces(lat, lng, enriched);
-      }).catch(console.error);
-    }
-    return filterAndSort(cached.places, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
-  }
+  if (places.length === 0) return [];
 
-  // 2. Fetch from Foursquare (primary) — falls back to OSM internally if FSQ fails
-  const places = await fetchPlacesFromFoursquare(lat, lng, FETCH_RADIUS_KM, cityName);
-
-  if (places.length === 0) {
-    return [];
-  }
-
-  // 3. Save to local cache immediately (without AI descriptions)
-  await setCachedCity(lat, lng, {
-    city_name: cityName,
-    lat,
-    lng,
-    fetched_at: Date.now(),
-    places,
-    ai_generated: false,
-  });
-
-  // 4. Generate AI descriptions in the background (don't block UI)
   if (generateAI) {
-    addAIDescriptions(places, cityName).then(async (enriched) => {
-      await updateCachedCityPlaces(lat, lng, enriched);
-    }).catch(console.error);
+    addAIDescriptions(places, cityName).then(() => {}).catch(console.error);
   }
 
-  // 5. Return filtered + sorted results
   return filterAndSort(places, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
 }
 
@@ -901,128 +553,61 @@ export function fyndPlaceToPlaceResult(place: FyndPlace): any {
 
 // ── ServiceHub Free Search ────────────────────────────────────────────────────
 
-const SERVICEHUB_OSM_TAGS: Record<string, string> = {
-  'Medical':           'hospital|clinic|doctors|dentist|health_centre',
-  'Currency Exchange': 'bureau_de_change|bank|atm',
-  'Public Bathrooms':  'toilets',
-  'Transport':         'bus_station|bus_stop|taxi|railway_station|ferry_terminal|subway_entrance',
-  'Police':            'police',
-  'Embassy':           'embassy',
-  'ATM':               'atm|bank|bureau_de_change',
-  'Pharmacy':          'pharmacy',
-  'Hotel':             'hotel|motel|hostel',
-  'Tourist Info':      'information',
-  'Gas Station':       'fuel',
-  'Emergency':         'fire_station|hospital|police',
-  'Safety':            'police|fire_station',
-};
-
 export async function searchNearbyFree(
   lat: number,
   lng: number,
   category: string,
   radiusKm: number = 10,
 ): Promise<FyndPlace[]> {
-  // Try Foursquare first
   const fsqCats = SERVICEHUB_FSQ_CATEGORIES[category];
-  if (fsqCats && FSQ_API_KEY) {
-    try {
-      const params = new URLSearchParams({
-        ll: `${lat},${lng}`,
-        radius: `${Math.min(radiusKm * 1000, 50000)}`,
-        categories: fsqCats,
-        limit: '15',
-        sort: 'DISTANCE',
-        fields: 'fsq_id,name,location,categories,distance,geocodes,tel,website,photos,hours',
-      });
-
-      const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
-      const response = await fetch(url, { headers: fsqHeaders });
-
-      if (response.ok) {
-        const data = await response.json();
-        const results: FyndPlace[] = (data.results || []).map((place: any, i: number) => {
-          const photos = (place.photos || []).map((p: any) =>
-            `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
-          );
-          const loc = place.location || {};
-          const types = (place.categories || []).map((c: any) =>
-            (c.short_name || c.name || '').toLowerCase().replace(/\s+/g, '_')
-          );
-          const allTypes = types.length > 0 ? types : ['point_of_interest'];
-          return {
-            id: `fsq_${place.fsq_id}`,
-            name: place.name || '',
-            lat: place.geocodes?.main?.latitude || lat,
-            lng: place.geocodes?.main?.longitude || lng,
-            address: loc.formatted_address || [loc.address, loc.locality].filter(Boolean).join(', ') || '',
-            city: loc.locality || '',
-            types: allTypes,
-            phone: place.tel,
-            website: place.website,
-            opening_hours_raw: formatFoursquareHours(place.hours),
-            photo_urls: photos.length > 0 ? photos : getPhotoForPlace(allTypes, i),
-            distance_meters: place.distance,
-          } as FyndPlace;
-        });
-        if (results.length > 0) return results;
-      }
-    } catch (e) {
-      console.error('[ServiceHub] Foursquare error:', e);
-    }
-  }
-
-  // Fallback to OSM
-  const osmTag = SERVICEHUB_OSM_TAGS[category];
-  if (!osmTag) return [];
-
-  const radiusMeters = radiusKm * 1000;
-  const query = `
-    [out:json][timeout:20];
-    (
-      node["amenity"~"${osmTag}"](around:${radiusMeters},${lat},${lng});
-      way["amenity"~"${osmTag}"](around:${radiusMeters},${lat},${lng});
-    );
-    out center body;
-  `;
+  if (!fsqCats || !FSQ_API_KEY) return [];
 
   try {
-    const response = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(query)}`,
+    const params = new URLSearchParams({
+      ll: `${lat},${lng}`,
+      radius: `${Math.min(radiusKm * 1000, 50000)}`,
+      categories: fsqCats,
+      limit: '15',
+      sort: 'DISTANCE',
+      fields: 'fsq_id,name,location,categories,distance,geocodes,tel,website,photos,hours',
     });
 
-    if (!response.ok) return [];
-    const data = await response.json();
+    const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
+    const response = await fetch(url, { headers: fsqHeaders });
 
-    return (data.elements || [])
-      .filter((el: any) => el.tags?.name)
-      .slice(0, 20)
-      .map((el: any, i: number) => {
-        const tags = el.tags || {};
-        const primaryTag = tags.amenity || tags.tourism || '';
-        const types = OSM_TYPE_MAP[primaryTag] || ['point_of_interest'];
-        const placeLat = el.lat ?? el.center?.lat;
-        const placeLng = el.lon ?? el.center?.lon;
-        if (!placeLat || !placeLng) return null;
-        return {
-          id: `osm_${el.id}`,
-          name: tags.name,
-          lat: placeLat,
-          lng: placeLng,
-          address: [tags['addr:street'], tags['addr:city']].filter(Boolean).join(', ') || '',
-          city: tags['addr:city'] || '',
-          types,
-          phone: tags.phone || tags['contact:phone'],
-          website: tags.website,
-          opening_hours_raw: tags.opening_hours,
-          photo_urls: getPhotoForPlace(types, i),
-          osm_tags: tags,
-        } as FyndPlace;
-      })
-      .filter(Boolean) as FyndPlace[];
-  } catch {
+    if (!response.ok) {
+      console.error('[ServiceHub] Foursquare error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const results: FyndPlace[] = (data.results || []).map((place: any) => {
+      const photos = (place.photos || []).map((p: any) =>
+        `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
+      );
+      const loc = place.location || {};
+      const types = (place.categories || []).map((c: any) =>
+        (c.short_name || c.name || '').toLowerCase().replace(/\s+/g, '_')
+      );
+      return {
+        id: `fsq_${place.fsq_id}`,
+        name: place.name || '',
+        lat: place.geocodes?.main?.latitude || lat,
+        lng: place.geocodes?.main?.longitude || lng,
+        address: loc.formatted_address || [loc.address, loc.locality].filter(Boolean).join(', ') || '',
+        city: loc.locality || '',
+        types: types.length > 0 ? types : ['point_of_interest'],
+        phone: place.tel,
+        website: place.website,
+        opening_hours_raw: formatFoursquareHours(place.hours),
+        photo_urls: photos.length > 0 ? photos : [FALLBACK_IMAGE],
+        distance_meters: place.distance,
+      } as FyndPlace;
+    });
+
+    return results;
+  } catch (e) {
+    console.error('[ServiceHub] Foursquare error:', e);
     return [];
   }
 }
@@ -1033,7 +618,7 @@ export async function reverseGeocodeFree(lat: number, lng: number): Promise<stri
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&addressdetails=1`;
     const response = await fetch(url, {
-      headers: { 'User-Agent': 'FyndApp/1.0 (contact@fyndplaces.com)' }, // Required by Nominatim TOS
+      headers: { 'User-Agent': 'FyndApp/1.0 (contact@fyndplaces.com)' },
     });
     if (!response.ok) return 'My Location';
     const data = await response.json();
@@ -1049,15 +634,15 @@ export async function reverseGeocodeFree(lat: number, lng: number): Promise<stri
   }
 }
 
-// ── Legacy helpers (used by citySeedService — kept for backwards compat) ──────
+// ── Legacy helpers ────────────────────────────────────────────────────────────
 
 export async function resolvePhoto(
   _placeName: string,
   _lat: number,
   _lng: number,
-  types: string[],
+  _types: string[],
 ): Promise<string[]> {
-  return [getCategoryPhoto(types)];
+  return [FALLBACK_IMAGE];
 }
 
 export function parseOSMHours(osmHours: string | undefined): {
