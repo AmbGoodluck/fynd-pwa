@@ -15,7 +15,7 @@ import { COLORS } from '../theme/tokens';
 import PWATopBar from '../components/PWATopBar';
 import {
   getPlacesForLocation,
-  fetchPlacesFromFoursquare,
+  fetchPlacesFromHERE,
   reverseGeocodeFree,
   FyndPlace,
 } from '../services/freePlacesService';
@@ -24,12 +24,12 @@ import { maybeCreateDailyPickNotification } from '../services/notificationServic
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FILTER_FSQ_CATEGORIES: Record<string, string> = {
-  food:      '13065,13000',
-  coffee:    '13032,13035',
-  outdoors:  '16000',
-  nightlife: '13003,10032',
-  study:     '12054,13032,11068',
+const FILTER_QUERIES: Record<string, string> = {
+  food:      'restaurant,food,dining',
+  coffee:    'coffee,cafe,tea',
+  outdoors:  'park,trail,nature,garden,outdoor',
+  nightlife: 'bar,pub,nightclub,lounge',
+  study:     'library,bookstore,cafe,coworking',
 };
 
 const QUICK_FILTERS = [
@@ -176,12 +176,12 @@ export default function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    // Not enough local results — fetch from Foursquare by category
-    const fsqCats = FILTER_FSQ_CATEGORIES[filter.id];
-    if (!fsqCats) { setFilteredPlaces(local); return; }
+    // Not enough local results — fetch from HERE by keyword query
+    const hereQuery = FILTER_QUERIES[filter.id];
+    if (!hereQuery) { setFilteredPlaces(local); return; }
 
     setFilterLoading(true);
-    fetchPlacesFromFoursquare(location.latitude, location.longitude, 30, cityName, fsqCats.split(','))
+    fetchPlacesFromHERE(location.latitude, location.longitude, 30, cityName, hereQuery)
       .then(results => setFilteredPlaces(results.length > 0 ? results : local))
       .catch(() => setFilteredPlaces(local))
       .finally(() => setFilterLoading(false));
@@ -234,39 +234,12 @@ export default function HomeScreen({ navigation }: Props) {
 
     if (local.length < 5 && location) {
       try {
-        const params = new URLSearchParams({
-          query: text,
-          ll: `${location.latitude},${location.longitude}`,
-          radius: '30000',
-          limit: '10',
-          fields: 'fsq_id,name,location,categories,geocodes,photos,rating,tel,website,hours',
-        });
-        const resp = await fetch(`/api/fsq/places/search?${params.toString()}`, {
-          headers: { 'Accept': 'application/json' },
-        });
-        if (!resp.ok) return;
-        const data = await resp.json();
-        const fsqResults = (data.results || []).map((place: any, i: number) => {
-          const photos = (place.photos || []).map((p: any) => `${p.prefix}600x400${p.suffix}`);
-          const loc = place.location || {};
-          return {
-            id: `fsq_${place.fsq_id}`,
-            name: place.name,
-            lat: place.geocodes?.main?.latitude,
-            lng: place.geocodes?.main?.longitude,
-            address: loc.formatted_address || '',
-            city: loc.locality || cityName,
-            types: (place.categories || []).map((c: any) => (c.short_name || '').toLowerCase().replace(/\s+/g, '_')),
-            photo_urls: photos.length > 0 ? photos : [],
-            phone: place.tel,
-            website: place.website,
-            rating: place.rating ? Math.round(place.rating) / 2 : undefined,
-            opening_hours_raw: place.hours?.display,
-          } as FyndPlace;
-        });
+        const hereResults = await fetchPlacesFromHERE(
+          location.latitude, location.longitude, 30, cityName, text,
+        );
         const existingNames = new Set(local.map(p => p.name.toLowerCase()));
-        const unique = fsqResults.filter((p: FyndPlace) => !existingNames.has(p.name.toLowerCase()));
-        setSearchResults([...local, ...unique]);
+        const unique = hereResults.filter(p => !existingNames.has(p.name.toLowerCase()));
+        setSearchResults([...local, ...unique.slice(0, 10)]);
       } catch {
         // Non-fatal — local results already shown
       }
@@ -501,6 +474,14 @@ export default function HomeScreen({ navigation }: Props) {
                           : '';
                       return desc ? <Text style={styles.heroDesc} numberOfLines={1}>{desc}</Text> : null;
                     })()}
+                    {heroPlace.is_open !== undefined && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: heroPlace.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: heroPlace.is_open ? COLORS.accent.sage : COLORS.text.hint }}>
+                          {heroPlace.is_open ? 'Open' : 'Closed'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </ImageBackground>
@@ -569,6 +550,14 @@ export default function HomeScreen({ navigation }: Props) {
                         ? cleanDescription(place.ai_description, place.name)
                         : place.cuisine || place.types[0]?.replace(/_/g, ' ') || 'Place'}
                     </Text>
+                    {place.is_open !== undefined && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: place.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: place.is_open ? COLORS.accent.sage : COLORS.text.hint }}>
+                          {place.is_open ? 'Open' : 'Closed'}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}

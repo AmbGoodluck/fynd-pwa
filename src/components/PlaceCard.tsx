@@ -12,6 +12,7 @@ type Props = {
   distance?: string;
   duration?: string;
   rating?: number;
+  is_open?: boolean;
   photoUrl?: string;
 
   // Layout
@@ -38,6 +39,7 @@ const PlaceCard = React.memo(function PlaceCard({
   distance,
   duration,
   rating,
+  is_open,
   photoUrl,
   horizontal,
   indexBadge,
@@ -91,12 +93,14 @@ const PlaceCard = React.memo(function PlaceCard({
             </Text>
           ) : null}
 
-          {/* Meta row: ⭐ rating · 🚶 distance · ⏱ duration */}
+          {/* Meta row: open/closed · 🚶 distance · ⏱ duration */}
           <View style={styles.metaRowH}>
-            {rating != null ? (
+            {is_open !== undefined ? (
               <View style={styles.metaItem}>
-                <Ionicons name="star" size={12} color="#F59E0B" />
-                <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+                <Text style={[styles.metaText, { fontWeight: '600', color: is_open ? COLORS.accent.sage : COLORS.text.hint }]}>
+                  {is_open ? 'Open' : 'Closed'}
+                </Text>
               </View>
             ) : null}
             {distance ? (
@@ -177,10 +181,12 @@ const PlaceCard = React.memo(function PlaceCard({
         ) : null}
 
         <View style={styles.metaRow}>
-          {rating != null && (
+          {is_open !== undefined && (
             <View style={styles.metaItem}>
-              <Ionicons name="star" size={13} color="#F59E0B" />
-              <Text style={styles.metaText}>{rating.toFixed(1)}</Text>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+              <Text style={[styles.metaText, { fontWeight: '600', color: is_open ? COLORS.accent.sage : COLORS.text.hint }]}>
+                {is_open ? 'Open' : 'Closed'}
+              </Text>
             </View>
           )}
           {distance ? (

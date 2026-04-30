@@ -1,55 +1,31 @@
-/**
- * freePlacesService.ts
- *
- * Places service powered by Foursquare Places API (100M+ POIs, real photos, ratings).
- *
- * Architecture:
- *   User opens app → Foursquare API fetch
- *                 → OpenAI AI descriptions (background, first visit only)
- *
- * No OSM/Overpass. No Google Places for discovery.
- */
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generatePlaceDescription } from './openaiService';
 import { FALLBACK_IMAGE } from '../constants';
 
-// ── Cache clearing on module load ─────────────────────────────────────────────
-
-async function clearOldCaches() {
-  try {
-    const allKeys = await AsyncStorage.getAllKeys();
-    const fyndKeys = allKeys.filter(k => k.startsWith('fynd_'));
-    if (fyndKeys.length > 0) {
-      await AsyncStorage.multiRemove(fyndKeys);
-      console.log('[freePlaces] Cleared', fyndKeys.length, 'old cache entries');
-    }
-  } catch {}
-}
-clearOldCaches();
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// TYPES
+// ══════════════════════════════════════════════════════════
 
 export interface FyndPlace {
-  id: string;                        // "fsq_{fsq_id}"
+  id: string;
   name: string;
   lat: number;
   lng: number;
   address: string;
   city: string;
-  types: string[];                   // Google-style type names for compatibility
+  types: string[];
   phone?: string;
   website?: string;
   opening_hours_raw?: string;
-  photo_urls: string[];              // Foursquare real photos or FALLBACK_IMAGE
+  is_open?: boolean;
+  photo_urls: string[];
   ai_description?: string;
   known_for?: string[];
   vibe?: string;
   cuisine?: string;
-  osm_tags?: Record<string, string>; // Kept for interface compatibility (unused)
-  rating?: number;                   // 0-5 scale (Foursquare 0-10 → /2)
-  fsq_tips?: string;
   distance_meters?: number;
+  food_types?: string[];
+  categories_raw?: string[];
 }
 
 export interface CityCache {
@@ -61,200 +37,347 @@ export interface CityCache {
   ai_generated: boolean;
 }
 
-/** Legacy export — some callers may reference this; now just returns FALLBACK_IMAGE */
-export function getCategoryPhoto(_types: string[]): string {
-  return FALLBACK_IMAGE;
-}
+// ══════════════════════════════════════════════════════════
+// HERE API CONFIG
+// ══════════════════════════════════════════════════════════
 
-/** Legacy export */
-export const CATEGORY_FALLBACK_PHOTOS: Record<string, string> = {};
+const HERE_API_KEY = process.env.EXPO_PUBLIC_HERE_API_KEY || '';
+const HERE_DISCOVER_URL = 'https://discover.search.hereapi.com/v1/discover';
+const HERE_BROWSE_URL = 'https://browse.search.hereapi.com/v1/browse';
 
-// ── Foursquare API ────────────────────────────────────────────────────────────
+console.log('[HERE] API Key present:', !!HERE_API_KEY, 'Key length:', HERE_API_KEY.length);
 
-const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
-const FSQ_BASE_URL = '/api/fsq';
+// ══════════════════════════════════════════════════════════
+// CATEGORY STOCK PHOTOS (fallback — HERE has no photo API on free tier)
+// ══════════════════════════════════════════════════════════
 
-export const FSQ_CATEGORIES: Record<string, string> = {
-  restaurant: '13065', cafe: '13032', coffee: '13032', bar: '13003',
-  bakery: '13002', fast_food: '13145', ice_cream: '13046', dessert: '13040',
-  brunch: '13065', night_club: '10032', lounge: '13025', brewery: '13029',
-  park: '16032', trail: '16038', garden: '16019', nature: '16027',
-  campground: '16004', beach: '16001', lake: '16024', playground: '16033',
-  museum: '10027', art_gallery: '10004', theater: '10024',
-  store: '17000', thrift: '17088', mall: '17114', bookstore: '17018',
-  hospital: '15014', pharmacy: '15027', police: '12072', bank: '11002',
-  atm: '11001', gas_station: '19007', bus_station: '19042', gym: '18021',
-  library: '12054', hotel: '19014', coworking: '11068',
+const CATEGORY_PHOTOS: Record<string, string[]> = {
+  restaurant: [
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600',
+    'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600',
+    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600',
+  ],
+  cafe: [
+    'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600',
+    'https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=600',
+    'https://images.unsplash.com/photo-1559496417-e7f25cb247f3?w=600',
+  ],
+  bar: [
+    'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600',
+    'https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600',
+  ],
+  park: [
+    'https://images.unsplash.com/photo-1588714477688-cf28a50e94f7?w=600',
+    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600',
+  ],
+  museum: [
+    'https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=600',
+  ],
+  library: [
+    'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=600',
+  ],
+  gym: [
+    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600',
+  ],
+  store: [
+    'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600',
+  ],
+  bakery: [
+    'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600',
+  ],
+  hotel: [
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=600',
+  ],
+  hospital: [
+    'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600',
+  ],
+  pharmacy: [
+    'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=600',
+  ],
+  tourist_attraction: [
+    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600',
+    'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=600',
+  ],
+  natural_feature: [
+    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600',
+    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600',
+  ],
+  night_club: [
+    'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600',
+  ],
+  default: [
+    'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=600',
+    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600',
+  ],
 };
 
-const SERVICEHUB_FSQ_CATEGORIES: Record<string, string> = {
-  'Medical':           '15014,15000',
-  'Currency':          '11002,11001',
-  'Currency Exchange': '11002,11001',
-  'Public Bathrooms':  '12000',
-  'Transport':         '19042,19043,19040',
-  'Police':            '12072',
-  'Embassy':           '12032',
-  'ATM':               '11001',
-  'ATM / Bank':        '11001,11002',
-  'Pharmacy':          '15027',
-  'Hotel':             '19014,19009',
-  'Tourist Info':      '16000',
-  'Gas Station':       '19007',
-  'Emergency':         '15014,12072',
-  'Safety':            '12072',
-};
-
-function formatFoursquareHours(hours: any): string | undefined {
-  if (!hours?.display) return undefined;
-  return hours.display;
+function getPhotoForPlace(types: string[], index: number): string[] {
+  for (const type of types) {
+    const photos = CATEGORY_PHOTOS[type];
+    if (photos && photos.length > 0) return [photos[index % photos.length]];
+  }
+  const fb = CATEGORY_PHOTOS.default;
+  return [fb[index % fb.length]];
 }
 
-export async function fetchPlacesFromFoursquare(
+// ══════════════════════════════════════════════════════════
+// HERE CATEGORY → GOOGLE-STYLE TYPE MAPPING
+// ══════════════════════════════════════════════════════════
+
+function mapHereCategoriesToTypes(categories: any[]): string[] {
+  const types: string[] = [];
+  for (const cat of categories) {
+    const id = cat.id || '';
+    const name = (cat.name || '').toLowerCase();
+
+    if (id.startsWith('100-1000-0001')) types.push('restaurant');
+    if (id.startsWith('100-1000-0000')) types.push('restaurant');
+    if (id.startsWith('100-1000-0009')) types.push('restaurant', 'fast_food');
+    if (id.startsWith('100-1100'))      types.push('cafe');
+    if (id.startsWith('100-1000-0002')) types.push('restaurant');
+
+    if (id.startsWith('200-2000-0011')) types.push('bar');
+    if (id.startsWith('200-2000-0368')) types.push('bar', 'night_club');
+    if (id.startsWith('200-2000'))      types.push('bar');
+    if (id.startsWith('200-2200'))      types.push('night_club');
+
+    if (id.startsWith('300-3000')) types.push('tourist_attraction');
+    if (id.startsWith('300-3100')) types.push('museum');
+    if (id.startsWith('300-3200')) types.push('art_gallery');
+
+    if (id.startsWith('350-3500')) types.push('library');
+    if (id.startsWith('350-3510')) types.push('performing_arts_theater');
+    if (id.startsWith('350-3520')) types.push('movie_theater');
+
+    if (id.startsWith('400-4100')) types.push('park');
+    if (id.startsWith('400-4300')) types.push('natural_feature');
+
+    if (id.startsWith('500-5000')) types.push('lodging');
+    if (id.startsWith('500-5100')) types.push('lodging');
+
+    if (id.startsWith('550-5510')) types.push('gym');
+    if (id.startsWith('550-5520')) types.push('gym');
+
+    if (id.startsWith('600-6100')) types.push('store');
+    if (id.startsWith('600-6200')) types.push('store', 'clothing_store');
+    if (id.startsWith('600-6300')) types.push('store', 'book_store');
+    if (id.startsWith('600-6900')) types.push('store');
+    if (id.startsWith('600-6950')) types.push('shopping_mall');
+
+    if (id.startsWith('700-7300')) types.push('gas_station');
+    if (id.startsWith('700-7400')) types.push('parking');
+    if (id.startsWith('700-7600')) types.push('atm');
+    if (id.startsWith('700-7800')) types.push('bank');
+
+    if (id.startsWith('800-8000')) types.push('hospital');
+    if (id.startsWith('800-8100')) types.push('pharmacy');
+    if (id.startsWith('800-8200')) types.push('police');
+
+    if (name.includes('coffee') || name.includes('café') || name.includes('cafe')) types.push('cafe');
+    if (name.includes('bakery') || name.includes('pastry')) types.push('bakery');
+    if (name.includes('pizza'))                             types.push('restaurant');
+    if (name.includes('park'))                              types.push('park');
+    if (name.includes('trail') || name.includes('hiking'))  types.push('natural_feature');
+    if (name.includes('grocery') || name.includes('supermarket')) types.push('supermarket');
+  }
+
+  const unique = [...new Set(types)];
+  return unique.length > 0 ? unique : ['point_of_interest'];
+}
+
+// ══════════════════════════════════════════════════════════
+// HERE RESPONSE → FyndPlace
+// ══════════════════════════════════════════════════════════
+
+function parseHereItem(item: any, index: number, fallbackCity: string): FyndPlace {
+  const categories = item.categories || [];
+  const types = mapHereCategoriesToTypes(categories);
+  const address = item.address || {};
+  const position = item.position || {};
+  const contacts = item.contacts?.[0] || {};
+  const hours = item.openingHours?.[0] || {};
+  const foodTypes = (item.foodTypes || []).map((f: any) => f.name).filter(Boolean);
+
+  let phone: string | undefined;
+  if (contacts.phone?.[0]) {
+    const p = contacts.phone[0];
+    phone = typeof p === 'string' ? p : p.value;
+  }
+
+  let website: string | undefined;
+  if (contacts.www?.[0]) {
+    const w = contacts.www[0];
+    website = typeof w === 'string' ? w : w.value;
+  }
+
+  const hoursText = hours.text ? hours.text.join('; ') : undefined;
+
+  return {
+    id: `here_${item.id}`,
+    name: item.title || '',
+    lat: position.lat || 0,
+    lng: position.lng || 0,
+    address: address.label || [address.street, address.city, address.stateCode].filter(Boolean).join(', ') || fallbackCity,
+    city: address.city || fallbackCity,
+    types,
+    phone,
+    website,
+    opening_hours_raw: hoursText,
+    is_open: hours.isOpen,
+    photo_urls: getPhotoForPlace(types, index),
+    cuisine: foodTypes.join(', ') || undefined,
+    distance_meters: item.distance,
+    food_types: foodTypes,
+    categories_raw: categories.map((c: any) => c.name),
+  };
+}
+
+// ══════════════════════════════════════════════════════════
+// HERE PLACES FETCH — DISCOVER ENDPOINT
+// ══════════════════════════════════════════════════════════
+
+export async function fetchPlacesFromHERE(
   lat: number,
   lng: number,
   radiusKm: number = 30,
   cityName: string = '',
-  categories?: string[],
+  query?: string,
 ): Promise<FyndPlace[]> {
-  console.log('[FSQ] API Key present:', !!FSQ_API_KEY, 'Key length:', FSQ_API_KEY.length);
-
-  if (!FSQ_API_KEY) {
-    console.error('[FSQ] NO API KEY — cannot fetch places');
+  if (!HERE_API_KEY) {
+    console.error('[HERE] No API key — cannot fetch places');
     return [];
   }
 
   try {
-    const params = new URLSearchParams({
-      ll: `${lat},${lng}`,
-      radius: `${Math.min(radiusKm * 1000, 50000)}`,
-      limit: '50',
-      sort: 'RELEVANCE',
-      fields: 'fsq_id,name,location,categories,distance,geocodes,hours,tel,website,rating,photos,tips,price,popularity',
-    });
+    const searchQuery = query || 'restaurant,cafe,bar,park,museum,shop,entertainment';
+    const radiusM = Math.min(radiusKm * 1000, 50000);
+    const url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(searchQuery)}&limit=50&in=circle:${lat},${lng};r=${radiusM}&apiKey=${HERE_API_KEY}`;
 
-    if (categories && categories.length > 0) {
-      params.set('categories', categories.join(','));
-    }
+    console.log('[HERE] Fetching:', url.replace(HERE_API_KEY, 'KEY_HIDDEN'));
 
-    const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
-    console.log('[FSQ] Full request URL:', url);
-
-    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    console.log('[FSQ] Response status:', response.status);
+    const response = await fetch(url);
+    console.log('[HERE] Response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[FSQ] Error response:', response.status, errorText);
+      console.error('[HERE] Error:', response.status, errorText);
       return [];
     }
 
     const data = await response.json();
-    console.log('[FSQ] Results count:', data.results?.length || 0);
+    const items = data.items || [];
+    console.log('[HERE] Results count:', items.length);
 
-    const results = data.results || [];
-
-    return results.map((place: any) => {
-      const photos = (place.photos || []).map((p: any) =>
-        `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
-      );
-
-      const types = (place.categories || []).map((cat: any) =>
-        (cat.short_name || cat.name || '').toLowerCase().replace(/\s+/g, '_')
-      );
-
-      const broadTypes: string[] = [];
-      for (const cat of place.categories || []) {
-        const catId = String(cat.id);
-        if (catId.startsWith('130')) broadTypes.push('restaurant', 'food');
-        if (catId.startsWith('100')) broadTypes.push('bar', 'night_club');
-        if (catId.startsWith('160')) broadTypes.push('park', 'natural_feature');
-        if (catId.startsWith('170')) broadTypes.push('store');
-        if (catId.startsWith('150')) broadTypes.push('hospital');
-        if (catId.startsWith('180')) broadTypes.push('gym');
-        if (catId.startsWith('120')) broadTypes.push('library', 'point_of_interest');
-        if (catId.startsWith('190')) broadTypes.push('lodging');
-        if (catId === '13032') broadTypes.push('cafe');
-        if (catId === '13003') broadTypes.push('bar');
-        if (catId === '10027') broadTypes.push('museum', 'tourist_attraction');
-        if (catId === '10004') broadTypes.push('art_gallery');
-      }
-
-      const allTypes = [...new Set([...types, ...broadTypes])];
-      if (allTypes.length === 0) allTypes.push('point_of_interest');
-
-      const loc = place.location || {};
-      const address = loc.formatted_address ||
-        [loc.address, loc.locality, loc.region, loc.postcode].filter(Boolean).join(', ') ||
-        cityName;
-
-      const tipText = place.tips?.[0]?.text || '';
-
-      return {
-        id: `fsq_${place.fsq_id}`,
-        name: place.name || '',
-        lat: place.geocodes?.main?.latitude || lat,
-        lng: place.geocodes?.main?.longitude || lng,
-        address,
-        city: loc.locality || loc.region || cityName,
-        types: allTypes,
-        phone: place.tel,
-        website: place.website,
-        opening_hours_raw: formatFoursquareHours(place.hours),
-        photo_urls: photos.length > 0 ? photos : [FALLBACK_IMAGE],
-        cuisine: (place.categories || []).map((c: any) => c.short_name || c.name).join(', '),
-        rating: place.rating ? Math.round(place.rating) / 2 : undefined,
-        fsq_tips: tipText || undefined,
-        distance_meters: place.distance,
-      } as FyndPlace;
-    });
+    return items.map((item: any, i: number) => parseHereItem(item, i, cityName));
   } catch (error) {
-    console.error('[FSQ] Fetch error:', error);
+    console.error('[HERE] Fetch error:', error);
     return [];
   }
 }
 
-// ── AsyncStorage Cache ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// HERE BROWSE — CATEGORY-SPECIFIC (ServiceHub)
+// ══════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v2_fsq';
-const CACHE_PREFIX = `fynd_${CACHE_VERSION}_`;
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const SERVICEHUB_HERE_CATEGORIES: Record<string, string> = {
+  'Medical':           '800-8000-0159',
+  'Currency':          '700-7800',
+  'Currency Exchange': '700-7610',
+  'Bathrooms':         '900-9300-0360',
+  'Public Bathrooms':  '900-9300-0360',
+  'Transport':         '400-4100-0036',
+  'Police':            '800-8200-0174',
+  'Embassy':           '800-8300',
+  'ATM':               '700-7600-0116',
+  'ATM / Bank':        '700-7600-0116,700-7800',
+  'Pharmacy':          '800-8100-0168',
+  'Hotel':             '500-5000-0053',
+  'Tourist Info':      '300-3000-0023',
+  'Gas Station':       '700-7300',
+  'Emergency':         '800-8000-0159',
+  'Safety':            '800-8200-0174',
+};
 
-function getCacheKey(lat: number, lng: number): string {
-  const roundedLat = Math.round(lat * 10) / 10;
-  const roundedLng = Math.round(lng * 10) / 10;
-  return `${CACHE_PREFIX}${roundedLat}_${roundedLng}`;
-}
+export async function searchNearbyFree(
+  lat: number,
+  lng: number,
+  category: string,
+  radiusKm: number = 10,
+): Promise<FyndPlace[]> {
+  if (!HERE_API_KEY) return [];
 
-export async function getCachedCity(lat: number, lng: number): Promise<CityCache | null> {
+  const hereCatId = SERVICEHUB_HERE_CATEGORIES[category];
+
   try {
-    const key = getCacheKey(lat, lng);
-    const raw = await AsyncStorage.getItem(key);
-    if (!raw) return null;
-
-    const cache: CityCache = JSON.parse(raw);
-
-    if (Date.now() - cache.fetched_at > CACHE_TTL_MS) {
-      await AsyncStorage.removeItem(key);
-      return null;
+    let url: string;
+    if (hereCatId) {
+      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=${hereCatId}&limit=15&in=circle:${lat},${lng};r=${radiusKm * 1000}&apiKey=${HERE_API_KEY}`;
+    } else {
+      url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(category)}&limit=15&apiKey=${HERE_API_KEY}`;
     }
 
-    return cache;
-  } catch {
-    return null;
+    console.log('[HERE ServiceHub] Fetching category:', category);
+    const response = await fetch(url);
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return (data.items || []).map((item: any, i: number) => parseHereItem(item, i, ''));
+  } catch (e) {
+    console.error('[HERE ServiceHub] Error:', e);
+    return [];
   }
 }
 
-export async function setCachedCity(lat: number, lng: number, cache: CityCache): Promise<void> {
+// ══════════════════════════════════════════════════════════
+// CHAIN DETECTION
+// ══════════════════════════════════════════════════════════
+
+const CHAIN_KEYWORDS = [
+  'mcdonald', 'burger king', 'wendy', 'taco bell', 'subway', 'domino',
+  'pizza hut', 'papa john', 'little caesars', 'sonic', 'arby', 'hardee',
+  'chick-fil-a', 'popeyes', 'kfc', 'dunkin', 'starbucks', 'red lobster',
+  'olive garden', 'applebee', 'chili', 'ihop', 'denny', 'waffle house',
+  'cracker barrel', 'dollar general', 'dollar tree', 'walmart', 'target',
+  'walgreens', 'cvs', 'save-a-lot', 'aldi', 'kroger', 'shell', 'bp',
+  'speedway', 'circle k', 'marathon', 'valero', 'buffalo wild wings',
+  'hooters', 'cicis', 'outback', 'golden corral', 'panera', 'chipotle',
+  'five guys', 'zaxby', 'cookout', 'firehouse sub', 'jersey mike',
+  'jimmy john', 'panda express', 'raising cane', 'wingstop',
+  "sonny's barbecue", "logan's roadhouse", 'tropical smoothie',
+];
+
+function isChain(name: string): boolean {
+  const lower = name.toLowerCase();
+  return CHAIN_KEYWORDS.some(c => lower.includes(c));
+}
+
+// ══════════════════════════════════════════════════════════
+// CACHE (AsyncStorage)
+// ══════════════════════════════════════════════════════════
+
+const CACHE_VERSION = 'v4_here';
+const CACHE_PREFIX = `fynd_${CACHE_VERSION}_`;
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getCacheKey(lat: number, lng: number): string {
+  return `${CACHE_PREFIX}${Math.round(lat * 10) / 10}_${Math.round(lng * 10) / 10}`;
+}
+
+async function getCachedCity(lat: number, lng: number): Promise<CityCache | null> {
   try {
-    const key = getCacheKey(lat, lng);
-    await AsyncStorage.setItem(key, JSON.stringify(cache));
-  } catch {
-    // Storage full or unavailable — non-fatal
-  }
+    const raw = await AsyncStorage.getItem(getCacheKey(lat, lng));
+    if (!raw) return null;
+    const cache: CityCache = JSON.parse(raw);
+    if (Date.now() - cache.fetched_at > CACHE_TTL_MS) return null;
+    return cache;
+  } catch { return null; }
 }
 
-export async function updateCachedCityPlaces(lat: number, lng: number, places: FyndPlace[]): Promise<void> {
+async function setCachedCity(lat: number, lng: number, cache: CityCache): Promise<void> {
+  try { await AsyncStorage.setItem(getCacheKey(lat, lng), JSON.stringify(cache)); } catch {}
+}
+
+async function updateCachedCityPlaces(lat: number, lng: number, places: FyndPlace[]): Promise<void> {
   const cache = await getCachedCity(lat, lng);
   if (!cache) return;
   cache.places = places;
@@ -262,7 +385,21 @@ export async function updateCachedCityPlaces(lat: number, lng: number, places: F
   await setCachedCity(lat, lng, cache);
 }
 
-// ── AI Descriptions (background) ─────────────────────────────────────────────
+async function clearOldCaches() {
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const oldKeys = allKeys.filter(k => k.startsWith('fynd_') && !k.startsWith(CACHE_PREFIX));
+    if (oldKeys.length > 0) {
+      await AsyncStorage.multiRemove(oldKeys);
+      console.log('[Cache] Cleared', oldKeys.length, 'old cache entries');
+    }
+  } catch {}
+}
+clearOldCaches();
+
+// ══════════════════════════════════════════════════════════
+// AI DESCRIPTIONS (background)
+// ══════════════════════════════════════════════════════════
 
 async function addAIDescriptions(places: FyndPlace[], cityName: string): Promise<FyndPlace[]> {
   const toGen = places.slice(0, 40);
@@ -271,211 +408,51 @@ async function addAIDescriptions(places: FyndPlace[], cityName: string): Promise
 
   for (let i = 0; i < toGen.length; i += 5) {
     const batch = toGen.slice(i, i + 5);
-    const results = await Promise.allSettled(
-      batch.map(async (place) => {
-        if (place.ai_description) return place;
-        try {
-          const extraContext = [
-            place.fsq_tips ? `User tip: "${place.fsq_tips}"` : '',
-            place.rating    ? `Rating: ${place.rating}/5`       : '',
-            place.cuisine   ? `Cuisine: ${place.cuisine}`       : '',
-          ].filter(Boolean).join('. ');
+    const results = await Promise.allSettled(batch.map(async (place) => {
+      if (place.ai_description) return place;
+      try {
+        const extraContext = [
+          place.food_types?.length ? `Cuisine: ${place.food_types.join(', ')}` : '',
+          place.categories_raw?.length ? `Category: ${place.categories_raw.join(', ')}` : '',
+          place.is_open !== undefined ? `Currently: ${place.is_open ? 'Open' : 'Closed'}` : '',
+        ].filter(Boolean).join('. ');
 
-          const result = await generatePlaceDescription(
-            place.name,
-            place.address,
-            cityName,
-            place.types,
-            place.rating ? place.rating * 2 : undefined,
-            undefined,
-            extraContext || undefined,
-          );
-          if (result) {
-            return { ...place, ai_description: result.description, known_for: result.knownFor, vibe: result.vibe };
-          }
-        } catch {
-          // AI generation failed — return place without description
+        const result = await generatePlaceDescription(
+          place.name,
+          place.address,
+          cityName,
+          place.types,
+          undefined,
+          undefined,
+          extraContext || undefined,
+        );
+        if (result) {
+          return { ...place, ai_description: result.description, known_for: result.knownFor, vibe: result.vibe };
         }
-        return place;
-      })
-    );
+      } catch {}
+      return place;
+    }));
 
-    for (const result of results) {
-      enriched.push(result.status === 'fulfilled' ? result.value : batch[enriched.length % batch.length]);
+    for (const r of results) {
+      enriched.push(r.status === 'fulfilled' ? r.value : batch[enriched.length % batch.length]);
     }
-
-    if (i + 5 < toGen.length) {
-      await new Promise(r => setTimeout(r, 200));
-    }
+    if (i + 5 < toGen.length) await new Promise(r => setTimeout(r, 200));
   }
 
   return [...enriched, ...rest];
 }
 
-// ── Haversine ─────────────────────────────────────────────────────────────────
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// ── Vibe → type synonyms ──────────────────────────────────────────────────────
-
-const VIBE_SYNONYMS: Record<string, string[]> = {
-  outdoor:        ['park', 'natural_feature', 'campground', 'tourist_attraction'],
-  outdoors:       ['park', 'natural_feature', 'campground'],
-  nature:         ['park', 'natural_feature', 'campground'],
-  garden:         ['park', 'natural_feature'],
-  trail:          ['park', 'natural_feature'],
-  hiking:         ['park', 'natural_feature', 'campground'],
-  hike:           ['park', 'natural_feature', 'campground'],
-  scenic:         ['natural_feature', 'tourist_attraction', 'park'],
-  viewpoint:      ['natural_feature', 'tourist_attraction'],
-  campground:     ['campground'],
-  adventure:      ['park', 'campground', 'tourist_attraction', 'natural_feature', 'bowling_alley'],
-  culture:        ['museum', 'art_gallery', 'tourist_attraction', 'performing_arts_theater'],
-  cultural:       ['museum', 'art_gallery', 'tourist_attraction'],
-  art:            ['art_gallery', 'museum'],
-  gallery:        ['art_gallery'],
-  museum:         ['museum', 'tourist_attraction'],
-  historical:     ['museum', 'tourist_attraction'],
-  historic:       ['museum', 'tourist_attraction'],
-  heritage:       ['museum', 'tourist_attraction'],
-  landmark:       ['tourist_attraction'],
-  monument:       ['tourist_attraction'],
-  photography:    ['natural_feature', 'tourist_attraction', 'park', 'art_gallery'],
-  music:          ['night_club', 'bar', 'performing_arts_theater'],
-  concert:        ['night_club', 'performing_arts_theater'],
-  venue:          ['night_club', 'performing_arts_theater', 'bar'],
-  festival:       ['tourist_attraction', 'park'],
-  entertainment:  ['movie_theater', 'night_club', 'performing_arts_theater', 'bowling_alley'],
-  nightlife:      ['bar', 'night_club'],
-  nightclub:      ['night_club'],
-  lounge:         ['bar', 'night_club'],
-  pub:            ['bar'],
-  dining:         ['restaurant', 'food'],
-  restaurant:     ['restaurant', 'food'],
-  food:           ['restaurant', 'cafe', 'bakery', 'food'],
-  cafe:           ['cafe'],
-  coffee:         ['cafe'],
-  bakery:         ['bakery'],
-  shopping:       ['store', 'shopping_mall', 'clothing_store'],
-  boutique:       ['store', 'clothing_store'],
-  market:         ['store', 'shopping_mall'],
-  mall:           ['shopping_mall'],
-  wellness:       ['gym'],
-  yoga:           ['gym'],
-  spa:            ['gym'],
-  sports:         ['gym', 'stadium'],
-  stadium:        ['stadium'],
-  recreation:     ['park', 'gym', 'bowling_alley'],
-  hotel:          ['lodging'],
-  lodging:        ['lodging'],
-};
-
-function expandVibeTokens(vibeFilter: string[]): string[] {
-  const rawTokens = vibeFilter
-    .flatMap(v => v.toLowerCase().split(/[^a-z0-9]+/g))
-    .filter(t => t.length >= 3);
-
-  const expanded = new Set<string>(rawTokens);
-  for (const token of rawTokens) {
-    const mapped = VIBE_SYNONYMS[token];
-    if (mapped) {
-      for (const t of mapped) expanded.add(t.replace(/_/g, ' '));
-      for (const t of mapped) expanded.add(t);
-    }
-  }
-  return Array.from(expanded);
-}
-
-function scorePlace(place: FyndPlace, tokens: string[]): number {
-  const placeTypes = (place.types || []).map(t => t.toLowerCase());
-  const textHaystack = [
-    place.ai_description || '',
-    (place.known_for || []).join(' '),
-    place.vibe || '',
-    place.cuisine || '',
-    place.name,
-  ].join(' ').toLowerCase();
-
-  let score = 0;
-  for (const token of tokens) {
-    if (placeTypes.includes(token)) {
-      score += 3;
-    } else if (placeTypes.some(t => t.includes(token) || token.includes(t))) {
-      score += 2;
-    } else if (textHaystack.includes(token)) {
-      score += 1;
-    }
-  }
-  return score;
-}
-
-// ── Chain Detection ───────────────────────────────────────────────────────────
-
-const CHAIN_KEYWORDS = [
-  'mcdonald', 'burger king', 'wendy', 'taco bell', 'subway', 'domino',
-  'pizza hut', 'papa john', 'little caesars', 'sonic', 'arby', 'hardee',
-  'chick-fil-a', 'popeyes', 'kfc', 'dunkin', 'starbucks', 'red lobster',
-  'olive garden', 'applebee', "chili's", 'ihop', 'denny', 'waffle house',
-  'cracker barrel', 'dollar general', 'dollar tree', 'walmart', 'target',
-  'walgreens', 'cvs', 'save-a-lot', 'aldi', 'kroger', 'shell', 'bp',
-  'speedway', 'circle k', 'marathon', 'valero',
-  'outback', 'golden corral', 'panera', 'chipotle', 'five guys', "zaxby's",
-  'cook out', 'firehouse subs', "jersey mike's", "jimmy john's",
-  'panda express', "raising cane's", 'wingstop', 'tropical smoothie', 'smoothie king',
-];
-
-function isChain(name: string): boolean {
-  const lower = name.toLowerCase();
-  return CHAIN_KEYWORDS.some(c => lower.includes(c));
-}
-
-// ── Filter & Sort ─────────────────────────────────────────────────────────────
-
-const MIN_VIBE_RESULTS = 8;
+// ══════════════════════════════════════════════════════════
+// FILTER AND SORT
+// ══════════════════════════════════════════════════════════
 
 function filterAndSort(
   places: FyndPlace[],
   vibeFilter: string[],
   excludeTypes: string[],
   limit: number,
-  originLat?: number,
-  originLng?: number,
-  maxDistanceKm?: number,
 ): FyndPlace[] {
   let filtered = places.filter(p => !p.types.some(t => excludeTypes.includes(t)));
-
-  if (originLat !== undefined && originLng !== undefined && maxDistanceKm) {
-    const nearby = filtered.filter(p => haversineKm(originLat, originLng, p.lat, p.lng) <= maxDistanceKm);
-    if (nearby.length >= 3) {
-      filtered = nearby;
-    }
-  }
-
-  if (vibeFilter.length > 0) {
-    const tokens = expandVibeTokens(vibeFilter);
-
-    if (tokens.length > 0) {
-      const scored = filtered.map(p => ({ place: p, score: scorePlace(p, tokens) }));
-
-      scored.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return a.place.name.localeCompare(b.place.name);
-      });
-
-      const matching = scored.filter(s => s.score > 0);
-      filtered = matching.length >= MIN_VIBE_RESULTS
-        ? matching.map(s => s.place)
-        : scored.map(s => s.place);
-    }
-  }
 
   filtered.sort((a, b) => {
     const aChain = isChain(a.name) ? 1 : 0;
@@ -483,10 +460,40 @@ function filterAndSort(
     return aChain - bChain;
   });
 
+  if (vibeFilter.length > 0) {
+    const tokens = vibeFilter
+      .flatMap(v => v.toLowerCase().replace(/_/g, ' ').split(/[^a-z0-9]+/g))
+      .filter(t => t.length >= 3);
+
+    if (tokens.length > 0) {
+      const scored = filtered.map(p => {
+        const hay = [
+          p.name, ...(p.types || []), p.cuisine || '', p.vibe || '',
+          p.ai_description || '', ...(p.known_for || []),
+          ...(p.food_types || []), ...(p.categories_raw || []),
+        ].join(' ').toLowerCase();
+        let score = 0;
+        for (const t of tokens) { if (hay.includes(t)) score++; }
+        return { place: p, score };
+      });
+
+      scored.sort((a, b) => {
+        const aChain = isChain(a.place.name) ? 1 : 0;
+        const bChain = isChain(b.place.name) ? 1 : 0;
+        if (aChain !== bChain) return aChain - bChain;
+        return b.score - a.score || a.place.name.localeCompare(b.place.name);
+      });
+
+      filtered = scored.map(s => s.place);
+    }
+  }
+
   return filtered.slice(0, limit);
 }
 
-// ── Main Entry Point ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// MAIN ENTRY POINT
+// ══════════════════════════════════════════════════════════
 
 export async function getPlacesForLocation(
   lat: number,
@@ -504,32 +511,101 @@ export async function getPlacesForLocation(
     radiusKm = 30,
     generateAI = true,
     vibeFilter = [],
-    excludeTypes = ['atm', 'convenience_store', 'gas_station', 'supermarket', 'fast_food', 'meal_takeaway', 'fuel', 'car_wash', 'car_repair', 'parking', 'bank', 'pharmacy'],
-    limit = 60,
+    excludeTypes = ['atm', 'gas_station', 'parking', 'bank', 'supermarket', 'convenience_store'],
+    limit = 50,
   } = options || {};
 
-  // ALWAYS fetch from Foursquare — no cache for now
-  console.log('[freePlaces] Fetching from Foursquare for', cityName, 'at', lat, lng);
-  const places = await fetchPlacesFromFoursquare(lat, lng, radiusKm, cityName);
-  console.log('[freePlaces] Foursquare returned', places.length, 'places');
-
-  if (places.length === 0) return [];
-
-  if (generateAI) {
-    addAIDescriptions(places, cityName).then(() => {}).catch(console.error);
+  const cached = await getCachedCity(lat, lng);
+  if (cached && cached.places.length > 0) {
+    console.log('[Places] Serving from cache:', cached.places.length, 'places for', cached.city_name);
+    if (generateAI && !cached.ai_generated) {
+      addAIDescriptions(cached.places, cityName)
+        .then(enriched => updateCachedCityPlaces(lat, lng, enriched))
+        .catch(console.error);
+    }
+    return filterAndSort(cached.places, vibeFilter, excludeTypes, limit);
   }
 
-  return filterAndSort(places, vibeFilter, excludeTypes, limit, lat, lng, radiusKm);
+  console.log('[Places] Cache miss — fetching from HERE for', cityName);
+
+  const queries = [
+    'restaurant,cafe,food',
+    'bar,pub,nightlife,entertainment',
+    'park,museum,gallery,attraction',
+    'shop,store,shopping',
+    'library,gym,fitness',
+  ];
+
+  const allPlaces: FyndPlace[] = [];
+  const seenIds = new Set<string>();
+
+  for (const query of queries) {
+    const results = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, query);
+    for (const place of results) {
+      if (!seenIds.has(place.id)) {
+        seenIds.add(place.id);
+        allPlaces.push(place);
+      }
+    }
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  console.log('[Places] HERE returned total:', allPlaces.length, 'unique places');
+  if (allPlaces.length === 0) return [];
+
+  await setCachedCity(lat, lng, {
+    city_name: cityName,
+    lat, lng,
+    fetched_at: Date.now(),
+    places: allPlaces,
+    ai_generated: false,
+  });
+
+  if (generateAI) {
+    addAIDescriptions(allPlaces, cityName)
+      .then(enriched => updateCachedCityPlaces(lat, lng, enriched))
+      .catch(console.error);
+  }
+
+  return filterAndSort(allPlaces, vibeFilter, excludeTypes, limit);
 }
 
-// ── PlaceResult Mapper ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// REVERSE GEOCODE
+// ══════════════════════════════════════════════════════════
+
+export async function reverseGeocodeFree(lat: number, lng: number): Promise<string> {
+  if (HERE_API_KEY) {
+    try {
+      const url = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${lat},${lng}&apiKey=${HERE_API_KEY}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        const addr = data.items?.[0]?.address;
+        if (addr) return addr.city || addr.town || addr.county || 'My Location';
+      }
+    } catch {}
+  }
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&addressdetails=1`;
+    const response = await fetch(url, { headers: { 'User-Agent': 'FyndApp/1.0' } });
+    if (!response.ok) return 'My Location';
+    const data = await response.json();
+    return data.address?.city || data.address?.town || data.address?.village || data.address?.county || 'My Location';
+  } catch { return 'My Location'; }
+}
+
+// ══════════════════════════════════════════════════════════
+// PLACE RESULT MAPPER (backward compatibility)
+// ══════════════════════════════════════════════════════════
 
 export function fyndPlaceToPlaceResult(place: FyndPlace): any {
   return {
     placeId: place.id,
     name: place.name,
     address: place.address,
-    rating: place.rating,
+    rating: undefined,
     description: place.ai_description || place.cuisine || place.types[0]?.replace(/_/g, ' ') || '',
     photoRef: '',
     photoUrl: place.photo_urls[0] || FALLBACK_IMAGE,
@@ -539,103 +615,21 @@ export function fyndPlaceToPlaceResult(place: FyndPlace): any {
     types: place.types,
     city: place.city,
     matchedTags: place.known_for?.slice(0, 2),
-    opening_hours: place.opening_hours_raw
-      ? { weekday_text: [place.opening_hours_raw] }
-      : undefined,
+    opening_hours: place.opening_hours_raw ? { weekday_text: [place.opening_hours_raw] } : undefined,
     distance_meters: place.distance_meters,
+    is_open: place.is_open,
   };
 }
 
-// ── ServiceHub Free Search ────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+// LEGACY EXPORTS (kept for interface compatibility)
+// ══════════════════════════════════════════════════════════
 
-export async function searchNearbyFree(
-  lat: number,
-  lng: number,
-  category: string,
-  radiusKm: number = 10,
-): Promise<FyndPlace[]> {
-  const fsqCats = SERVICEHUB_FSQ_CATEGORIES[category];
-  if (!fsqCats || !FSQ_API_KEY) return [];
-
-  try {
-    const params = new URLSearchParams({
-      ll: `${lat},${lng}`,
-      radius: `${Math.min(radiusKm * 1000, 50000)}`,
-      categories: fsqCats,
-      limit: '15',
-      sort: 'DISTANCE',
-      fields: 'fsq_id,name,location,categories,distance,geocodes,tel,website,photos,hours',
-    });
-
-    const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
-    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-
-    if (!response.ok) {
-      console.error('[ServiceHub] Foursquare error:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-    const results: FyndPlace[] = (data.results || []).map((place: any) => {
-      const photos = (place.photos || []).map((p: any) =>
-        `${p.prefix}${p.width || 600}x${p.height || 400}${p.suffix}`
-      );
-      const loc = place.location || {};
-      const types = (place.categories || []).map((c: any) =>
-        (c.short_name || c.name || '').toLowerCase().replace(/\s+/g, '_')
-      );
-      return {
-        id: `fsq_${place.fsq_id}`,
-        name: place.name || '',
-        lat: place.geocodes?.main?.latitude || lat,
-        lng: place.geocodes?.main?.longitude || lng,
-        address: loc.formatted_address || [loc.address, loc.locality].filter(Boolean).join(', ') || '',
-        city: loc.locality || '',
-        types: types.length > 0 ? types : ['point_of_interest'],
-        phone: place.tel,
-        website: place.website,
-        opening_hours_raw: formatFoursquareHours(place.hours),
-        photo_urls: photos.length > 0 ? photos : [FALLBACK_IMAGE],
-        distance_meters: place.distance,
-      } as FyndPlace;
-    });
-
-    return results;
-  } catch (e) {
-    console.error('[ServiceHub] Foursquare error:', e);
-    return [];
-  }
-}
-
-// ── Reverse Geocode (Nominatim — free) ───────────────────────────────────────
-
-export async function reverseGeocodeFree(lat: number, lng: number): Promise<string> {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&addressdetails=1`;
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'FyndApp/1.0 (contact@fyndplaces.com)' },
-    });
-    if (!response.ok) return 'My Location';
-    const data = await response.json();
-    return (
-      data.address?.city ||
-      data.address?.town ||
-      data.address?.village ||
-      data.address?.county ||
-      'My Location'
-    );
-  } catch {
-    return 'My Location';
-  }
-}
-
-// ── Legacy helpers ────────────────────────────────────────────────────────────
+export function getCategoryPhoto(_types: string[]): string { return FALLBACK_IMAGE; }
+export const CATEGORY_FALLBACK_PHOTOS: Record<string, string> = {};
 
 export async function resolvePhoto(
-  _placeName: string,
-  _lat: number,
-  _lng: number,
-  _types: string[],
+  _placeName: string, _lat: number, _lng: number, _types: string[],
 ): Promise<string[]> {
   return [FALLBACK_IMAGE];
 }

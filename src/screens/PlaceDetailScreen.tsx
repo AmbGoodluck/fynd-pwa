@@ -303,7 +303,6 @@ export default function PlaceDetailScreen(props: any) {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const HERO_HEIGHT  = 240;
-  const displayRating = details?.rating ?? initialRating;
   const displayPhone  = details?.phone || initialPhone;
   const displayWebsite = details?.website || initialWebsite;
 
@@ -451,11 +450,13 @@ export default function PlaceDetailScreen(props: any) {
             </Text>
           )}
 
-          {/* Rating row */}
-          {displayRating ? (
+          {/* Open/closed status (HERE places) — hours section handles this for Google places */}
+          {routePlace?.is_open !== undefined && (
             <View style={styles.ratingRow}>
-              <Ionicons name="star" size={14} color={COLORS.accent.amber} />
-              <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: routePlace.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+              <Text style={[styles.ratingText, { color: routePlace.is_open ? COLORS.accent.sage : COLORS.text.hint }]}>
+                {routePlace.is_open ? 'Open now' : 'Closed'}
+              </Text>
               {details?.priceLevel != null && (
                 <>
                   <Text style={styles.ratingDot}>·</Text>
@@ -463,7 +464,7 @@ export default function PlaceDetailScreen(props: any) {
                 </>
               )}
             </View>
-          ) : null}
+          )}
         </View>
 
         {/* ── Known For ─────────────────────────────────────────── */}

@@ -83,6 +83,14 @@ export default function AllPlacesScreen({ navigation, route }: Props) {
             ) : place.types[0] ? (
               <Text style={styles.typeText}>{place.types[0].replace(/_/g, ' ')}</Text>
             ) : null}
+            {place.is_open !== undefined && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: place.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+                <Text style={{ fontSize: 11, fontWeight: '600', color: place.is_open ? COLORS.accent.sage : COLORS.text.hint }}>
+                  {place.is_open ? 'Open' : 'Closed'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         <TouchableOpacity
