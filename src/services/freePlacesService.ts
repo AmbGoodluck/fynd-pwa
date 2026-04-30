@@ -239,7 +239,7 @@ function parseHereItem(item: any, index: number, fallbackCity: string): FyndPlac
 export async function fetchPlacesFromHERE(
   lat: number,
   lng: number,
-  radiusKm: number = 30,
+  _radiusKm: number = 30,
   cityName: string = '',
   query?: string,
 ): Promise<FyndPlace[]> {
@@ -250,8 +250,7 @@ export async function fetchPlacesFromHERE(
 
   try {
     const searchQuery = query || 'restaurant,cafe,bar,park,museum,shop,entertainment';
-    const radiusM = Math.min(radiusKm * 1000, 50000);
-    const url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(searchQuery)}&limit=50&in=circle:${lat},${lng};r=${radiusM}&apiKey=${HERE_API_KEY}`;
+    const url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(searchQuery)}&limit=50&apiKey=${HERE_API_KEY}`;
 
     console.log('[HERE] Fetching:', url.replace(HERE_API_KEY, 'KEY_HIDDEN'));
 
@@ -311,7 +310,7 @@ export async function searchNearbyFree(
   try {
     let url: string;
     if (hereCatId) {
-      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=${hereCatId}&limit=15&in=circle:${lat},${lng};r=${radiusKm * 1000}&apiKey=${HERE_API_KEY}`;
+      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=${hereCatId}&limit=15&apiKey=${HERE_API_KEY}`;
     } else {
       url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(category)}&limit=15&apiKey=${HERE_API_KEY}`;
     }
