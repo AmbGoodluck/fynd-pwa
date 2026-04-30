@@ -75,7 +75,7 @@ const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
 const FSQ_BASE_URL = 'https://api.foursquare.com/v3';
 
 const fsqHeaders = {
-  'Authorization': FSQ_API_KEY,
+  'Authorization': `Bearer ${FSQ_API_KEY}`,
   'Accept': 'application/json',
 };
 

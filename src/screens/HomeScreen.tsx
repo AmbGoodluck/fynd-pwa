@@ -244,7 +244,7 @@ export default function HomeScreen({ navigation }: Props) {
           fields: 'fsq_id,name,location,categories,geocodes,photos,rating,tel,website,hours',
         });
         const resp = await fetch(`https://api.foursquare.com/v3/places/search?${params.toString()}`, {
-          headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
+          headers: { 'Authorization': `Bearer ${FSQ_KEY}`, 'Accept': 'application/json' },
         });
         if (!resp.ok) return;
         const data = await resp.json();
