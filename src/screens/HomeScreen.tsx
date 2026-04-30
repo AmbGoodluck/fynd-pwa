@@ -234,8 +234,6 @@ export default function HomeScreen({ navigation }: Props) {
 
     if (local.length < 5 && location) {
       try {
-        const FSQ_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
-        if (!FSQ_KEY) return;
         const params = new URLSearchParams({
           query: text,
           ll: `${location.latitude},${location.longitude}`,
@@ -243,8 +241,8 @@ export default function HomeScreen({ navigation }: Props) {
           limit: '10',
           fields: 'fsq_id,name,location,categories,geocodes,photos,rating,tel,website,hours',
         });
-        const resp = await fetch(`https://places-api.foursquare.com/v1/places/search?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${FSQ_KEY}`, 'Accept': 'application/json' },
+        const resp = await fetch(`/api/fsq/places/search?${params.toString()}`, {
+          headers: { 'Accept': 'application/json' },
         });
         if (!resp.ok) return;
         const data = await resp.json();

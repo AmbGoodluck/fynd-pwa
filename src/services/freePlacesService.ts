@@ -72,12 +72,7 @@ export const CATEGORY_FALLBACK_PHOTOS: Record<string, string> = {};
 // ── Foursquare API ────────────────────────────────────────────────────────────
 
 const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
-const FSQ_BASE_URL = 'https://places-api.foursquare.com/v1';
-
-const fsqHeaders = {
-  'Authorization': `Bearer ${FSQ_API_KEY}`,
-  'Accept': 'application/json',
-};
+const FSQ_BASE_URL = '/api/fsq';
 
 export const FSQ_CATEGORIES: Record<string, string> = {
   restaurant: '13065', cafe: '13032', coffee: '13032', bar: '13003',
@@ -144,9 +139,8 @@ export async function fetchPlacesFromFoursquare(
 
     const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
     console.log('[FSQ] Full request URL:', url);
-    console.log('[FSQ] Auth header:', 'Bearer ' + FSQ_API_KEY.substring(0, 8) + '...');
 
-    const response = await fetch(url, { headers: fsqHeaders });
+    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
     console.log('[FSQ] Response status:', response.status);
 
     if (!response.ok) {
@@ -574,7 +568,7 @@ export async function searchNearbyFree(
     });
 
     const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
-    const response = await fetch(url, { headers: fsqHeaders });
+    const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
 
     if (!response.ok) {
       console.error('[ServiceHub] Foursquare error:', response.status);
