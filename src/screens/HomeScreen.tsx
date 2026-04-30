@@ -25,10 +25,10 @@ import { maybeCreateDailyPickNotification } from '../services/notificationServic
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const FILTER_QUERIES: Record<string, string> = {
-  food:      'restaurant,food,dining',
+  food:      'restaurant,dining,food',
   coffee:    'coffee,cafe,tea',
-  outdoors:  'park,trail,nature,garden,outdoor',
-  nightlife: 'bar,pub,nightclub,lounge',
+  outdoors:  'park,trail,nature,garden,outdoor recreation',
+  nightlife: 'bar,pub,nightclub,lounge,brewery',
   study:     'library,bookstore,cafe,coworking',
 };
 
@@ -158,34 +158,56 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }, [location?.latitude, location?.longitude, locationLoading]);
 
-  // Derive filteredPlaces from places + activeFilter; FSQ fallback when local results are sparse
+  // Keep filteredPlaces in sync when places initially load (for_you / no active filter)
   useEffect(() => {
-    const filter = QUICK_FILTERS.find(f => f.id === activeFilter);
-    if (!filter || (filter.types.length === 0 && filter.keywords.length === 0)) {
+    if (activeFilter === 'for_you') setFilteredPlaces(places);
+  }, [places]);
+
+  const handleFilterTap = async (filter: typeof QUICK_FILTERS[number]) => {
+    setActiveFilter(filter.id);
+
+    if (filter.id === 'for_you') {
       setFilteredPlaces(places);
       return;
     }
+
+    // Try local filter first
     const local = places.filter(p => {
-      if (filter.types.length > 0 && p.types.some(t => filter.types.includes(t))) return true;
-      const hay = [p.name, ...(p.types || []), p.cuisine || '', p.vibe || '', p.ai_description || '', ...(p.known_for || [])].join(' ').toLowerCase();
-      return filter.keywords.some(k => hay.includes(k));
+      const hay = [
+        p.name, ...(p.types || []), p.cuisine || '', p.vibe || '',
+        p.ai_description || '', ...(p.known_for || []),
+        ...(p.food_types || []), ...(p.categories_raw || []),
+      ].join(' ').toLowerCase();
+      return (
+        filter.keywords?.some(kw => hay.includes(kw)) ||
+        p.types?.some(t => filter.types?.includes(t))
+      );
     });
 
-    if (local.length >= 3 || !location) {
+    if (local.length >= 3) {
       setFilteredPlaces(local);
       return;
     }
 
-    // Not enough local results — fetch from HERE by keyword query
-    const hereQuery = FILTER_QUERIES[filter.id];
-    if (!hereQuery) { setFilteredPlaces(local); return; }
-
-    setFilterLoading(true);
-    fetchPlacesFromHERE(location.latitude, location.longitude, 30, cityName, hereQuery)
-      .then(results => setFilteredPlaces(results.length > 0 ? results : local))
-      .catch(() => setFilteredPlaces(local))
-      .finally(() => setFilterLoading(false));
-  }, [places, activeFilter]);
+    // Not enough local results — fetch from HERE with targeted query
+    const queryStr = FILTER_QUERIES[filter.id];
+    if (queryStr) {
+      setFilteredPlaces([]);
+      setFilterLoading(true);
+      try {
+        const lat = location?.latitude ?? DEFAULT_LAT;
+        const lng = location?.longitude ?? DEFAULT_LNG;
+        const results = await fetchPlacesFromHERE(lat, lng, 30, cityName, queryStr);
+        setFilteredPlaces(results.length > 0 ? results : local);
+      } catch {
+        setFilteredPlaces(local);
+      } finally {
+        setFilterLoading(false);
+      }
+    } else {
+      setFilteredPlaces(local);
+    }
+  };
 
   const heroPlace = filteredPlaces[0] ?? null;
   const moreForYou = filteredPlaces.slice(1, 10);
@@ -232,10 +254,12 @@ export default function HomeScreen({ navigation }: Props) {
     });
     setSearchResults(local);
 
-    if (local.length < 5 && location) {
+    if (local.length < 5) {
       try {
         const hereResults = await fetchPlacesFromHERE(
-          location.latitude, location.longitude, 30, cityName, text,
+          location?.latitude ?? DEFAULT_LAT,
+          location?.longitude ?? DEFAULT_LNG,
+          30, cityName, text,
         );
         const existingNames = new Set(local.map(p => p.name.toLowerCase()));
         const unique = hereResults.filter(p => !existingNames.has(p.name.toLowerCase()));
@@ -427,7 +451,7 @@ export default function HomeScreen({ navigation }: Props) {
               <TouchableOpacity
                 key={f.id}
                 style={[styles.filterChip, activeFilter === f.id && styles.filterChipActive]}
-                onPress={() => setActiveFilter(f.id)}
+                onPress={() => handleFilterTap(f)}
                 activeOpacity={0.75}
               >
                 <Text style={[styles.filterChipText, activeFilter === f.id && styles.filterChipTextActive]}>
