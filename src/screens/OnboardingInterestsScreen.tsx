@@ -71,11 +71,11 @@ export default function OnboardingInterestsScreen({ navigation }: Props) {
     } finally {
       setSaving(false);
     }
-    navigation.navigate('OnboardingLocation');
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
   };
 
   const handleSkip = () => {
-    navigation.navigate('OnboardingLocation');
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
   };
 
   return (
@@ -121,14 +121,6 @@ export default function OnboardingInterestsScreen({ navigation }: Props) {
 
       {/* Bottom CTA */}
       <View style={styles.bottom}>
-        {/* Dot indicators */}
-        <View style={styles.dots}>
-          <View style={styles.dot} />
-          <View style={[styles.dot, styles.dotActive]} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-        </View>
-
         <TouchableOpacity
           style={[styles.primaryBtn, !canContinue && styles.primaryBtnDisabled]}
           onPress={handleContinue}

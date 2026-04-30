@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
   },
   cardImage: {
-    width: 72, height: 72, borderRadius: RADIUS.xs,
+    width: 80, height: 80, borderRadius: RADIUS.xs,
     marginRight: SPACING.md, backgroundColor: COLORS.border.light,
   },
   cardBody: { flex: 1, gap: 4 },

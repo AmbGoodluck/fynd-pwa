@@ -88,7 +88,12 @@ export default function LoginScreen({ navigation }: Props) {
       } catch (err: any) {
         console.warn('Hydrate saved places failed:', err.message);
       }
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      const hasPrefs = (userDoc?.travelPreferences?.length || 0) > 0;
+      if (hasPrefs) {
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      } else {
+        navigation.navigate('OnboardingInterests');
+      }
     } catch (e: any) {
       console.error('Login error:', e.message);
       const isInvalidCreds = e.message?.includes('Invalid login credentials') || e.message?.includes('invalid_grant');

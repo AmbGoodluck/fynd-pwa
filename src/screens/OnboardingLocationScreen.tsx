@@ -70,7 +70,6 @@ export default function OnboardingLocationScreen({ navigation }: Props) {
         {/* Dot indicators */}
         <View style={styles.dots}>
           <View style={styles.dot} />
-          <View style={styles.dot} />
           <View style={[styles.dot, styles.dotActive]} />
           <View style={styles.dot} />
         </View>

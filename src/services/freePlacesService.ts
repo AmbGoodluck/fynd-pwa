@@ -279,22 +279,22 @@ export async function fetchPlacesFromHERE(
 // ══════════════════════════════════════════════════════════
 
 const SERVICEHUB_HERE_CATEGORIES: Record<string, string> = {
-  'Medical':           '800-8000-0159',
+  'Medical':           '800-8000',
   'Currency':          '700-7800',
   'Currency Exchange': '700-7610',
   'Bathrooms':         '900-9300-0360',
   'Public Bathrooms':  '900-9300-0360',
   'Transport':         '400-4100-0036',
-  'Police':            '800-8200-0174',
+  'Police':            '800-8200',
   'Embassy':           '800-8300',
-  'ATM':               '700-7600-0116',
-  'ATM / Bank':        '700-7600-0116,700-7800',
-  'Pharmacy':          '800-8100-0168',
-  'Hotel':             '500-5000-0053',
+  'ATM':               '700-7600',
+  'ATM / Bank':        '700-7600,700-7800',
+  'Pharmacy':          '800-8100',
+  'Hotel':             '500-5000',
   'Tourist Info':      '300-3000-0023',
   'Gas Station':       '700-7300',
-  'Emergency':         '800-8000-0159',
-  'Safety':            '800-8200-0174',
+  'Emergency':         '800-8000',
+  'Safety':            '800-8200',
 };
 
 export async function searchNearbyFree(
@@ -456,7 +456,13 @@ function filterAndSort(
   filtered.sort((a, b) => {
     const aChain = isChain(a.name) ? 1 : 0;
     const bChain = isChain(b.name) ? 1 : 0;
-    return aChain - bChain;
+    if (aChain !== bChain) return aChain - bChain;
+    if (vibeFilter.length === 0) {
+      const aDist = a.distance_meters ?? Infinity;
+      const bDist = b.distance_meters ?? Infinity;
+      return aDist - bDist;
+    }
+    return 0;
   });
 
   if (vibeFilter.length > 0) {

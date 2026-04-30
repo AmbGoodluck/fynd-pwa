@@ -116,7 +116,7 @@ export default function RegisterScreen({ navigation }: Props) {
         isPremium: false,
         travelPreferences: pendingInterests.length > 0 ? pendingInterests : [],
       });
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+      navigation.navigate('OnboardingInterests');
       return;
     } catch (e: any) {
       console.error('Register error:', e.message);

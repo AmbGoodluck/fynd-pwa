@@ -66,6 +66,50 @@ const CHAIN_NAMES = [
   'jimmy john', 'panda express', 'raising cane', 'wingstop', "sonny's barbecue",
 ];
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(km: number): string {
+  const miles = km * 0.621371;
+  if (miles < 0.1) return 'nearby';
+  if (miles < 10) return `${miles.toFixed(1)} mi`;
+  return `${Math.round(miles)} mi`;
+}
+
+const INTEREST_TO_QUERY: Record<string, string[]> = {
+  food_drinks:      ['restaurant', 'food', 'dining'],
+  coffee_study:     ['coffee', 'cafe', 'library', 'coworking'],
+  nightlife:        ['bar', 'pub', 'nightclub', 'brewery'],
+  outdoor_park:     ['park', 'garden', 'nature'],
+  hiking_trails:    ['trail', 'hiking', 'natural'],
+  fitness_gym:      ['gym', 'fitness'],
+  thrift_vintage:   ['thrift', 'vintage', 'store'],
+  shopping:         ['store', 'shopping'],
+  arts_culture:     ['museum', 'gallery', 'theater'],
+  live_music:       ['music', 'bar', 'entertainment'],
+  photography:      ['scenic', 'park', 'attraction'],
+  budget_friendly:  ['park', 'library', 'free'],
+  late_night:       ['bar', 'diner', 'nightlife'],
+  brunch_breakfast: ['cafe', 'bakery', 'restaurant'],
+  desserts_bakery:  ['bakery', 'cafe', 'dessert'],
+  hidden_gems:      ['attraction', 'park'],
+  scenic_views:     ['park', 'natural', 'attraction'],
+  history:          ['museum', 'attraction', 'historic'],
+  wellness:         ['gym', 'spa', 'park'],
+  family_friendly:  ['park', 'museum', 'zoo'],
+  free_activities:  ['park', 'library', 'museum'],
+  coworking:        ['library', 'cafe', 'coworking'],
+  pet_friendly:     ['park', 'outdoor'],
+  date_spots:       ['restaurant', 'bar', 'park', 'museum'],
+};
+
 const SERVICE_HUB_QUICK = [
   { id: 'Medical',           label: 'Medical',   icon: 'medkit-outline',        color: '#EF4444', bg: '#FEF2F2' },
   { id: 'Currency Exchange', label: 'Currency',  icon: 'cash-outline',          color: '#7C3AED', bg: '#F5F3FF' },
@@ -138,9 +182,12 @@ export default function HomeScreen({ navigation }: Props) {
         }
 
         setCityName(city);
+        const userPrefs = user?.travelPreferences || [];
+        const prefKeywords = userPrefs.flatMap(id => INTEREST_TO_QUERY[id] || []);
         const results = await getPlacesForLocation(lat, lng, city, {
           limit: 20,
           generateAI: true,
+          vibeFilter: prefKeywords,
         });
         setPlaces(results);
         if (results.length > 0 && user?.id) {
@@ -427,7 +474,7 @@ export default function HomeScreen({ navigation }: Props) {
                 ? 'Finding your location…'
                 : location
                   ? cityName || DEFAULT_CITY
-                  : `${DEFAULT_CITY} (default)`}
+                  : DEFAULT_CITY}
             </Text>
           </View>
 
@@ -498,14 +545,19 @@ export default function HomeScreen({ navigation }: Props) {
                           : '';
                       return desc ? <Text style={styles.heroDesc} numberOfLines={1}>{desc}</Text> : null;
                     })()}
-                    {heroPlace.is_open !== undefined && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: heroPlace.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: heroPlace.is_open ? COLORS.accent.sage : COLORS.text.hint }}>
-                          {heroPlace.is_open ? 'Open' : 'Closed'}
-                        </Text>
-                      </View>
-                    )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                      {heroPlace.is_open !== undefined && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: heroPlace.is_open ? COLORS.accent.sage : 'rgba(255,255,255,0.4)' }} />
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: heroPlace.is_open ? COLORS.accent.sage : 'rgba(255,255,255,0.6)' }}>
+                            {heroPlace.is_open ? 'Open' : 'Closed'}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)' }}>
+                        {formatDistance(haversineKm(location?.latitude ?? DEFAULT_LAT, location?.longitude ?? DEFAULT_LNG, heroPlace.lat, heroPlace.lng))}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </ImageBackground>
@@ -570,18 +622,21 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={styles.moreCardBody}>
                     <Text style={styles.moreCardName} numberOfLines={1}>{place.name}</Text>
                     <Text style={styles.moreCardSub} numberOfLines={1}>
-                      {place.ai_description
-                        ? cleanDescription(place.ai_description, place.name)
-                        : place.cuisine || place.types[0]?.replace(/_/g, ' ') || 'Place'}
+                      {place.food_types?.[0] || place.categories_raw?.[0] || place.cuisine || place.types[0]?.replace(/_/g, ' ') || ''}
                     </Text>
-                    {place.is_open !== undefined && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: place.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: place.is_open ? COLORS.accent.sage : COLORS.text.hint }}>
-                          {place.is_open ? 'Open' : 'Closed'}
-                        </Text>
-                      </View>
-                    )}
+                    <View style={styles.moreCardMeta}>
+                      {place.is_open !== undefined && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: place.is_open ? COLORS.accent.sage : COLORS.text.disabled }} />
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: place.is_open ? COLORS.accent.sage : COLORS.text.hint }}>
+                            {place.is_open ? 'Open' : 'Closed'}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={styles.moreCardDist}>
+                        {formatDistance(haversineKm(location?.latitude ?? DEFAULT_LAT, location?.longitude ?? DEFAULT_LNG, place.lat, place.lng))}
+                      </Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -785,7 +840,7 @@ const styles = StyleSheet.create({
 
   // ── Hero card ─────────────────────────────────────────────────────────────
   heroCard: {
-    marginHorizontal: 20, height: 200, borderRadius: 24, overflow: 'hidden',
+    marginHorizontal: 20, height: 240, borderRadius: 24, overflow: 'hidden',
     backgroundColor: '#D0CBD0',
     shadowColor: '#1A1019', shadowOpacity: 0.12,
     shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 5,
@@ -829,13 +884,13 @@ const styles = StyleSheet.create({
   // ── More for you ──────────────────────────────────────────────────────────
   moreRow:   { paddingLeft: 20, paddingRight: 8, gap: 12 },
   moreCard: {
-    width: 160, borderRadius: 20, overflow: 'hidden',
+    width: 180, borderRadius: 20, overflow: 'hidden',
     backgroundColor: '#FFFFFF',
     shadowColor: '#1A1019', shadowOpacity: 0.06,
     shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2,
   },
   moreCardImageWrap: { position: 'relative' },
-  moreCardImage:     { width: '100%', height: 110, resizeMode: 'cover' },
+  moreCardImage:     { width: '100%', height: 130, resizeMode: 'cover' },
   cardVibePill: {
     position: 'absolute', bottom: 8, left: 8,
     backgroundColor: 'rgba(255,255,255,0.18)',
@@ -845,6 +900,8 @@ const styles = StyleSheet.create({
   moreCardBody:  { paddingHorizontal: 12, paddingVertical: 10, gap: 3 },
   moreCardName:  { fontSize: 13, fontFamily: F.bold, color: '#1A1019' },
   moreCardSub:   { fontSize: 11, fontFamily: F.regular, color: '#9E95A8', textTransform: 'capitalize' },
+  moreCardMeta:  { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, marginTop: 4 },
+  moreCardDist:  { fontSize: 10, fontFamily: F.medium, color: '#9E95A8' },
 
   // ── Went Here Prompt ──────────────────────────────────────────────────────
   wentHereCard: {
