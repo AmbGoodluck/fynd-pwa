@@ -10,6 +10,7 @@ export const onRequest: PagesFunction = async (context) => {
     headers: {
       'Authorization': `Bearer ${context.env.FOURSQUARE_API_KEY}`,
       'Accept': 'application/json',
+      'X-Places-Api-Version': '2025-04-01',
     },
   });
 
