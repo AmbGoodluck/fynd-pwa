@@ -243,7 +243,7 @@ export default function HomeScreen({ navigation }: Props) {
           limit: '10',
           fields: 'fsq_id,name,location,categories,geocodes,photos,rating,tel,website,hours',
         });
-        const resp = await fetch(`https://api.foursquare.com/v3/places/search?${params.toString()}`, {
+        const resp = await fetch(`https://places-api.foursquare.com/v1/places/search?${params.toString()}`, {
           headers: { 'Authorization': `Bearer ${FSQ_KEY}`, 'Accept': 'application/json' },
         });
         if (!resp.ok) return;

@@ -72,7 +72,7 @@ export const CATEGORY_FALLBACK_PHOTOS: Record<string, string> = {};
 // ── Foursquare API ────────────────────────────────────────────────────────────
 
 const FSQ_API_KEY = process.env.EXPO_PUBLIC_FOURSQUARE_API_KEY || '';
-const FSQ_BASE_URL = 'https://api.foursquare.com/v3';
+const FSQ_BASE_URL = 'https://places-api.foursquare.com/v1';
 
 const fsqHeaders = {
   'Authorization': `Bearer ${FSQ_API_KEY}`,
@@ -143,7 +143,8 @@ export async function fetchPlacesFromFoursquare(
     }
 
     const url = `${FSQ_BASE_URL}/places/search?${params.toString()}`;
-    console.log('[FSQ] Fetching URL:', url);
+    console.log('[FSQ] Full request URL:', url);
+    console.log('[FSQ] Auth header:', 'Bearer ' + FSQ_API_KEY.substring(0, 8) + '...');
 
     const response = await fetch(url, { headers: fsqHeaders });
     console.log('[FSQ] Response status:', response.status);
