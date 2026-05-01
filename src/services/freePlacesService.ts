@@ -239,9 +239,10 @@ function parseHereItem(item: any, index: number, fallbackCity: string): FyndPlac
 export async function fetchPlacesFromHERE(
   lat: number,
   lng: number,
-  _radiusKm: number = 30,
+  radiusKm: number = 100,
   cityName: string = '',
   query?: string,
+  categoryIds?: string,
 ): Promise<FyndPlace[]> {
   if (!HERE_API_KEY) {
     console.error('[HERE] No API key — cannot fetch places');
@@ -249,8 +250,14 @@ export async function fetchPlacesFromHERE(
   }
 
   try {
-    const searchQuery = query || 'restaurant,cafe,bar,park,museum,shop,entertainment';
-    const url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(searchQuery)}&limit=50&apiKey=${HERE_API_KEY}`;
+    let url: string;
+    if (categoryIds) {
+      url = `${HERE_BROWSE_URL}?in=circle:${lat},${lng};r=${Math.min(radiusKm * 1000, 100000)}&categories=${categoryIds}&limit=50&apiKey=${HERE_API_KEY}`;
+    } else if (query) {
+      url = `${HERE_DISCOVER_URL}?in=circle:${lat},${lng};r=${Math.min(radiusKm * 1000, 100000)}&q=${encodeURIComponent(query)}&limit=50&apiKey=${HERE_API_KEY}`;
+    } else {
+      url = `${HERE_DISCOVER_URL}?in=circle:${lat},${lng};r=${Math.min(radiusKm * 1000, 100000)}&q=restaurant,cafe,bar,park,museum,shop&limit=50&apiKey=${HERE_API_KEY}`;
+    }
 
     console.log('[HERE] Fetching:', url.replace(HERE_API_KEY, 'KEY_HIDDEN'));
 
@@ -450,8 +457,17 @@ function filterAndSort(
   vibeFilter: string[],
   excludeTypes: string[],
   limit: number,
+  radiusKm?: number,
 ): FyndPlace[] {
+  const maxDistanceMeters = (radiusKm || 100) * 1000;
   let filtered = places.filter(p => !p.types.some(t => excludeTypes.includes(t)));
+
+  filtered = filtered.filter(p => {
+    if (p.distance_meters !== undefined) {
+      return p.distance_meters <= maxDistanceMeters;
+    }
+    return true; // Keep if no distance data
+  });
 
   filtered.sort((a, b) => {
     const aChain = isChain(a.name) ? 1 : 0;
@@ -513,7 +529,7 @@ export async function getPlacesForLocation(
   },
 ): Promise<FyndPlace[]> {
   const {
-    radiusKm = 30,
+    radiusKm = 100,
     generateAI = true,
     vibeFilter = [],
     excludeTypes = ['atm', 'gas_station', 'parking', 'bank', 'supermarket', 'convenience_store'],
@@ -528,24 +544,26 @@ export async function getPlacesForLocation(
         .then(enriched => updateCachedCityPlaces(lat, lng, enriched))
         .catch(console.error);
     }
-    return filterAndSort(cached.places, vibeFilter, excludeTypes, limit);
+    return filterAndSort(cached.places, vibeFilter, excludeTypes, limit, radiusKm);
   }
 
   console.log('[Places] Cache miss — fetching from HERE for', cityName);
 
-  const queries = [
-    'restaurant,cafe,food',
-    'bar,pub,nightlife,entertainment',
-    'park,museum,gallery,attraction',
-    'shop,store,shopping',
-    'library,gym,fitness',
+  const categoryQueries = [
+    '100-1000-0000,100-1000-0001,100-1000-0009', // Restaurants (Restaurant, Casual Dining, Fast Food)
+    '100-1100-0000',                                // Coffee/Tea
+    '200-2000-0011,200-2000-0368',                  // Bar, Cocktail Lounge
+    '300-3000-0000,300-3100-0000,300-3200-0000',    // Landmarks, Museums, Galleries
+    '400-4100-0000',                                // Parks & Recreation
+    '600-6100-0000',                                // Shopping
+    '350-3500-0000',                                // Library
   ];
 
   const allPlaces: FyndPlace[] = [];
   const seenIds = new Set<string>();
 
-  for (const query of queries) {
-    const results = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, query);
+  for (const catIds of categoryQueries) {
+    const results = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, undefined, catIds);
     for (const place of results) {
       if (!seenIds.has(place.id)) {
         seenIds.add(place.id);
@@ -572,7 +590,7 @@ export async function getPlacesForLocation(
       .catch(console.error);
   }
 
-  return filterAndSort(allPlaces, vibeFilter, excludeTypes, limit);
+  return filterAndSort(allPlaces, vibeFilter, excludeTypes, limit, radiusKm);
 }
 
 // ══════════════════════════════════════════════════════════

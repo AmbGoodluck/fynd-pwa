@@ -24,12 +24,12 @@ import { maybeCreateDailyPickNotification } from '../services/notificationServic
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FILTER_QUERIES: Record<string, string> = {
-  food:      'restaurant,dining,food',
-  coffee:    'coffee,cafe,tea',
-  outdoors:  'park,trail,nature,garden,outdoor recreation',
-  nightlife: 'bar,pub,nightclub,lounge,brewery',
-  study:     'library,bookstore,cafe,coworking',
+const FILTER_CATEGORIES: Record<string, string> = {
+  food:      '100-1000-0000,100-1000-0001,100-1000-0002,100-1000-0009',
+  coffee:    '100-1100-0000',
+  outdoors:  '400-4100-0000,400-4300-0000',
+  nightlife: '200-2000-0011,200-2000-0368,200-2200-0000',
+  study:     '350-3500-0000,100-1100-0000',
 };
 
 const QUICK_FILTERS = [
@@ -236,15 +236,15 @@ export default function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    // Not enough local results — fetch from HERE with targeted query
-    const queryStr = FILTER_QUERIES[filter.id];
-    if (queryStr) {
+    // Not enough local results — fetch from HERE using category IDs
+    const catIds = FILTER_CATEGORIES[filter.id];
+    if (catIds) {
       setFilteredPlaces([]);
       setFilterLoading(true);
       try {
         const lat = location?.latitude ?? DEFAULT_LAT;
         const lng = location?.longitude ?? DEFAULT_LNG;
-        const results = await fetchPlacesFromHERE(lat, lng, 30, cityName, queryStr);
+        const results = await fetchPlacesFromHERE(lat, lng, 100, cityName, undefined, catIds);
         setFilteredPlaces(results.length > 0 ? results : local);
       } catch {
         setFilteredPlaces(local);
