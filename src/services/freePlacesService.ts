@@ -287,20 +287,20 @@ export async function fetchPlacesFromHERE(
 
 const SERVICEHUB_HERE_CATEGORIES: Record<string, string> = {
   'Medical':           '800-8000',
-  'Currency':          '700-7800',
+  'Currency':          '700-7600,700-7800',
   'Currency Exchange': '700-7610',
-  'Bathrooms':         '900-9300-0360',
-  'Public Bathrooms':  '900-9300-0360',
-  'Transport':         '400-4100-0036',
+  'Bathrooms':         '900-9300',
+  'Public Bathrooms':  '900-9300',
+  'Transport':         '400-4100,700-7300',
   'Police':            '800-8200',
-  'Embassy':           '800-8300',
+  'Embassy':           'TEXTSEARCH:embassy,consulate',
   'ATM':               '700-7600',
   'ATM / Bank':        '700-7600,700-7800',
   'Pharmacy':          '800-8100',
-  'Hotel':             '500-5000',
-  'Tourist Info':      '300-3000-0023',
+  'Hotel':             '500-5000,500-5100',
+  'Tourist Info':      '300-3000',
   'Gas Station':       '700-7300',
-  'Emergency':         '800-8000',
+  'Emergency':         '800-8000,800-8200',
   'Safety':            '800-8200',
 };
 
@@ -312,14 +312,16 @@ export async function searchNearbyFree(
 ): Promise<FyndPlace[]> {
   if (!HERE_API_KEY) return [];
 
-  const hereCatId = SERVICEHUB_HERE_CATEGORIES[category];
+  const hereCatValue = SERVICEHUB_HERE_CATEGORIES[category];
+  if (!hereCatValue) return [];
 
   try {
     let url: string;
-    if (hereCatId) {
-      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=${hereCatId}&limit=15&apiKey=${HERE_API_KEY}`;
+    if (hereCatValue.startsWith('TEXTSEARCH:')) {
+      const searchTerms = hereCatValue.replace('TEXTSEARCH:', '');
+      url = `${HERE_DISCOVER_URL}?in=circle:${lat},${lng};r=${radiusKm * 1000}&q=${encodeURIComponent(searchTerms)}&limit=15&apiKey=${HERE_API_KEY}`;
     } else {
-      url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(category)}&limit=15&apiKey=${HERE_API_KEY}`;
+      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=${hereCatValue}&limit=15&apiKey=${HERE_API_KEY}`;
     }
 
     console.log('[HERE ServiceHub] Fetching category:', category);
@@ -473,12 +475,9 @@ function filterAndSort(
     const aChain = isChain(a.name) ? 1 : 0;
     const bChain = isChain(b.name) ? 1 : 0;
     if (aChain !== bChain) return aChain - bChain;
-    if (vibeFilter.length === 0) {
-      const aDist = a.distance_meters ?? Infinity;
-      const bDist = b.distance_meters ?? Infinity;
-      return aDist - bDist;
-    }
-    return 0;
+    const aDist = a.distance_meters ?? 999999;
+    const bDist = b.distance_meters ?? 999999;
+    return aDist - bDist;
   });
 
   if (vibeFilter.length > 0) {
@@ -549,28 +548,19 @@ export async function getPlacesForLocation(
 
   console.log('[Places] Cache miss — fetching from HERE for', cityName);
 
-  const categoryQueries = [
-    '100-1000-0000,100-1000-0001,100-1000-0009', // Restaurants (Restaurant, Casual Dining, Fast Food)
-    '100-1100-0000',                                // Coffee/Tea
-    '200-2000-0011,200-2000-0368',                  // Bar, Cocktail Lounge
-    '300-3000-0000,300-3100-0000,300-3200-0000',    // Landmarks, Museums, Galleries
-    '400-4100-0000',                                // Parks & Recreation
-    '600-6100-0000',                                // Shopping
-    '350-3500-0000',                                // Library
-  ];
-
-  const allPlaces: FyndPlace[] = [];
   const seenIds = new Set<string>();
+  const broadResults = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, 'restaurant cafe bar coffee park museum shop entertainment nightlife bakery pizza');
+  const allPlaces: FyndPlace[] = [...broadResults];
+  for (const p of broadResults) seenIds.add(p.id);
 
-  for (const catIds of categoryQueries) {
-    const results = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, undefined, catIds);
-    for (const place of results) {
+  if (allPlaces.length < 20) {
+    const moreResults = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, 'food dining store library gym fitness hotel attraction');
+    for (const place of moreResults) {
       if (!seenIds.has(place.id)) {
         seenIds.add(place.id);
         allPlaces.push(place);
       }
     }
-    await new Promise(r => setTimeout(r, 200));
   }
 
   console.log('[Places] HERE returned total:', allPlaces.length, 'unique places');
