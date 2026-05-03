@@ -45,6 +45,10 @@ const HERE_API_KEY = process.env.EXPO_PUBLIC_HERE_API_KEY || '';
 const HERE_DISCOVER_URL = 'https://discover.search.hereapi.com/v1/discover';
 const HERE_BROWSE_URL = 'https://browse.search.hereapi.com/v1/browse';
 
+const GOOGLE_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_PLACES_ONLY_API_KEY ||
+  process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+
 console.log('[HERE] API Key present:', !!HERE_API_KEY, 'Key length:', HERE_API_KEY.length);
 
 // ══════════════════════════════════════════════════════════
@@ -118,6 +122,53 @@ function getPhotoForPlace(types: string[], index: number): string[] {
   }
   const fb = CATEGORY_PHOTOS.default;
   return [fb[index % fb.length]];
+}
+
+function isStockPhoto(url: string): boolean {
+  return url.includes('unsplash.com');
+}
+
+// ══════════════════════════════════════════════════════════
+// GOOGLE PLACES PHOTOS
+// ══════════════════════════════════════════════════════════
+
+async function resolveGooglePhoto(placeName: string, lat: number, lng: number): Promise<string[]> {
+  if (!GOOGLE_API_KEY) return [];
+  try {
+    const input = encodeURIComponent(placeName);
+    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${input}&inputtype=textquery&fields=photos&locationbias=circle:500@${lat},${lng}&key=${GOOGLE_API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const photos: any[] = data.candidates?.[0]?.photos || [];
+    return photos.slice(0, 3).map(
+      (p: any) =>
+        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${p.photo_reference}&key=${GOOGLE_API_KEY}`,
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function resolvePhotosForPlaces(places: FyndPlace[]): Promise<FyndPlace[]> {
+  if (!GOOGLE_API_KEY) return places;
+  const result = [...places];
+  const toResolve = places.slice(0, 30);
+
+  for (let i = 0; i < toResolve.length; i += 3) {
+    const batch = toResolve.slice(i, i + 3);
+    await Promise.allSettled(
+      batch.map(async (place, batchIdx) => {
+        const idx = i + batchIdx;
+        if (!result[idx].photo_urls.every(isStockPhoto)) return; // already has real photos
+        const photos = await resolveGooglePhoto(place.name, place.lat, place.lng);
+        if (photos.length > 0) result[idx] = { ...result[idx], photo_urls: photos };
+      }),
+    );
+    if (i + 3 < toResolve.length) await new Promise(r => setTimeout(r, 100));
+  }
+
+  return result;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -300,21 +351,20 @@ export async function fetchPlacesFromHERE(
 
 const SERVICEHUB_HERE_CATEGORIES: Record<string, string> = {
   'Medical':           '800-8000',
-  'Currency':          '700-7600,700-7800',
-  'Currency Exchange': '700-7610',
-  'Bathrooms':         '900-9300',
-  'Public Bathrooms':  '900-9300',
-  'Transport':         '400-4100,700-7300',
-  'Police':            '800-8200',
+  'Currency':          '700-7010,700-7000',
+  'Currency Exchange': 'TEXTSEARCH:currency exchange',
+  'Bathrooms':         'TEXTSEARCH:public restroom,bathroom',
+  'Public Bathrooms':  'TEXTSEARCH:public restroom,bathroom',
+  'Transport':         '400-4100',
+  'Police':            '700-7300-0111',
   'Embassy':           'TEXTSEARCH:embassy,consulate',
-  'ATM':               '700-7600',
-  'ATM / Bank':        '700-7600,700-7800',
-  'Pharmacy':          '800-8100',
+  'ATM / Bank':        '700-7010,700-7000',
+  'Pharmacy':          'TEXTSEARCH:pharmacy,drugstore',
   'Hotel':             '500-5000,500-5100',
-  'Tourist Info':      '300-3000',
-  'Gas Station':       '700-7300',
-  'Emergency':         '800-8000,800-8200',
-  'Safety':            '800-8200',
+  'Tourist Info':      'TEXTSEARCH:tourist information,visitor center',
+  'Gas Station':       '700-7600',
+  'Emergency':         '700-7300',
+  'Safety':            '700-7300-0111',
 };
 
 export async function searchNearbyFree(
@@ -376,7 +426,7 @@ function isChain(name: string): boolean {
 // CACHE (AsyncStorage)
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v4_here';
+const CACHE_VERSION = 'v5_here_photos';
 const CACHE_PREFIX = `fynd_${CACHE_VERSION}_`;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -398,11 +448,31 @@ async function setCachedCity(lat: number, lng: number, cache: CityCache): Promis
   try { await AsyncStorage.setItem(getCacheKey(lat, lng), JSON.stringify(cache)); } catch {}
 }
 
-async function updateCachedCityPlaces(lat: number, lng: number, places: FyndPlace[]): Promise<void> {
+async function updateCachedCityPlaces(lat: number, lng: number, incoming: FyndPlace[]): Promise<void> {
   const cache = await getCachedCity(lat, lng);
   if (!cache) return;
-  cache.places = places;
-  cache.ai_generated = true;
+
+  const existingMap = new Map(cache.places.map(p => [p.id, p]));
+  const merged = incoming.map(place => {
+    const prev = existingMap.get(place.id);
+    if (!prev) return place;
+    // Prefer real (non-stock) photos, whichever side has them
+    const prevHasReal  = prev.photo_urls.some(u => !isStockPhoto(u));
+    const nextHasReal  = place.photo_urls.some(u => !isStockPhoto(u));
+    const photo_urls = (nextHasReal || !prevHasReal) ? place.photo_urls : prev.photo_urls;
+    return {
+      ...prev,
+      ...place,
+      photo_urls,
+      ai_description: place.ai_description || prev.ai_description,
+      known_for:      place.known_for      || prev.known_for,
+      vibe:           place.vibe           || prev.vibe,
+    };
+  });
+
+  const aiCount = merged.filter(p => p.ai_description).length;
+  cache.places       = merged;
+  cache.ai_generated = aiCount >= Math.min(10, Math.ceil(merged.length * 0.25));
   await setCachedCity(lat, lng, cache);
 }
 
@@ -556,6 +626,11 @@ export async function getPlacesForLocation(
         .then(enriched => updateCachedCityPlaces(lat, lng, enriched))
         .catch(console.error);
     }
+    if (GOOGLE_API_KEY && cached.places.some(p => p.photo_urls.every(isStockPhoto))) {
+      resolvePhotosForPlaces(cached.places)
+        .then(withPhotos => updateCachedCityPlaces(lat, lng, withPhotos))
+        .catch(console.error);
+    }
     return filterAndSort(cached.places, vibeFilter, excludeTypes, limit, radiusKm);
   }
 
@@ -585,21 +660,28 @@ export async function getPlacesForLocation(
   console.log('[Places] HERE returned total:', allPlaces.length, 'unique places');
   if (allPlaces.length === 0) return [];
 
+  // Resolve Google photos before first cache write so cached data has real photos
+  let placesToCache = allPlaces;
+  if (GOOGLE_API_KEY) {
+    console.log('[Places] Resolving Google photos for', Math.min(30, allPlaces.length), 'places...');
+    placesToCache = await resolvePhotosForPlaces(allPlaces);
+  }
+
   await setCachedCity(lat, lng, {
     city_name: cityName,
     lat, lng,
     fetched_at: Date.now(),
-    places: allPlaces,
+    places: placesToCache,
     ai_generated: false,
   });
 
   if (generateAI) {
-    addAIDescriptions(allPlaces, cityName)
+    addAIDescriptions(placesToCache, cityName)
       .then(enriched => updateCachedCityPlaces(lat, lng, enriched))
       .catch(console.error);
   }
 
-  return filterAndSort(allPlaces, vibeFilter, excludeTypes, limit, radiusKm);
+  return filterAndSort(placesToCache, vibeFilter, excludeTypes, limit, radiusKm);
 }
 
 // ══════════════════════════════════════════════════════════
