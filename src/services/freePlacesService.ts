@@ -252,11 +252,18 @@ export async function fetchPlacesFromHERE(
   try {
     let url: string;
     if (categoryIds) {
-      url = `${HERE_BROWSE_URL}?in=circle:${lat},${lng};r=${Math.min(radiusKm * 1000, 100000)}&categories=${categoryIds}&limit=50&apiKey=${HERE_API_KEY}`;
+      // Browse — returns ALL places in a category regardless of name
+      // (Browse uses at=, not in=circle — the two are mutually exclusive)
+      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=${categoryIds}&limit=50&apiKey=${HERE_API_KEY}`;
+      console.log('[HERE] Browse by category:', categoryIds);
     } else if (query) {
-      url = `${HERE_DISCOVER_URL}?in=circle:${lat},${lng};r=${Math.min(radiusKm * 1000, 100000)}&q=${encodeURIComponent(query)}&limit=50&apiKey=${HERE_API_KEY}`;
+      // Discover — text search (correct for user-typed search queries)
+      url = `${HERE_DISCOVER_URL}?at=${lat},${lng}&q=${encodeURIComponent(query)}&limit=50&apiKey=${HERE_API_KEY}`;
+      console.log('[HERE] Discover text search:', query);
     } else {
-      url = `${HERE_DISCOVER_URL}?in=circle:${lat},${lng};r=${Math.min(radiusKm * 1000, 100000)}&q=restaurant,cafe,bar,park,museum,shop&limit=50&apiKey=${HERE_API_KEY}`;
+      // Default broad browse across all major place types
+      url = `${HERE_BROWSE_URL}?at=${lat},${lng}&categories=100,200,300,400,550,600&limit=50&apiKey=${HERE_API_KEY}`;
+      console.log('[HERE] Browse default categories');
     }
 
     console.log('[HERE] Fetching:', url.replace(HERE_API_KEY, 'KEY_HIDDEN'));
@@ -274,7 +281,13 @@ export async function fetchPlacesFromHERE(
     const items = data.items || [];
     console.log('[HERE] Results count:', items.length);
 
-    return items.map((item: any, i: number) => parseHereItem(item, i, cityName));
+    const maxDistMeters = radiusKm * 1000;
+    return items
+      .filter((item: any) => {
+        const dist = item.distance;
+        return dist === undefined || dist <= maxDistMeters;
+      })
+      .map((item: any, i: number) => parseHereItem(item, i, cityName));
   } catch (error) {
     console.error('[HERE] Fetch error:', error);
     return [];
@@ -308,7 +321,7 @@ export async function searchNearbyFree(
   lat: number,
   lng: number,
   category: string,
-  radiusKm: number = 10,
+  radiusKm: number = 30,
 ): Promise<FyndPlace[]> {
   if (!HERE_API_KEY) return [];
 
@@ -548,19 +561,25 @@ export async function getPlacesForLocation(
 
   console.log('[Places] Cache miss — fetching from HERE for', cityName);
 
+  const allPlaces: FyndPlace[] = [];
   const seenIds = new Set<string>();
-  const broadResults = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, 'restaurant cafe bar coffee park museum shop entertainment nightlife bakery pizza');
-  const allPlaces: FyndPlace[] = [...broadResults];
-  for (const p of broadResults) seenIds.add(p.id);
 
-  if (allPlaces.length < 20) {
-    const moreResults = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, 'food dining store library gym fitness hotel attraction');
-    for (const place of moreResults) {
+  // Two Browse calls covering all major HERE parent categories
+  // 100=Eat&Drink, 200=GoingOut, 300=Sights, 400=Nature, 550=Leisure, 600=Shopping, 350=Arts&Entertainment
+  const browseCategories = [
+    '100,200,300',     // Food & drink, nightlife, sights & museums
+    '400,550,600,350', // Nature, leisure/outdoor, shopping, arts & entertainment
+  ];
+
+  for (const cats of browseCategories) {
+    const results = await fetchPlacesFromHERE(lat, lng, radiusKm, cityName, undefined, cats);
+    for (const place of results) {
       if (!seenIds.has(place.id)) {
         seenIds.add(place.id);
         allPlaces.push(place);
       }
     }
+    await new Promise(r => setTimeout(r, 200));
   }
 
   console.log('[Places] HERE returned total:', allPlaces.length, 'unique places');

@@ -25,11 +25,11 @@ import { maybeCreateDailyPickNotification } from '../services/notificationServic
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const FILTER_CATEGORIES: Record<string, string> = {
-  food:      '100-1000-0000,100-1000-0001,100-1000-0002,100-1000-0009',
-  coffee:    '100-1100-0000',
-  outdoors:  '400-4100-0000,400-4300-0000',
-  nightlife: '200-2000-0011,200-2000-0368,200-2200-0000',
-  study:     '350-3500-0000,100-1100-0000',
+  food:      '100-1000',
+  coffee:    '100-1100',
+  outdoors:  '400,550',
+  nightlife: '200',
+  study:     '350-3500,100-1100',
 };
 
 const QUICK_FILTERS = [
@@ -218,41 +218,23 @@ export default function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    // Try local filter first
-    const local = places.filter(p => {
-      const hay = [
-        p.name, ...(p.types || []), p.cuisine || '', p.vibe || '',
-        p.ai_description || '', ...(p.known_for || []),
-        ...(p.food_types || []), ...(p.categories_raw || []),
-      ].join(' ').toLowerCase();
-      return (
-        filter.keywords?.some(kw => hay.includes(kw)) ||
-        p.types?.some(t => filter.types?.includes(t))
-      );
-    });
-
-    if (local.length >= 3) {
-      setFilteredPlaces(local);
+    const catIds = FILTER_CATEGORIES[filter.id];
+    if (!catIds) {
+      setFilteredPlaces(places);
       return;
     }
 
-    // Not enough local results — fetch from HERE using category IDs
-    const catIds = FILTER_CATEGORIES[filter.id];
-    if (catIds) {
+    setFilteredPlaces([]);
+    setFilterLoading(true);
+    try {
+      const lat = location?.latitude ?? DEFAULT_LAT;
+      const lng = location?.longitude ?? DEFAULT_LNG;
+      const results = await fetchPlacesFromHERE(lat, lng, 100, cityName, undefined, catIds);
+      setFilteredPlaces(results);
+    } catch {
       setFilteredPlaces([]);
-      setFilterLoading(true);
-      try {
-        const lat = location?.latitude ?? DEFAULT_LAT;
-        const lng = location?.longitude ?? DEFAULT_LNG;
-        const results = await fetchPlacesFromHERE(lat, lng, 100, cityName, undefined, catIds);
-        setFilteredPlaces(results.length > 0 ? results : local);
-      } catch {
-        setFilteredPlaces(local);
-      } finally {
-        setFilterLoading(false);
-      }
-    } else {
-      setFilteredPlaces(local);
+    } finally {
+      setFilterLoading(false);
     }
   };
 
@@ -306,7 +288,7 @@ export default function HomeScreen({ navigation }: Props) {
         const hereResults = await fetchPlacesFromHERE(
           location?.latitude ?? DEFAULT_LAT,
           location?.longitude ?? DEFAULT_LNG,
-          30, cityName, text,
+          100, cityName, text,
         );
         const existingNames = new Set(local.map(p => p.name.toLowerCase()));
         const unique = hereResults.filter(p => !existingNames.has(p.name.toLowerCase()));
