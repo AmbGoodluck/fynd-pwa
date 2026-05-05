@@ -24,21 +24,13 @@ import { maybeCreateDailyPickNotification } from '../services/notificationServic
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FILTER_CATEGORIES: Record<string, string> = {
-  food:      '100-1000',
-  coffee:    '100-1100',
-  outdoors:  '400,550',
-  nightlife: '200',
-  study:     '350-3500,100-1100',
-};
-
 const QUICK_FILTERS = [
-  { id: 'for_you',   label: 'For You',  types: [] as string[], keywords: [] as string[] },
-  { id: 'food',      label: 'Food',     types: ['restaurant', 'food', 'meal_takeaway', 'bakery'], keywords: ['restaurant', 'food', 'grill', 'diner', 'kitchen', 'eatery', 'steakhouse', 'pizza', 'burger', 'wings', 'bbq', 'barbecue', 'sushi', 'mexican', 'chinese', 'indian', 'thai', 'italian', 'deli', 'buffet'] },
-  { id: 'coffee',    label: 'Coffee',   types: ['cafe'], keywords: ['coffee', 'cafe', 'espresso', 'latte', 'roast', 'brew', 'tea', 'bakery', 'pastry', 'donut', 'bagel', 'starbucks', 'dunkin'] },
-  { id: 'outdoors',  label: 'Outdoors', types: ['park', 'natural_feature', 'campground', 'tourist_attraction'], keywords: ['park', 'trail', 'hike', 'hiking', 'nature', 'garden', 'forest', 'lake', 'creek', 'river', 'mountain', 'overlook', 'scenic', 'outdoor', 'recreation', 'reserve', 'playground', 'field'] },
-  { id: 'nightlife', label: 'Night',    types: ['bar', 'night_club', 'pub'], keywords: ['bar', 'pub', 'tavern', 'lounge', 'brewery', 'taproom', 'cocktail', 'beer', 'wine', 'nightclub', 'club', 'nightlife', 'happy hour'] },
-  { id: 'study',     label: 'Study',    types: ['library', 'book_store'], keywords: ['library', 'study', 'book', 'quiet', 'wifi', 'laptop', 'coworking', 'workspace', 'coffee', 'cafe'] },
+  { id: 'for_you',   label: 'For You',  hereCats: '',                   types: [] as string[], keywords: [] as string[] },
+  { id: 'food',      label: 'Food',     hereCats: '100-1000',           types: ['restaurant', 'food', 'meal_takeaway', 'bakery'], keywords: ['restaurant', 'food', 'dining', 'grill', 'kitchen', 'steakhouse', 'pizza', 'burger', 'wings', 'bbq', 'mexican', 'chinese', 'indian', 'italian', 'sushi', 'thai', 'deli', 'buffet', 'diner'] },
+  { id: 'coffee',    label: 'Coffee',   hereCats: '100-1100',           types: ['cafe'], keywords: ['coffee', 'cafe', 'espresso', 'latte', 'tea', 'bakery', 'pastry', 'donut', 'bagel', 'roast', 'brew'] },
+  { id: 'outdoors',  label: 'Outdoors', hereCats: '400,550',            types: ['park', 'natural_feature', 'campground', 'tourist_attraction'], keywords: ['park', 'trail', 'hike', 'nature', 'garden', 'forest', 'lake', 'creek', 'outdoor', 'recreation', 'scenic', 'mountain'] },
+  { id: 'nightlife', label: 'Night',    hereCats: '200',                types: ['bar', 'night_club', 'pub'], keywords: ['bar', 'pub', 'tavern', 'lounge', 'brewery', 'cocktail', 'beer', 'wine', 'live music'] },
+  { id: 'study',     label: 'Study',    hereCats: '350-3500,100-1100',  types: ['library', 'book_store'], keywords: ['library', 'study', 'book', 'quiet', 'wifi', 'coworking', 'workspace', 'cafe', 'coffee'] },
 ];
 
 function cleanDescription(desc: string, placeName: string): string {
@@ -218,18 +210,45 @@ export default function HomeScreen({ navigation }: Props) {
       return;
     }
 
-    const catIds = FILTER_CATEGORIES[filter.id];
-    if (!catIds) {
-      setFilteredPlaces(places);
-      return;
-    }
-
     setFilteredPlaces([]);
     setFilterLoading(true);
     try {
       const lat = location?.latitude ?? DEFAULT_LAT;
       const lng = location?.longitude ?? DEFAULT_LNG;
-      const results = await fetchPlacesFromHERE(lat, lng, 100, cityName, undefined, catIds);
+
+      // Step 1: fetch from HERE by category
+      let results: FyndPlace[] = [];
+      if (filter.hereCats) {
+        results = await fetchPlacesFromHERE(lat, lng, 100, cityName, undefined, filter.hereCats);
+      }
+
+      // Step 2: merge keyword matches from the loaded places cache
+      if (filter.keywords.length > 0) {
+        const keywordMatches = places.filter(p => {
+          if (results.some(r => r.id === p.id)) return false;
+          const haystack = [
+            p.name || '',
+            ...(p.types || []),
+            p.cuisine || '',
+            p.vibe || '',
+            p.ai_description || '',
+            ...(p.known_for || []),
+            ...(p.food_types || []),
+            ...(p.categories_raw || []),
+          ].join(' ').toLowerCase();
+          return filter.keywords.some(kw => haystack.includes(kw));
+        });
+        results = [...results, ...keywordMatches];
+      }
+
+      // Step 3: deduplicate by id
+      const seen = new Set<string>();
+      results = results.filter(p => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
+
       setFilteredPlaces(results);
     } catch {
       setFilteredPlaces([]);

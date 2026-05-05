@@ -19,7 +19,7 @@ const MENU_ITEMS = [
   { id: 'subscription', label: 'Fynd Plus',           icon: 'star-outline',          screen: 'Subscription' },
   { id: 'account',      label: 'Account & Settings',  icon: 'settings-outline',      screen: 'AccountSettings' },
   { id: 'legal',        label: 'Legal & Privacy',     icon: 'document-text-outline', screen: 'Legal' },
-  { id: 'travel',       label: 'Travel Preference',   icon: 'heart-outline',         screen: 'TravelPreference' },
+  { id: 'travel',       label: 'Preferences',          icon: 'heart-outline',         screen: 'TravelPreference' },
   { id: 'support',      label: 'Support & Feedback',  icon: 'chatbubble-outline',    screen: 'SupportFeedback' },
 ];
 
