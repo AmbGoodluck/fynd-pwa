@@ -135,17 +135,26 @@ function isStockPhoto(url: string): boolean {
 async function resolveGooglePhoto(placeName: string, lat: number, lng: number): Promise<string[]> {
   if (!GOOGLE_API_KEY) return [];
   try {
-    const input = encodeURIComponent(placeName);
-    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${input}&inputtype=textquery&fields=photos&locationbias=circle:500@${lat},${lng}&key=${GOOGLE_API_KEY}`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    const photos: any[] = data.candidates?.[0]?.photos || [];
-    return photos.slice(0, 3).map(
-      (p: any) =>
-        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${p.photo_reference}&key=${GOOGLE_API_KEY}`,
+    // Route through Cloudflare proxy — API key is injected server-side (avoids CORS on web)
+    const searchUrl =
+      `/api/google/place/findplacefromtext/json` +
+      `?input=${encodeURIComponent(placeName)}` +
+      `&inputtype=textquery` +
+      `&locationbias=circle:5000@${lat},${lng}` +
+      `&fields=photos`;
+
+    const response = await fetch(searchUrl);
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (data.status !== 'OK' || !data.candidates?.[0]?.photos?.length) return [];
+
+    // Photo URLs also route through proxy — the proxy follows Google's 302 redirect
+    return data.candidates[0].photos.slice(0, 3).map(
+      (photo: any) =>
+        `/api/google/place/photo?maxwidth=600&photo_reference=${photo.photo_reference}`,
     );
-  } catch {
+  } catch (e) {
+    console.warn('[GooglePhotos] Error:', e);
     return [];
   }
 }
