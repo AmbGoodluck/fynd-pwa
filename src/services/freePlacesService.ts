@@ -115,7 +115,69 @@ const CATEGORY_PHOTOS: Record<string, string[]> = {
   ],
 };
 
-function getPhotoForPlace(types: string[], index: number): string[] {
+function getPhotoForPlace(types: string[], index: number, placeName?: string, categoriesRaw?: string[]): string[] {
+  if (placeName) {
+    const name = placeName.toLowerCase();
+    if (name.includes('lake') || name.includes('creek') || name.includes('river') || name.includes('falls')) {
+      return [CATEGORY_PHOTOS.natural_feature[index % CATEGORY_PHOTOS.natural_feature.length]];
+    }
+    if (name.includes('park') || name.includes('trail') || name.includes('garden')) {
+      return [CATEGORY_PHOTOS.park[index % CATEGORY_PHOTOS.park.length]];
+    }
+    if (name.includes('museum') || name.includes('gallery')) {
+      return [CATEGORY_PHOTOS.museum[0]];
+    }
+    if (name.includes('church') || name.includes('chapel')) {
+      return [CATEGORY_PHOTOS.tourist_attraction[index % CATEGORY_PHOTOS.tourist_attraction.length]];
+    }
+    if (name.includes('hotel') || name.includes('inn') || name.includes('motel')) {
+      return [CATEGORY_PHOTOS.hotel[0]];
+    }
+    if (name.includes('coffee') || name.includes('cafe') || name.includes('bagel')) {
+      return [CATEGORY_PHOTOS.cafe[index % CATEGORY_PHOTOS.cafe.length]];
+    }
+    if (name.includes('pizza') || name.includes('grill') || name.includes('kitchen') || name.includes('diner')) {
+      return [CATEGORY_PHOTOS.restaurant[index % CATEGORY_PHOTOS.restaurant.length]];
+    }
+    if (name.includes('bar') || name.includes('pub') || name.includes('tavern') || name.includes('lounge')) {
+      return [CATEGORY_PHOTOS.bar[index % CATEGORY_PHOTOS.bar.length]];
+    }
+    if (name.includes('gym') || name.includes('fitness')) {
+      return [CATEGORY_PHOTOS.gym[0]];
+    }
+    if (name.includes('library')) {
+      return [CATEGORY_PHOTOS.library[0]];
+    }
+    if (name.includes('pharmacy') || name.includes('drug')) {
+      return [CATEGORY_PHOTOS.pharmacy[0]];
+    }
+  }
+
+  if (categoriesRaw && categoriesRaw.length > 0) {
+    const catStr = categoriesRaw.join(' ').toLowerCase();
+    if (catStr.includes('restaurant') || catStr.includes('dining')) {
+      return [CATEGORY_PHOTOS.restaurant[index % CATEGORY_PHOTOS.restaurant.length]];
+    }
+    if (catStr.includes('coffee') || catStr.includes('café') || catStr.includes('cafe')) {
+      return [CATEGORY_PHOTOS.cafe[index % CATEGORY_PHOTOS.cafe.length]];
+    }
+    if (catStr.includes('bar') || catStr.includes('pub')) {
+      return [CATEGORY_PHOTOS.bar[index % CATEGORY_PHOTOS.bar.length]];
+    }
+    if (catStr.includes('park') || catStr.includes('recreation')) {
+      return [CATEGORY_PHOTOS.park[index % CATEGORY_PHOTOS.park.length]];
+    }
+    if (catStr.includes('museum')) {
+      return [CATEGORY_PHOTOS.museum[0]];
+    }
+    if (catStr.includes('hotel') || catStr.includes('motel') || catStr.includes('bed and breakfast')) {
+      return [CATEGORY_PHOTOS.hotel[0]];
+    }
+    if (catStr.includes('hospital') || catStr.includes('medical') || catStr.includes('clinic')) {
+      return [CATEGORY_PHOTOS.hospital[0]];
+    }
+  }
+
   for (const type of types) {
     const photos = CATEGORY_PHOTOS[type];
     if (photos && photos.length > 0) return [photos[index % photos.length]];
@@ -128,56 +190,95 @@ function isStockPhoto(url: string): boolean {
   return url.includes('unsplash.com');
 }
 
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // ══════════════════════════════════════════════════════════
 // GOOGLE PLACES PHOTOS
 // ══════════════════════════════════════════════════════════
 
-async function resolveGooglePhoto(placeName: string, lat: number, lng: number): Promise<string[]> {
+async function resolveGooglePhoto(placeName: string, lat: number, lng: number, cityName: string): Promise<string[]> {
   if (!GOOGLE_API_KEY) return [];
   try {
-    // Route through Cloudflare proxy — API key is injected server-side (avoids CORS on web)
+    const searchQuery = cityName ? `${placeName} ${cityName}` : placeName;
     const searchUrl =
       `/api/google/place/findplacefromtext/json` +
-      `?input=${encodeURIComponent(placeName)}` +
+      `?input=${encodeURIComponent(searchQuery)}` +
       `&inputtype=textquery` +
-      `&locationbias=circle:5000@${lat},${lng}` +
-      `&fields=photos`;
+      `&locationbias=circle:2000@${lat},${lng}` +
+      `&fields=photos,name,geometry`;
 
     const response = await fetch(searchUrl);
     if (!response.ok) return [];
     const data = await response.json();
-    if (data.status !== 'OK' || !data.candidates?.[0]?.photos?.length) return [];
+    if (data.status !== 'OK' || !data.candidates?.length) return [];
 
-    // Photo URLs also route through proxy — the proxy follows Google's 302 redirect
-    return data.candidates[0].photos.slice(0, 3).map(
+    const candidate = data.candidates[0];
+
+    if (candidate.geometry?.location) {
+      const distKm = haversineKm(lat, lng, candidate.geometry.location.lat, candidate.geometry.location.lng);
+      if (distKm > 50) {
+        console.log('[GooglePhotos] Rejected far match for', placeName, '— distance:', distKm, 'km');
+        return [];
+      }
+    }
+
+    if (!candidate.photos?.length) return [];
+
+    return candidate.photos.slice(0, 3).map(
       (photo: any) =>
         `/api/google/place/photo?maxwidth=600&photo_reference=${photo.photo_reference}`,
     );
   } catch (e) {
-    console.warn('[GooglePhotos] Error:', e);
+    console.warn('[GooglePhotos] Error for', placeName, e);
     return [];
   }
 }
 
-async function resolvePhotosForPlaces(places: FyndPlace[]): Promise<FyndPlace[]> {
-  if (!GOOGLE_API_KEY) return places;
-  const result = [...places];
-  const toResolve = places.slice(0, 30);
-
-  for (let i = 0; i < toResolve.length; i += 3) {
-    const batch = toResolve.slice(i, i + 3);
-    await Promise.allSettled(
-      batch.map(async (place, batchIdx) => {
-        const idx = i + batchIdx;
-        if (!result[idx].photo_urls.every(isStockPhoto)) return; // already has real photos
-        const photos = await resolveGooglePhoto(place.name, place.lat, place.lng);
-        if (photos.length > 0) result[idx] = { ...result[idx], photo_urls: photos };
-      }),
-    );
-    if (i + 3 < toResolve.length) await new Promise(r => setTimeout(r, 100));
+async function resolvePhotosForPlaces(places: FyndPlace[], cityName: string): Promise<FyndPlace[]> {
+  if (!GOOGLE_API_KEY) {
+    console.log('[Photos] No Google API key — using stock photos');
+    return places;
   }
 
-  return result;
+  console.log('[Photos] Resolving Google photos for', places.length, 'places in', cityName);
+
+  const updated = [...places];
+  let resolved = 0;
+  let failed = 0;
+
+  for (let i = 0; i < updated.length; i += 3) {
+    const batch = updated.slice(i, Math.min(i + 3, updated.length));
+    const results = await Promise.allSettled(
+      batch.map(async (place) => {
+        const hasRealPhotos = place.photo_urls.length > 0 && !place.photo_urls[0].includes('unsplash.com');
+        if (hasRealPhotos) { resolved++; return place; }
+
+        const googlePhotos = await resolveGooglePhoto(place.name, place.lat, place.lng, cityName);
+        if (googlePhotos.length > 0) { resolved++; return { ...place, photo_urls: googlePhotos }; }
+
+        const simplePhotos = await resolveGooglePhoto(place.name, place.lat, place.lng, '');
+        if (simplePhotos.length > 0) { resolved++; return { ...place, photo_urls: simplePhotos }; }
+
+        failed++;
+        return place;
+      }),
+    );
+
+    results.forEach((result, idx) => {
+      if (result.status === 'fulfilled') updated[i + idx] = result.value;
+    });
+
+    if (i + 3 < updated.length) await new Promise(r => setTimeout(r, 400));
+  }
+
+  console.log('[Photos] Results:', resolved, 'resolved,', failed, 'using stock fallback');
+  return updated;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -284,7 +385,7 @@ function parseHereItem(item: any, index: number, fallbackCity: string): FyndPlac
     website,
     opening_hours_raw: hoursText,
     is_open: hours.isOpen,
-    photo_urls: getPhotoForPlace(types, index),
+    photo_urls: getPhotoForPlace(types, index, item.title, categories.map((c: any) => c.name)),
     cuisine: foodTypes.join(', ') || undefined,
     distance_meters: item.distance,
     food_types: foodTypes,
@@ -435,7 +536,7 @@ function isChain(name: string): boolean {
 // CACHE (AsyncStorage)
 // ══════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v5_here_photos';
+const CACHE_VERSION = 'v6_photos_fix';
 const CACHE_PREFIX = `fynd_${CACHE_VERSION}_`;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -636,7 +737,7 @@ export async function getPlacesForLocation(
         .catch(console.error);
     }
     if (GOOGLE_API_KEY && cached.places.some(p => p.photo_urls.every(isStockPhoto))) {
-      resolvePhotosForPlaces(cached.places)
+      resolvePhotosForPlaces(cached.places, cityName)
         .then(withPhotos => updateCachedCityPlaces(lat, lng, withPhotos))
         .catch(console.error);
     }
@@ -672,8 +773,7 @@ export async function getPlacesForLocation(
   // Resolve Google photos before first cache write so cached data has real photos
   let placesToCache = allPlaces;
   if (GOOGLE_API_KEY) {
-    console.log('[Places] Resolving Google photos for', Math.min(30, allPlaces.length), 'places...');
-    placesToCache = await resolvePhotosForPlaces(allPlaces);
+    placesToCache = await resolvePhotosForPlaces(allPlaces, cityName);
   }
 
   await setCachedCity(lat, lng, {
